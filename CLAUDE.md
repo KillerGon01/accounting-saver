@@ -30,8 +30,12 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 - Sin secretos en el repo. Reglas de Firestore: cada usuario solo lee lo suyo.
 - Pendiente: Dockerizar la web (nginx), CI con GitHub Actions y Husky.
 - Una rama por funcionalidad (feature/...), PR hacia main. No commitear directamente en main.
+- Al terminar cada tarea, actualiza la sección "Estado" de este archivo:
+  qué se ha hecho y cuál es el siguiente paso. Mantenla en 4-5 líneas.
+  Muéstrame el cambio, pero no hagas commit.
 
 ## Estado
-Hecho: repo, Firebase conectado, login (email/contraseña y Google solo con
-firebase_auth, sin google_sign_in), Riverpod.
-Siguiente: modelo de transacciones y reglas de Firestore.
+Hecho: repo, Firebase conectado, login (email/contraseña y Google con
+firebase_auth), Riverpod, modelo de transacciones con repositorio Firestore,
+reglas de seguridad y tests.
+Siguiente: pantalla de movimientos (lista por mes, formulario, datos de ejemplo).
