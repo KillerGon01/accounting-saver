@@ -5,6 +5,7 @@ import '../../application/transactions/load_demo_data.dart';
 import '../../domain/transactions/monthly_summary.dart';
 import '../../domain/transactions/transaction.dart';
 import '../auth/auth_providers.dart';
+import '../profile/profile_screen.dart';
 import '../theme/app_theme.dart';
 import 'category_style.dart';
 import 'day_groups.dart';
@@ -102,6 +103,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
   }
 
+  void _openProfile() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+    );
+  }
+
   Future<void> _signOut() async {
     try {
       await ref.read(signOutProvider)();
@@ -127,6 +134,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             tooltip: 'Cargar datos de ejemplo',
             onPressed: _isLoadingDemo ? null : _loadDemoData,
             icon: const Icon(Icons.dataset_outlined),
+          ),
+          IconButton(
+            tooltip: 'Perfil',
+            onPressed: _openProfile,
+            icon: const Icon(Icons.account_circle_outlined),
           ),
           IconButton(
             tooltip: 'Cerrar sesión',

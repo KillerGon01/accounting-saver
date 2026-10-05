@@ -10,6 +10,8 @@ class FakeAuthRepository implements AuthRepository {
     this.resetPasswordError,
     this.sendVerificationError,
     this.reloadError,
+    this.reauthError,
+    this.deleteAccountError,
   }) : currentUser = initialUser;
 
   /// Si se asigna, la operación correspondiente lanza este error.
@@ -18,6 +20,8 @@ class FakeAuthRepository implements AuthRepository {
   Object? resetPasswordError;
   Object? sendVerificationError;
   Object? reloadError;
+  Object? reauthError;
+  Object? deleteAccountError;
 
   /// Si se asigna, cada operación espera a que se complete antes de responder
   /// (permite probar el estado de carga).
@@ -30,8 +34,10 @@ class FakeAuthRepository implements AuthRepository {
   final List<({String email, String password})> signInCalls = [];
   final List<({String email, String password})> signUpCalls = [];
   final List<String> resetPasswordCalls = [];
+  final List<String> reauthMethods = [];
   int verificationEmailsSent = 0;
   int reloadCount = 0;
+  bool accountDeleted = false;
 
   @override
   AppUser? currentUser;
@@ -94,9 +100,33 @@ class FakeAuthRepository implements AuthRepository {
         displayName: user.displayName,
         emailVerified: true,
         providerIds: user.providerIds,
+        createdAt: user.createdAt,
+        lastSignInAt: user.lastSignInAt,
       );
     }
     return user;
+  }
+
+  @override
+  Future<void> reauthenticateWithPassword({required String password}) async {
+    reauthMethods.add('password');
+    await responseGate;
+    if (reauthError != null) throw reauthError!;
+  }
+
+  @override
+  Future<void> reauthenticateWithGoogle() async {
+    reauthMethods.add('google');
+    await responseGate;
+    if (reauthError != null) throw reauthError!;
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    await responseGate;
+    if (deleteAccountError != null) throw deleteAccountError!;
+    accountDeleted = true;
+    currentUser = null;
   }
 
   @override

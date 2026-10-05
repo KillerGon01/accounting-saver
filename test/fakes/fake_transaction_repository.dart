@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:accounting_saver/domain/transactions/activity_summary.dart';
 import 'package:accounting_saver/domain/transactions/transaction.dart';
 import 'package:accounting_saver/domain/transactions/transaction_repository.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
@@ -67,6 +68,11 @@ class FakeTransactionRepository implements TransactionRepository {
     required String transactionId,
   }) async {
     _transactionsByUser[userId]?.remove(transactionId);
+  }
+
+  @override
+  Future<ActivitySummary> getActivitySummary({required String userId}) async {
+    return ActivitySummary.fromTransactions(transactionsOf(userId));
   }
 
   List<Transaction> transactionsOf(String userId) {

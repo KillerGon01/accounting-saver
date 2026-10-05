@@ -38,8 +38,8 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 
 ## Estado
 Hecho: login (email/contraseña con registro, verificación, recuperación y mostrar/ocultar
-contraseña; Google), mensajes de error en español, movimientos con Firestore y pantalla de movimientos responsive,
-tema Material 3, iconos por categoría y reglas con límite de 1.000.000 €.
+contraseña; Google), perfil con resumen agregado de Firestore y eliminación de cuenta con
+reautenticación y borrado en lotes, movimientos responsive, tema Material 3 y reglas con límite de 1.000.000 €.
 Pendiente: flutter_localizations (selector de fecha en inglés), decisión sobre el registro
 abierto (ver docs/security.md) y revisión visual en navegador.
 Siguiente: entrada en lenguaje natural (LlmGateway con JSON estructurado y validado).

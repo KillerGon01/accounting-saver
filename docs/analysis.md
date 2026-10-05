@@ -17,6 +17,9 @@ Un asistente financiero personal que permita registrar movimientos de forma manu
 | Listado mensual con navegación entre meses | Hecho | Stream de Firestore por mes, orden descendente. |
 | Resumen numérico del mes (ingresos, gastos, balance) | Hecho | Cabecera de la pantalla de movimientos, calculada en dominio. |
 | Datos de demostración | Hecho | `LoadDemoData`, no duplica si ya existen. |
+| Perfil de usuario (datos de cuenta) | Hecho | `ProfileScreen`, acceso desde un icono de la barra superior. |
+| Resumen de actividad del histórico | Hecho | Consultas agregadas (`count` y `sum`); no lee todos los movimientos. |
+| Eliminar cuenta | Hecho | Reautenticación, borrado de movimientos en lotes y borrado de la cuenta de Auth. |
 | Entrada en lenguaje natural (JSON estructurado y validado) | Pendiente | |
 | Chat con function calling sobre Firestore | Pendiente | |
 | Resumen mensual con IA | Pendiente | |
@@ -64,6 +67,22 @@ Fuera de alcance: importación CSV, foto de ticket, presupuestos y multidivisa.
 | Reenvío | Espera de 60 segundos con contador visible. La espera empieza al abrir la pantalla, porque el correo acaba de enviarse al registrarse. |
 | Correo no recibido | La pantalla indica que revise la carpeta de spam. |
 | Salida | "Cerrar sesión / usar otro correo" para cambiar de cuenta. |
+
+## Requisitos de perfil y eliminación de cuenta
+
+| Requisito | Decisión |
+|---|---|
+| Datos de cuenta | Correo, nombre (si existe), proveedor, correo verificado, fecha de creación y último acceso. Vienen de Firebase Auth a través de `AppUser` y se presentan como `UserProfile`. |
+| Resumen de actividad | Número de movimientos, primer y último movimiento, recuento por origen (demo, manual, lenguaje natural) e ingresos y gastos totales en céntimos, formateados en euros. |
+| Coste del resumen | `count()` y `sum()` agregados de Firestore, más dos lecturas de un documento para las fechas extremas. No se descarga el histórico. |
+| Cerrar sesión | Desde el perfil, vuelve a la pantalla de login. |
+| Confirmación de borrado | Diálogo que explica que se borran la cuenta y todos los movimientos, que no se puede deshacer, y que exige escribir el correo exacto para habilitar el botón. |
+| Orden del borrado | (1) reautenticar, (2) borrar movimientos, (3) borrar la cuenta de Auth, (4) volver al login. |
+| Reautenticación | Con contraseña si el proveedor es correo y contraseña; con el popup de Google si es Google. Si falla o se cancela, no se borra nada. |
+| Borrado de movimientos | Lotes de 400 como máximo, en bucle hasta vaciar la colección. Reintentable: si se interrumpe, volver a ejecutarlo termina el trabajo. |
+| Bloqueo durante el borrado | La pantalla se bloquea con un indicador de progreso hasta que termina o falla. |
+| Fallo a mitad | El mensaje indica la etapa: si fallan los movimientos, la cuenta sigue intacta; si falla la cuenta, los movimientos ya están borrados. En ambos casos se puede reintentar. |
+| Datos de otras colecciones | Una única lista (`userDataCollections`) define qué colecciones se borran. Añadir una colección con datos del usuario exige añadirla ahí. |
 
 ## Fuera de alcance de esta fase
 

@@ -1,5 +1,6 @@
-/// Identificador del proveedor de correo y contraseña en Firebase Auth.
+/// Identificadores de proveedor de Firebase Auth usados por la aplicación.
 const passwordProviderId = 'password';
+const googleProviderId = 'google.com';
 
 class AppUser {
   const AppUser({
@@ -8,6 +9,8 @@ class AppUser {
     required this.emailVerified,
     required this.providerIds,
     this.displayName,
+    this.createdAt,
+    this.lastSignInAt,
   });
 
   final String uid;
@@ -15,6 +18,8 @@ class AppUser {
   final bool emailVerified;
   final List<String> providerIds;
   final String? displayName;
+  final DateTime? createdAt;
+  final DateTime? lastSignInAt;
 
   /// Las cuentas creadas con correo y contraseña deben verificar su correo
   /// antes de usar la app. Los usuarios de Google ya vienen verificados.

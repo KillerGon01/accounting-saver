@@ -20,6 +20,11 @@ String authErrorMessage(Object error) {
       'Demasiados intentos. Espera un momento e inténtalo de nuevo.',
     'network-request-failed' =>
       'Sin conexión. Comprueba tu red e inténtalo de nuevo.',
+    'popup-closed-by-user' || 'cancelled-popup-request' =>
+      'Se canceló la confirmación con Google. No se ha borrado nada.',
+    'user-mismatch' => 'Debes confirmar con la misma cuenta de Google.',
+    'requires-recent-login' => 'Vuelve a iniciar sesión e inténtalo de nuevo.',
+    'password-required' => 'Introduce tu contraseña para continuar.',
     _ => _genericMessage,
   };
 }

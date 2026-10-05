@@ -35,6 +35,16 @@ Las reglas se han comprobado a mano contra el emulador local de Firestore: el l�
   `request.auth.token.email_verified == true` en las reglas (la app tendría que
   refrescar el token tras verificar).
 
+## Eliminación de cuenta
+
+- **Reautenticación obligatoria.** Antes de borrar nada, el usuario vuelve a probar su identidad: contraseña (correo y contraseña) o popup de Google. Si falla o se cancela, no se borra ningún dato.
+- **Orden.** Primero los movimientos, después la cuenta de Auth. Así, si la cuenta siguiera existiendo tras un fallo, el usuario puede volver a intentarlo; lo contrario dejaría datos huérfanos sin forma de reintentar desde la app.
+- **Cobertura.** `userDataCollections` (en `firestore_user_data_repository.dart`) es la lista de colecciones que se borran. Cualquier colección nueva con datos del usuario debe añadirse ahí. Hoy solo existe `transactions`.
+- **Reglas.** El borrado usa la regla `allow delete` de `users/{uid}/transactions` (solo el propio usuario). Las consultas agregadas del resumen usan la regla `allow read` de la misma colección. No hace falta ninguna regla nueva.
+- **Sin Cloud Functions.** Todo el borrado lo ejecuta el cliente. Un cierre de la pestaña a mitad deja la cuenta con datos parcialmente borrados; la cuenta sigue existiendo y basta con volver a iniciar sesión y reintentar.
+- **Confirmación por correo exacto.** Es una barrera contra clics accidentales, no contra un atacante con sesión iniciada, que ya puede borrar sus datos.
+- **Pendiente.** El borrado de movimientos no es atómico: se hace en lotes de 400 y un lote no puede abarcar toda una colección grande. Por eso un fallo a mitad deja datos parciales, que el reintento completa. Una atomicidad total requeriría una Cloud Function que el proyecto no usa por coste.
+
 ## Configuración de Firebase en el cliente
 
 La configuración web de Firebase (`firebase_options.dart`) identifica el proyecto y no es un secreto. La protección de datos depende de las reglas anteriores, no de ocultar esa configuración.

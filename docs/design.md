@@ -66,3 +66,27 @@ Todo el tema vive en `lib/presentation/theme/app_theme.dart`:
 - Estado vacío con icono, explicación y botón de datos de ejemplo.
 - Acciones de la barra superior, todas con tooltip: cargar datos de ejemplo y cerrar sesión. Botón flotante para añadir.
 - Tocar un movimiento abre el formulario de edición; el icono de papelera pide confirmación.
+- Acceso al perfil con un icono de cuenta en la barra superior. El perfil se abre como ruta nueva y, al cerrar sesión o borrar la cuenta, se vuelve a la raíz con `popUntil`.
+
+## Perfil y eliminación de cuenta
+
+**Capas.** `AppUser` (dominio) guarda lo que dice Firebase: proveedores, verificación y fechas de creación y último acceso. `UserProfile` (dominio) lo traduce a un proveedor `SignInProvider` que la presentación puede mostrar sin conocer los identificadores de Firebase (`password`, `google.com`). `ActivitySummary` (dominio) es el resumen; `ActivitySummary.fromTransactions` lo calcula en memoria y lo usa el fake, mientras que Firestore lo calcula con agregados.
+
+**Resumen con agregados.** `FirestoreTransactionRepository.getActivitySummary` hace:
+
+| Dato | Consulta |
+|---|---|
+| Total | `count()` |
+| Demo, manual, lenguaje natural | `where('source', ==)` + `count()` |
+| Ingresos y gastos | `where('amountCents', > 0)` y `< 0` + `aggregate(sum('amountCents'))` |
+| Primer y último movimiento | `orderBy('date')` y `orderBy('date', desc)` con `limit(1)` |
+
+Todas son consultas de un único campo, así que no necesitan índices compuestos. `getSum` devuelve `double`; como los importes son enteros de céntimos, el redondeo recupera el valor exacto mientras la suma sea menor que 2^53 céntimos. La versión de `cloud_firestore` que usa el proyecto soporta estas agregaciones, así que no se añade ningún paquete.
+
+**Dónde se borran los datos.** La especificación pedía `deleteAllForUser` en `TransactionRepository`. Se ha puesto en un puerto propio, `UserDataRepository`, por una razón: la lista de colecciones que se borran tiene que estar en un solo sitio, y con un método por repositorio esa lista quedaría repartida. `FirestoreUserDataRepository` recorre `userDataCollections`, y el comentario de esa constante exige añadir ahí cualquier colección nueva con datos del usuario.
+
+**Orden y fallos.** `DeleteAccount` (aplicación) hace, en este orden: reautenticar, borrar datos, borrar la cuenta. Un fallo en el primer paso no toca nada. Un fallo en los dos siguientes lanza `AccountDeletionException` con la etapa (`userData` o `account`), para que la pantalla explique qué ha quedado hecho. Reintentar es seguro porque el borrado de datos es idempotente: vuelve a leer lo que queda.
+
+**Reautenticación.** Correo y contraseña usa `reauthenticateWithCredential`. Google usa `reauthenticateWithPopup` en web y `reauthenticateWithProvider` en móvil, igual que el inicio de sesión. `FirebaseAuth` exige una reautenticación reciente para `user.delete()`, así que el borrado siempre se precede de ella.
+
+**Confirmación.** El diálogo compara el texto con el correo sin recortar ni normalizar, y con correo y contraseña exige además una contraseña no vacía. El botón solo se habilita si se cumplen las dos condiciones.

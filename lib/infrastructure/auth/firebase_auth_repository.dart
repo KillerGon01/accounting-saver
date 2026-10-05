@@ -77,6 +77,37 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> reauthenticateWithPassword({required String password}) {
+    return _mapErrors(() async {
+      final user = _currentUserOrThrow();
+      await user.reauthenticateWithCredential(
+        firebase_auth.EmailAuthProvider.credential(
+          email: user.email ?? '',
+          password: password,
+        ),
+      );
+    });
+  }
+
+  @override
+  Future<void> reauthenticateWithGoogle() {
+    return _mapErrors(() async {
+      final user = _currentUserOrThrow();
+      final provider = firebase_auth.GoogleAuthProvider();
+      if (kIsWeb) {
+        await user.reauthenticateWithPopup(provider);
+      } else {
+        await user.reauthenticateWithProvider(provider);
+      }
+    });
+  }
+
+  @override
+  Future<void> deleteAccount() {
+    return _mapErrors(() => _currentUserOrThrow().delete());
+  }
+
+  @override
   Future<void> signOut() async {
     await _firebaseAuth.signOut();
   }
@@ -119,6 +150,8 @@ class FirebaseAuthRepository implements AuthRepository {
       emailVerified: user.emailVerified,
       providerIds: user.providerData.map((info) => info.providerId).toList(),
       displayName: user.displayName,
+      createdAt: user.metadata.creationTime,
+      lastSignInAt: user.metadata.lastSignInTime,
     );
   }
 }
