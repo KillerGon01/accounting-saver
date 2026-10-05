@@ -7,7 +7,16 @@ abstract class TransactionRepository {
     required int month,
   });
 
+  String newId({required String userId});
+
   Future<void> add({required String userId, required Transaction transaction});
+
+  Future<void> addAll({
+    required String userId,
+    required List<Transaction> transactions,
+  });
+
+  Future<bool> hasDemoData({required String userId});
 
   Future<void> update({
     required String userId,

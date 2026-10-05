@@ -2,6 +2,8 @@ import 'category.dart';
 import 'transaction_source.dart';
 
 class Transaction {
+  static const maxDescriptionLength = 200;
+
   Transaction({
     required this.id,
     required this.amountCents,
@@ -23,6 +25,13 @@ class Transaction {
         description,
         'description',
         'La descripción no puede estar vacía',
+      );
+    }
+    if (description.length > maxDescriptionLength) {
+      throw ArgumentError.value(
+        description,
+        'description',
+        'La descripción no puede superar los $maxDescriptionLength caracteres',
       );
     }
   }

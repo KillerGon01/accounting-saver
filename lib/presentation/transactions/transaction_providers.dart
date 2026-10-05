@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/transactions/add_transaction.dart';
 import '../../application/transactions/delete_transaction.dart';
+import '../../application/transactions/load_demo_data.dart';
 import '../../application/transactions/update_transaction.dart';
 import '../../application/transactions/watch_monthly_transactions.dart';
 import '../../domain/transactions/transaction.dart';
@@ -26,6 +27,10 @@ final deleteTransactionProvider = Provider<DeleteTransaction>(
 
 final watchMonthlyTransactionsProvider = Provider<WatchMonthlyTransactions>(
   (ref) => WatchMonthlyTransactions(ref.watch(transactionRepositoryProvider)),
+);
+
+final loadDemoDataProvider = Provider<LoadDemoData>(
+  (ref) => LoadDemoData(ref.watch(transactionRepositoryProvider)),
 );
 
 class MonthlyTransactionsParams {

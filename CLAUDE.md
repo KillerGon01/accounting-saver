@@ -33,9 +33,14 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 - Al terminar cada tarea, actualiza la sección "Estado" de este archivo:
   qué se ha hecho y cuál es el siguiente paso. Mantenla en 4-5 líneas.
   Muéstrame el cambio, pero no hagas commit.
+- Documentar el proceso en docs/ (analysis, design, testing, security). Al cerrar
+    cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: repo, Firebase conectado, login (email/contraseña y Google con
-firebase_auth), Riverpod, modelo de transacciones con repositorio Firestore,
-reglas de seguridad y tests.
-Siguiente: pantalla de movimientos (lista por mes, formulario, datos de ejemplo).
+Hecho: repo, Firebase, login (email/contraseña y Google), Riverpod, modelo de
+transacciones con Firestore, reglas y tests. Pantalla de movimientos: lista por
+mes con resumen en céntimos, formulario de alta/edición, borrado con confirmación,
+datos de ejemplo (LoadDemoData, no duplica) y layout responsive.
+Pendiente de decidir: paquete intl (fechas/importes en español se formatean a mano)
+y flutter_localizations (el selector de fecha sale en inglés).
+Siguiente: entrada en lenguaje natural (LlmGateway con JSON estructurado y validado).

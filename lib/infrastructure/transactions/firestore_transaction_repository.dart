@@ -36,6 +36,9 @@ class FirestoreTransactionRepository implements TransactionRepository {
   }
 
   @override
+  String newId({required String userId}) => _collection(userId).doc().id;
+
+  @override
   Future<void> add({
     required String userId,
     required Transaction transaction,
@@ -43,6 +46,28 @@ class FirestoreTransactionRepository implements TransactionRepository {
     return _collection(userId)
         .doc(transaction.id)
         .set(_toMap(transaction));
+  }
+
+  @override
+  Future<void> addAll({
+    required String userId,
+    required List<Transaction> transactions,
+  }) {
+    final collection = _collection(userId);
+    final batch = _firestore.batch();
+    for (final transaction in transactions) {
+      batch.set(collection.doc(transaction.id), _toMap(transaction));
+    }
+    return batch.commit();
+  }
+
+  @override
+  Future<bool> hasDemoData({required String userId}) async {
+    final snapshot = await _collection(userId)
+        .where('source', isEqualTo: TransactionSource.demo.name)
+        .limit(1)
+        .get();
+    return snapshot.docs.isNotEmpty;
   }
 
   @override

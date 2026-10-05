@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
 import 'presentation/auth/auth_providers.dart';
 import 'presentation/auth/login_screen.dart';
+import 'presentation/transactions/transactions_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,10 +36,7 @@ class AuthGate extends ConsumerWidget {
     return authState.when(
       data: (user) {
         if (user == null) return const LoginScreen();
-        return Scaffold(
-          appBar: AppBar(title: const Text('Accounting Saver')),
-          body: Center(child: Text('Sesión iniciada como ${user.email}')),
-        );
+        return TransactionsScreen(userId: user.uid);
       },
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
