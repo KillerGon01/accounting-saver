@@ -1,1 +1,36 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"accounting-saver","appId":"1:825610535531:android:7e28fd9c732a8c46ae672e","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"accounting-saver","configurations":{"android":"1:825610535531:android:7e28fd9c732a8c46ae672e","web":"1:825610535531:web:8e83a6d1115f1dc5ae672e"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "accounting-saver",
+          "appId": "1:825610535531:android:7e28fd9c732a8c46ae672e",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "accounting-saver",
+          "configurations": {
+            "android": "1:825610535531:android:7e28fd9c732a8c46ae672e",
+            "web": "1:825610535531:web:8e83a6d1115f1dc5ae672e"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

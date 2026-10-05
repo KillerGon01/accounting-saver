@@ -48,3 +48,6 @@ app.*.map.json
 .widget_preview/
 
 android/app/google-services.json
+
+#Firebase hosting
+.firebase/
