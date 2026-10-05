@@ -1,3 +1,4 @@
+import 'amount_limits.dart';
 import 'category.dart';
 import 'transaction_source.dart';
 
@@ -18,6 +19,13 @@ class Transaction {
         amountCents,
         'amountCents',
         'El importe no puede ser cero',
+      );
+    }
+    if (amountCents.abs() > maxAbsoluteAmountCents) {
+      throw ArgumentError.value(
+        amountCents,
+        'amountCents',
+        'El importe no puede superar 1.000.000 €',
       );
     }
     if (description.trim().isEmpty) {

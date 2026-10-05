@@ -42,6 +42,22 @@ void main() {
       );
     });
 
+    test('acepta exactamente el límite de 1.000.000 € en positivo y negativo', () {
+      expect(_buildTransaction(amountCents: 100000000).amountCents, 100000000);
+      expect(_buildTransaction(amountCents: -100000000).amountCents, -100000000);
+    });
+
+    test('lanza ArgumentError si el importe supera el límite en un céntimo', () {
+      expect(
+        () => _buildTransaction(amountCents: 100000001),
+        throwsArgumentError,
+      );
+      expect(
+        () => _buildTransaction(amountCents: -100000001),
+        throwsArgumentError,
+      );
+    });
+
     test('lanza ArgumentError si la descripción está vacía', () {
       expect(
         () => _buildTransaction(description: ''),
