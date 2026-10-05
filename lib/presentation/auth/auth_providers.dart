@@ -1,5 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../application/auth/refresh_email_verification.dart';
+import '../../application/auth/send_email_verification.dart';
+import '../../application/auth/send_password_reset_email.dart';
 import '../../application/auth/sign_in_with_email_and_password.dart';
 import '../../application/auth/sign_in_with_google.dart';
 import '../../application/auth/sign_out.dart';
@@ -26,6 +29,18 @@ final signUpWithEmailAndPasswordProvider = Provider<SignUpWithEmailAndPassword>(
 
 final signInWithGoogleProvider = Provider<SignInWithGoogle>(
   (ref) => SignInWithGoogle(ref.watch(authRepositoryProvider)),
+);
+
+final sendPasswordResetEmailProvider = Provider<SendPasswordResetEmail>(
+  (ref) => SendPasswordResetEmail(ref.watch(authRepositoryProvider)),
+);
+
+final sendEmailVerificationProvider = Provider<SendEmailVerification>(
+  (ref) => SendEmailVerification(ref.watch(authRepositoryProvider)),
+);
+
+final refreshEmailVerificationProvider = Provider<RefreshEmailVerification>(
+  (ref) => RefreshEmailVerification(ref.watch(authRepositoryProvider)),
 );
 
 final signOutProvider = Provider<SignOut>(

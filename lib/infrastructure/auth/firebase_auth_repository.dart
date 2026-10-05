@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../domain/auth/app_user.dart';
+import '../../domain/auth/auth_exception.dart';
 import '../../domain/auth/auth_repository.dart';
 
 class FirebaseAuthRepository implements AuthRepository {
@@ -22,38 +23,81 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<AppUser> signInWithEmailAndPassword({
     required String email,
     required String password,
-  }) async {
-    final credential = await _firebaseAuth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    return _requireAppUser(credential.user);
+  }) {
+    return _mapErrors(() async {
+      final credential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return _requireAppUser(credential.user);
+    });
   }
 
   @override
   Future<AppUser> signUpWithEmailAndPassword({
     required String email,
     required String password,
-  }) async {
-    final credential = await _firebaseAuth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    return _requireAppUser(credential.user);
+  }) {
+    return _mapErrors(() async {
+      final credential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return _requireAppUser(credential.user);
+    });
   }
 
   @override
-  Future<AppUser> signInWithGoogle() async {
-    final provider = firebase_auth.GoogleAuthProvider();
-    final userCredential = kIsWeb
-        ? await _firebaseAuth.signInWithPopup(provider)
-        : await _firebaseAuth.signInWithProvider(provider);
-    return _requireAppUser(userCredential.user);
+  Future<AppUser> signInWithGoogle() {
+    return _mapErrors(() async {
+      final provider = firebase_auth.GoogleAuthProvider();
+      final userCredential = kIsWeb
+          ? await _firebaseAuth.signInWithPopup(provider)
+          : await _firebaseAuth.signInWithProvider(provider);
+      return _requireAppUser(userCredential.user);
+    });
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail({required String email}) {
+    return _mapErrors(() => _firebaseAuth.sendPasswordResetEmail(email: email));
+  }
+
+  @override
+  Future<void> sendEmailVerification() {
+    return _mapErrors(() => _currentUserOrThrow().sendEmailVerification());
+  }
+
+  @override
+  Future<AppUser> reloadUser() {
+    return _mapErrors(() async {
+      await _currentUserOrThrow().reload();
+      return _requireAppUser(_firebaseAuth.currentUser);
+    });
   }
 
   @override
   Future<void> signOut() async {
     await _firebaseAuth.signOut();
+  }
+
+  Future<T> _mapErrors<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on firebase_auth.FirebaseAuthException catch (error) {
+      throw AuthException(error.code, message: error.message);
+    }
+  }
+
+  firebase_auth.User _currentUserOrThrow() {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw firebase_auth.FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'No hay ningún usuario con sesión iniciada.',
+      );
+    }
+    return user;
   }
 
   AppUser _requireAppUser(firebase_auth.User? user) {
@@ -72,6 +116,8 @@ class FirebaseAuthRepository implements AuthRepository {
     return AppUser(
       uid: user.uid,
       email: user.email,
+      emailVerified: user.emailVerified,
+      providerIds: user.providerData.map((info) => info.providerId).toList(),
       displayName: user.displayName,
     );
   }

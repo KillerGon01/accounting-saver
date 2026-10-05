@@ -27,6 +27,13 @@ Las reglas se han comprobado a mano contra el emulador local de Firestore: el l�
 - **Sin App Check.** El proyecto no incluye App Check ni ninguna otra comprobación de que las peticiones provienen de la aplicación. No hay nada implementado que resuelva el punto anterior.
 - **Sin límite de frecuencia.** Las reglas no limitan cuántos documentos puede escribir un usuario autenticado. Sin Cloud Functions, la única protección de cuota es la que aplique Firebase.
 - **Lista de valores fijos.** Las categorías y fuentes válidas están escritas en `firestore.rules`. Si se añade un valor al enum en Dart, hay que añadirlo también en las reglas.
+- **La verificación de correo solo se aplica en la interfaz.** La app muestra
+  `VerifyEmailScreen` a los usuarios de correo y contraseña con el correo sin
+  verificar, pero Firestore no lo exige. Alguien que llame directamente a la API
+  de Firebase con una cuenta no verificada podría seguir leyendo y escribiendo en
+  su propio espacio. Mejora pendiente: exigir
+  `request.auth.token.email_verified == true` en las reglas (la app tendría que
+  refrescar el token tras verificar).
 
 ## Configuración de Firebase en el cliente
 
@@ -48,3 +55,4 @@ La configuración web de Firebase (`firebase_options.dart`) identifica el proyec
   2. Cerrar el alta en la consola de Firebase (desactivar el proveedor de email/contraseña para nuevos usuarios o deshabilitar el registro), comprobando antes que el inicio de sesión sigue funcionando.
 - Tests automatizados de las reglas (ahora se verifican manualmente contra el emulador).
 - Revisión de dependencias antes de la entrega.
+- Exigir correo verificado en las reglas de Firestore.

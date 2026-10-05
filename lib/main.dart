@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
 import 'presentation/auth/auth_providers.dart';
 import 'presentation/auth/login_screen.dart';
+import 'presentation/auth/verify_email_screen.dart';
 import 'presentation/theme/app_theme.dart';
 import 'presentation/transactions/transactions_screen.dart';
 
@@ -39,6 +40,7 @@ class AuthGate extends ConsumerWidget {
     return authState.when(
       data: (user) {
         if (user == null) return const LoginScreen();
+        if (user.needsEmailVerification) return VerifyEmailScreen(user: user);
         return TransactionsScreen(userId: user.uid);
       },
       loading: () => const Scaffold(
