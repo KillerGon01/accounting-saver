@@ -26,9 +26,15 @@ Ejecutar ambos antes de cada PR.
 | `test/application/transactions/load_demo_data_test.dart` | 60 movimientos, fechas repartidas, recurrencias fijas, nómina en día 1 o 28, sin fechas futuras, sin duplicados, aislamiento por usuario. |
 | `test/presentation/transactions/day_groups_test.dart` | Agrupación por día conservando el orden; lista vacía. |
 | `test/presentation/transactions/transactions_screen_test.dart` | Estado vacío con botón de datos de ejemplo; cabecera de día, importes de movimientos y resumen, tooltips de navegación y de cerrar sesión. |
-| `test/widget_test.dart` | Login cuando no hay usuario. |
+| `test/widget_test.dart` | `AuthGate`: login sin usuario, verificación para correo sin verificar, entrada directa con correo verificado o con Google, y "Ya lo he verificado" cambia de pantalla. |
+| `test/presentation/auth/login_screen_test.dart` | Modo de inicio de sesión y de registro, validaciones, mensajes de error en español, estado de carga, recuperación de contraseña, envío del correo de verificación y mostrar u ocultar la contraseña. |
+| `test/presentation/auth/verify_email_screen_test.dart` | Correo mostrado y aviso de spam, espera de 60 s para reenviar, límite de envíos en español, aviso si sigue sin verificar y cierre de sesión. |
+| `test/domain/auth/user_profile_test.dart` | Proveedor de `UserProfile` a partir de `providerIds`, fechas conservadas y `needsEmailVerification`. |
+| `test/domain/transactions/activity_summary_test.dart` | Resumen en memoria: cero movimientos, recuentos por origen, ingresos y gastos separados, fechas extremas. |
+| `test/application/auth/delete_account_test.dart` | Borrado exitoso, reautenticación fallida (no borra nada), Google sin contraseña, contraseña vacía, fallo a mitad del borrado con reintento y fallo al borrar la cuenta con reintento. |
+| `test/presentation/profile/profile_screen_test.dart` | Datos de cuenta y resumen, confirmación con correo exacto, reautenticación fallida, borrado completo y reintento tras fallo de la cuenta. |
 
-Total: 41 tests (`flutter test`).
+Total: 91 tests (`flutter test`).
 
 ## Casos de borde del límite del importe
 
@@ -39,7 +45,8 @@ El límite es 1.000.000 € en valor absoluto (`maxAbsoluteAmountCents`, 100.000
 
 ## Pendiente
 
-- Tests de `FirestoreTransactionRepository` con emulador o `fake_cloud_firestore`.
+- Tests de `FirestoreTransactionRepository` con emulador o `fake_cloud_firestore`. Incluye `getActivitySummary` con sus agregados (`count` y `sum`), que hoy solo se verifica leyendo el código.
+- Tests de `FirestoreUserDataRepository` (borrado en lotes de 400 contra el emulador) y de `FirebaseAuthRepository` (reautenticación y `delete`). Sin emulador no se pueden probar.
 - Tests automatizados de las reglas de Firestore. Las reglas se han comprobado a mano contra el emulador local, pero no hay test en el repositorio.
 - Widget tests del estado de carga y del estado de error del listado.
 - Widget tests del formulario (validación) y del diálogo de borrado.

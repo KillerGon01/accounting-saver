@@ -1,3 +1,4 @@
+import 'activity_summary.dart';
 import 'transaction.dart';
 
 abstract class TransactionRepository {
@@ -24,4 +25,8 @@ abstract class TransactionRepository {
   });
 
   Future<void> delete({required String userId, required String transactionId});
+
+  /// Resumen de todo el histórico. Las implementaciones deben calcularlo sin
+  /// descargar todos los movimientos.
+  Future<ActivitySummary> getActivitySummary({required String userId});
 }

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 
+import '../../domain/transactions/activity_summary.dart';
 import '../../domain/transactions/category.dart';
 import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_repository.dart';
@@ -86,6 +87,66 @@ class FirestoreTransactionRepository implements TransactionRepository {
     required String transactionId,
   }) {
     return _collection(userId).doc(transactionId).delete();
+  }
+
+  /// Usa consultas agregadas (`count` y `sum`), así que no descarga los
+  /// movimientos: solo lee el primero y el último por fecha.
+  @override
+  Future<ActivitySummary> getActivitySummary({required String userId}) async {
+    final collection = _collection(userId);
+
+    final total = await collection.count().get();
+    final oldest = await collection.orderBy('date').limit(1).get();
+    final newest = await collection.orderBy('date', descending: true).limit(1).get();
+    final demo = await _countBySource(collection, TransactionSource.demo);
+    final manual = await _countBySource(collection, TransactionSource.manual);
+    final naturalLanguage = await _countBySource(collection, TransactionSource.naturalLanguage);
+    final income = await _sumAmounts(collection, positive: true);
+    final expense = await _sumAmounts(collection, positive: false);
+
+    return ActivitySummary(
+      totalCount: total.count ?? 0,
+      firstDate: _dateOf(oldest),
+      lastDate: _dateOf(newest),
+      demoCount: demo,
+      manualCount: manual,
+      naturalLanguageCount: naturalLanguage,
+      incomeCents: income,
+      expenseCents: -expense,
+    );
+  }
+
+  Future<int> _countBySource(
+    CollectionReference<Map<String, dynamic>> collection,
+    TransactionSource source,
+  ) async {
+    final result = await collection
+        .where('source', isEqualTo: source.name)
+        .count()
+        .get();
+    return result.count ?? 0;
+  }
+
+  /// Suma de los importes positivos (`positive: true`) o de los negativos
+  /// (`positive: false`), en céntimos. El paquete devuelve `double`; como los
+  /// importes son enteros de céntimos, el redondeo recupera el valor exacto
+  /// mientras la suma quede por debajo de 2^53 céntimos.
+  Future<int> _sumAmounts(
+    CollectionReference<Map<String, dynamic>> collection, {
+    required bool positive,
+  }) async {
+    final query = positive
+        ? collection.where('amountCents', isGreaterThan: 0)
+        : collection.where('amountCents', isLessThan: 0);
+    final result = await query
+        .aggregate(sum('amountCents'))
+        .get();
+    return (result.getSum('amountCents') ?? 0).round();
+  }
+
+  DateTime? _dateOf(QuerySnapshot<Map<String, dynamic>> snapshot) {
+    if (snapshot.docs.isEmpty) return null;
+    return (snapshot.docs.first.data()['date'] as Timestamp).toDate();
   }
 
   Map<String, dynamic> _toMap(Transaction transaction) {
