@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:accounting_saver/domain/transactions/transaction.dart';
 import 'package:accounting_saver/domain/transactions/transaction_repository.dart';
+import 'package:accounting_saver/domain/transactions/transaction_source.dart';
 
 class FakeTransactionRepository implements TransactionRepository {
   final Map<String, Map<String, Transaction>> _transactionsByUser = {};
   final Map<String, StreamController<List<Transaction>>> _controllers = {};
+  int _idCounter = 0;
 
   @override
   Stream<List<Transaction>> watchByMonth({
@@ -19,12 +21,35 @@ class FakeTransactionRepository implements TransactionRepository {
   }
 
   @override
+  String newId({required String userId}) {
+    _idCounter++;
+    return 'fake-$_idCounter';
+  }
+
+  @override
   Future<void> add({
     required String userId,
     required Transaction transaction,
   }) async {
     final userTransactions = _transactionsByUser.putIfAbsent(userId, () => {});
     userTransactions[transaction.id] = transaction;
+  }
+
+  @override
+  Future<void> addAll({
+    required String userId,
+    required List<Transaction> transactions,
+  }) async {
+    for (final transaction in transactions) {
+      await add(userId: userId, transaction: transaction);
+    }
+  }
+
+  @override
+  Future<bool> hasDemoData({required String userId}) async {
+    return transactionsOf(userId).any(
+      (t) => t.source == TransactionSource.demo,
+    );
   }
 
   @override
@@ -65,7 +90,8 @@ class FakeTransactionRepository implements TransactionRepository {
     final end = DateTime(year, month + 1);
     final transactions = transactionsOf(userId)
         .where((t) => !t.date.isBefore(start) && t.date.isBefore(end))
-        .toList();
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
     controller.add(transactions);
   }
 }
