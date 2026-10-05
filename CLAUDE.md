@@ -37,11 +37,9 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: login (email/contraseña y Google), Riverpod, movimientos con Firestore,
-pantalla de movimientos (listado agrupado por día, resumen con balance destacado,
-alta/edición, borrado con confirmación, datos de ejemplo y layout responsive),
-tema Material 3 claro/oscuro en presentation/theme (semilla verde azulado),
-iconos y colores por categoría, y reglas endurecidas con límite de 1.000.000 €.
-Pendiente: flutter_localizations (selector de fecha en inglés), decisión sobre el
-registro abierto (ver docs/security.md) y revisión visual en navegador.
+Hecho: login (email/contraseña con registro, verificación, recuperación y mostrar/ocultar
+contraseña; Google), mensajes de error en español, movimientos con Firestore y pantalla de movimientos responsive,
+tema Material 3, iconos por categoría y reglas con límite de 1.000.000 €.
+Pendiente: flutter_localizations (selector de fecha en inglés), decisión sobre el registro
+abierto (ver docs/security.md) y revisión visual en navegador.
 Siguiente: entrada en lenguaje natural (LlmGateway con JSON estructurado y validado).
