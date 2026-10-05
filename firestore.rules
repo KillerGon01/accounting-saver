@@ -1,15 +1,54 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function isValidAmount(amount) {
+      return amount is int
+        && amount != 0
+        && amount >= -100000000
+        && amount <= 100000000;
+    }
+
+    function isValidDescription(text) {
+      return text is string
+        && text.size() >= 1
+        && text.size() <= 200;
+    }
+
+    function isValidCategory(id) {
+      return id in [
+        'supermercado', 'restaurantes', 'transporte', 'suscripciones',
+        'ocio', 'salud', 'hogar', 'nomina', 'otros'
+      ];
+    }
+
+    function isValidSource(source) {
+      return source in ['manual', 'naturalLanguage', 'demo'];
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasOnly([
+          'amountCents', 'date', 'description', 'categoryId', 'source', 'createdAt'
+        ])
+        && data.keys().hasAll([
+          'amountCents', 'date', 'description', 'categoryId', 'source', 'createdAt'
+        ])
+        && isValidAmount(data.amountCents)
+        && data.date is timestamp
+        && isValidDescription(data.description)
+        && isValidCategory(data.categoryId)
+        && isValidSource(data.source)
+        && data.createdAt is timestamp;
+    }
+
     match /users/{userId}/transactions/{txId} {
-      allow read, delete: if request.auth != null && request.auth.uid == userId;
-      allow create, update: if request.auth != null
-        && request.auth.uid == userId
-        && request.resource.data.amountCents is int
-        && request.resource.data.amountCents != 0
-        && request.resource.data.description is string
-        && request.resource.data.description.size() > 0
-        && request.resource.data.description.size() <= 200;
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+        && isValidTransaction(request.resource.data);
     }
   }
 }

@@ -37,10 +37,10 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: repo, Firebase, login (email/contraseña y Google), Riverpod, modelo de
-transacciones con Firestore, reglas y tests. Pantalla de movimientos: lista por
-mes con resumen en céntimos, formulario de alta/edición, borrado con confirmación,
-datos de ejemplo (LoadDemoData, no duplica) y layout responsive.
-Pendiente de decidir: paquete intl (fechas/importes en español se formatean a mano)
-y flutter_localizations (el selector de fecha sale en inglés).
+Hecho: login (email/contraseña y Google), Riverpod, movimientos con Firestore,
+pantalla de movimientos (listado mensual, resumen en céntimos, alta/edición,
+borrado con confirmación, datos de ejemplo y layout responsive) y reglas
+endurecidas con límite de importe de 1.000.000 €. Formato en español propio, sin intl.
+Pendiente: flutter_localizations (selector de fecha en inglés) y registro abierto
+(ver docs/security.md).
 Siguiente: entrada en lenguaje natural (LlmGateway con JSON estructurado y validado).

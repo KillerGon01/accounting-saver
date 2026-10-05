@@ -32,6 +32,17 @@ void main() {
       expect(parseEurosToCents('1.234,56'), isNull);
     });
 
+    test('acepta exactamente el límite de 1.000.000 €', () {
+      expect(parseEurosToCents('1000000'), 100000000);
+      expect(parseEurosToCents('1000000,00'), 100000000);
+      expect(parseEurosToCents('999999,99'), 99999999);
+    });
+
+    test('rechaza un céntimo por encima del límite', () {
+      expect(parseEurosToCents('1000000,01'), isNull);
+      expect(parseEurosToCents('1000001'), isNull);
+    });
+
     test('rechaza importes desbordados', () {
       expect(parseEurosToCents('1000000000'), isNull);
     });
