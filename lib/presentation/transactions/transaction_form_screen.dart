@@ -6,6 +6,8 @@ import '../../domain/transactions/amount_parser.dart';
 import '../../domain/transactions/category.dart';
 import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_source.dart';
+import '../theme/app_theme.dart';
+import 'category_style.dart';
 import 'formatters.dart';
 import 'transaction_providers.dart';
 
@@ -176,7 +178,16 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                     decoration: const InputDecoration(labelText: 'Categoría'),
                     items: [
                       for (final category in Category.values)
-                        DropdownMenuItem(value: category, child: Text(category.label)),
+                        DropdownMenuItem(
+                          value: category,
+                          child: Row(
+                            children: [
+                              Icon(category.icon, color: category.color, size: 20),
+                              const SizedBox(width: AppSpacing.s),
+                              Text(category.label),
+                            ],
+                          ),
+                        ),
                     ],
                     onChanged: (value) => setState(() => _category = value),
                     validator: (value) =>

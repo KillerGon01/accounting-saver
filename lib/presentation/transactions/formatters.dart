@@ -5,6 +5,10 @@ const _monthNames = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ];
 
+const _weekdayNames = [
+  'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo',
+];
+
 String formatCents(int cents) {
   final sign = cents < 0 ? '-' : '';
   final absolute = cents.abs();
@@ -24,6 +28,14 @@ String formatDate(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');
   return '$day/$month/${date.year}';
 }
+
+String formatDayHeader(DateTime date) {
+  final weekday = _weekdayNames[date.weekday - 1];
+  final month = _monthNames[date.month - 1];
+  return '${_capitalize(weekday)}, ${date.day} de $month';
+}
+
+String _capitalize(String text) => '${text[0].toUpperCase()}${text.substring(1)}';
 
 String formatMonth(DateTime date) {
   final name = _monthNames[date.month - 1];
