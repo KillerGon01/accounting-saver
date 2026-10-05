@@ -23,11 +23,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _errorMessage;
   String? _infoMessage;
 
+  // Visibilidad local de cada campo. Por defecto, oculta.
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+
+  // Los iconos no toman el foco: así el campo conserva el cursor al pulsarlos.
+  final _passwordToggleFocusNode = FocusNode(canRequestFocus: false, skipTraversal: true);
+  final _confirmToggleFocusNode = FocusNode(canRequestFocus: false, skipTraversal: true);
+
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _passwordToggleFocusNode.dispose();
+    _confirmToggleFocusNode.dispose();
     super.dispose();
   }
 
@@ -36,7 +46,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _isRegisterMode = !_isRegisterMode;
       _errorMessage = null;
       _infoMessage = null;
+      _obscurePassword = true;
+      _obscureConfirmPassword = true;
     });
+  }
+
+  Widget _visibilityToggle({
+    required bool obscured,
+    required FocusNode focusNode,
+    required VoidCallback onPressed,
+  }) {
+    final tooltip = obscured ? 'Mostrar contraseña' : 'Ocultar contraseña';
+    return IconButton(
+      focusNode: focusNode,
+      tooltip: tooltip,
+      icon: Icon(
+        obscured ? Icons.visibility : Icons.visibility_off,
+        semanticLabel: tooltip,
+      ),
+      onPressed: onPressed,
+    );
   }
 
   Future<void> _submitEmailAndPassword() async {
@@ -141,7 +170,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _passwordController,
-                    obscureText: true,
+                    obscureText: _obscurePassword,
                     autofillHints: [
                       _isRegisterMode
                           ? AutofillHints.newPassword
@@ -158,6 +187,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       helperText: _isRegisterMode
                           ? 'Mínimo $minPasswordLength caracteres'
                           : null,
+                      suffixIcon: _visibilityToggle(
+                        obscured: _obscurePassword,
+                        focusNode: _passwordToggleFocusNode,
+                        onPressed: () =>
+                            setState(() => _obscurePassword = !_obscurePassword),
+                      ),
                     ),
                     validator: _isRegisterMode
                         ? validateNewPassword
@@ -167,12 +202,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _confirmPasswordController,
-                      obscureText: true,
+                      obscureText: _obscureConfirmPassword,
                       autofillHints: const [AutofillHints.newPassword],
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _submitEmailAndPassword(),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Confirmar contraseña',
+                        suffixIcon: _visibilityToggle(
+                          obscured: _obscureConfirmPassword,
+                          focusNode: _confirmToggleFocusNode,
+                          onPressed: () => setState(
+                            () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                          ),
+                        ),
                       ),
                       validator: (value) => validateConfirmPassword(
                         value,

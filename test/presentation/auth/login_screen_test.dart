@@ -231,4 +231,79 @@ void main() {
     expect(find.text('El correo electrónico no tiene un formato válido'), findsOneWidget);
     expect(repository.resetPasswordCalls, isEmpty);
   });
+
+  group('visibilidad de la contraseña', () {
+    Finder toggleIn(String label) =>
+        find.descendant(of: _field(label), matching: find.byType(IconButton));
+
+    EditableText editableIn(WidgetTester tester, String label) => tester.widget<EditableText>(
+      find.descendant(of: _field(label), matching: find.byType(EditableText)),
+    );
+
+    bool isObscured(WidgetTester tester, String label) =>
+        editableIn(tester, label).obscureText;
+
+    testWidgets('la contraseña empieza oculta', (tester) async {
+      await _pump(tester, FakeAuthRepository());
+
+      expect(isObscured(tester, 'Contraseña'), isTrue);
+      expect(find.byTooltip('Mostrar contraseña'), findsOneWidget);
+    });
+
+    testWidgets('el icono muestra la contraseña y la vuelve a ocultar sin perder texto ni foco', (tester) async {
+      await _pump(tester, FakeAuthRepository());
+      await _enter(tester, password: 'secreta123');
+      await tester.tap(_field('Contraseña'));
+      await tester.pump();
+
+      await tester.tap(toggleIn('Contraseña'));
+      await tester.pump();
+
+      expect(isObscured(tester, 'Contraseña'), isFalse);
+      expect(find.byTooltip('Ocultar contraseña'), findsOneWidget);
+      expect(editableIn(tester, 'Contraseña').controller.text, 'secreta123');
+      expect(editableIn(tester, 'Contraseña').focusNode.hasFocus, isTrue);
+
+      await tester.tap(toggleIn('Contraseña'));
+      await tester.pump();
+
+      expect(isObscured(tester, 'Contraseña'), isTrue);
+      expect(find.byTooltip('Mostrar contraseña'), findsOneWidget);
+      expect(editableIn(tester, 'Contraseña').controller.text, 'secreta123');
+    });
+
+    testWidgets('al cambiar a crear cuenta la contraseña vuelve a ocultarse', (tester) async {
+      await _pump(tester, FakeAuthRepository());
+      await tester.tap(toggleIn('Contraseña'));
+      await tester.pump();
+
+      await _switchToRegister(tester);
+
+      expect(isObscured(tester, 'Contraseña'), isTrue);
+      expect(isObscured(tester, 'Confirmar contraseña'), isTrue);
+    });
+
+    testWidgets('en el registro, los dos campos tienen su propio icono independiente', (tester) async {
+      await _pump(tester, FakeAuthRepository());
+      await _switchToRegister(tester);
+
+      await tester.tap(toggleIn('Contraseña'));
+      await tester.pump();
+
+      expect(isObscured(tester, 'Contraseña'), isFalse);
+      expect(isObscured(tester, 'Confirmar contraseña'), isTrue);
+
+      await tester.tap(toggleIn('Confirmar contraseña'));
+      await tester.pump();
+
+      expect(isObscured(tester, 'Contraseña'), isFalse);
+      expect(isObscured(tester, 'Confirmar contraseña'), isFalse);
+
+      await tester.tap(toggleIn('Contraseña'));
+      await tester.pump();
+
+      expect(isObscured(tester, 'Contraseña'), isTrue);
+      expect(isObscured(tester, 'Confirmar contraseña'), isFalse);
+    });
+  });
 }
