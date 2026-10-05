@@ -45,9 +45,24 @@ Las categorías son fijas y viven en código (`Category`).
 
 **Formato propio, sin `intl`.** Decisión: los importes (`1.234,56 €`), fechas (`dd/MM/yyyy`) y nombres de mes en español se formatean en `lib/presentation/transactions/formatters.dart`. Motivo: `intl` añadiría una dependencia para cuatro formatos fijos, y el proyecto evita dependencias innecesarias. Si más adelante hace falta localizar la app, se revisará esta decisión.
 
+## Tema visual
+
+Todo el tema vive en `lib/presentation/theme/app_theme.dart`:
+
+- `AppTheme.light()` y `AppTheme.dark()` generan un `ThemeData` Material 3 a partir de `ColorScheme.fromSeed` con la semilla `#00695C`. `main.dart` usa `themeMode: ThemeMode.system`, así que el modo lo decide el sistema.
+- `AppSpacing` define los espaciados (4, 8, 16, 24 y 32 px) que usan las pantallas.
+- Los ajustes de componentes (AppBar sin elevación, tarjetas sin sombra con esquinas de 16 px, campos con borde redondeado) se definen una sola vez en el tema.
+- `FinanceColors` es una `ThemeExtension` con los colores de ingreso y de gasto. El de gasto es `colorScheme.error`; el de ingreso tiene un tono distinto en modo claro y en modo oscuro. Las pantallas lo leen con `Theme.of(context).extension<FinanceColors>()`, así que no hay colores de ingreso o gasto fijados en los widgets.
+
+## Estilo por categoría
+
+`lib/presentation/transactions/category_style.dart` añade a `Category` un icono (`icon`) y un color (`color`) mediante una extensión. Vive en presentación porque es una decisión visual: el dominio no conoce iconos ni colores. El mismo icono y color se usan en el avatar de cada movimiento y en el desplegable del formulario.
+
 ## Interfaz
 
-- Móvil (menos de 600 px): columna única.
-- Pantallas grandes: contenido centrado con ancho máximo.
-- Cabecera con resumen, navegación entre meses y lista. Acciones: cargar datos de ejemplo y cerrar sesión. Botón flotante para añadir.
+- Columna única, con el listado limitado a 720 px de ancho y el formulario a 560 px, centrados en pantallas grandes. No hay un punto de corte explícito para móvil: el contenido se adapta por el ancho máximo.
+- Cabecera de la pantalla: navegación entre meses y, debajo, una tarjeta de resumen con el balance del mes en grande y los ingresos y gastos debajo.
+- Lista agrupada por día (`groupByDay` en `day_groups.dart`), con una cabecera de fecha por grupo (por ejemplo, `Lunes, 5 de octubre`). Cada fila muestra el icono de la categoría, la descripción, la categoría, el importe alineado a la derecha y el botón de borrado. `groupByDay` asume la lista ya ordenada por fecha descendente, que es lo que devuelve el stream.
+- Estado vacío con icono, explicación y botón de datos de ejemplo.
+- Acciones de la barra superior, todas con tooltip: cargar datos de ejemplo y cerrar sesión. Botón flotante para añadir.
 - Tocar un movimiento abre el formulario de edición; el icono de papelera pide confirmación.

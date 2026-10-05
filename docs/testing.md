@@ -4,7 +4,7 @@
 
 - **Dominio y aplicación:** tests unitarios con `FakeTransactionRepository` (en `test/fakes/`). No se usan mocks: el fake implementa la interfaz completa y permite comprobar el estado resultante.
 - **Infraestructura:** pendiente. Requiere Firestore emulado o `fake_cloud_firestore`, y ninguno está añadido.
-- **Presentación:** solo hay un widget test de la pantalla de login. Los widgets de movimientos no tienen tests automatizados todavía.
+- **Presentación:** widget tests de la pantalla de login y de la pantalla de movimientos. Los tests de la pantalla de movimientos usan `FakeTransactionRepository` mediante `transactionRepositoryProvider.overrideWithValue`.
 
 ## Comandos
 
@@ -24,7 +24,11 @@ Ejecutar ambos antes de cada PR.
 | `test/domain/transactions/monthly_summary_test.dart` | Resumen con el fake: solo el mes pedido, mes vacío, balance negativo. Usa los casos de uso de aplicación para preparar los datos. |
 | `test/application/transactions/transaction_use_cases_test.dart` | Alta, edición, borrado y listado por mes, incluidos los límites de mes y el cambio de año. |
 | `test/application/transactions/load_demo_data_test.dart` | 60 movimientos, fechas repartidas, recurrencias fijas, nómina en día 1 o 28, sin fechas futuras, sin duplicados, aislamiento por usuario. |
+| `test/presentation/transactions/day_groups_test.dart` | Agrupación por día conservando el orden; lista vacía. |
+| `test/presentation/transactions/transactions_screen_test.dart` | Estado vacío con botón de datos de ejemplo; cabecera de día, importes de movimientos y resumen, tooltips de navegación y de cerrar sesión. |
 | `test/widget_test.dart` | Login cuando no hay usuario. |
+
+Total: 41 tests (`flutter test`).
 
 ## Casos de borde del límite del importe
 
@@ -37,4 +41,5 @@ El límite es 1.000.000 € en valor absoluto (`maxAbsoluteAmountCents`, 100.000
 
 - Tests de `FirestoreTransactionRepository` con emulador o `fake_cloud_firestore`.
 - Tests automatizados de las reglas de Firestore. Las reglas se han comprobado a mano contra el emulador local, pero no hay test en el repositorio.
-- Widget tests del listado (estados cargando, error y vacío), del formulario (validación) y del diálogo de borrado.
+- Widget tests del estado de carga y del estado de error del listado.
+- Widget tests del formulario (validación) y del diálogo de borrado.

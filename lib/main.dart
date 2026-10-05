@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
 import 'presentation/auth/auth_providers.dart';
 import 'presentation/auth/login_screen.dart';
+import 'presentation/theme/app_theme.dart';
 import 'presentation/transactions/transactions_screen.dart';
 
 Future<void> main() async {
@@ -20,7 +21,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Accounting Saver',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: ThemeMode.system,
       home: const AuthGate(),
     );
   }

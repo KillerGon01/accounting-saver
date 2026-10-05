@@ -5,6 +5,9 @@ import '../../application/transactions/load_demo_data.dart';
 import '../../domain/transactions/monthly_summary.dart';
 import '../../domain/transactions/transaction.dart';
 import '../auth/auth_providers.dart';
+import '../theme/app_theme.dart';
+import 'category_style.dart';
+import 'day_groups.dart';
 import 'formatters.dart';
 import 'transaction_form_screen.dart';
 import 'transaction_providers.dart';
@@ -133,6 +136,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        tooltip: 'Añadir un movimiento',
         onPressed: () => _openForm(),
         icon: const Icon(Icons.add),
         label: const Text('Nuevo'),
@@ -154,7 +158,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 error: (error, _) => Expanded(
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(AppSpacing.m),
                       child: Text(
                         'No se pudieron cargar los movimientos: $error',
                         textAlign: TextAlign.center,
@@ -165,7 +169,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 data: (transactions) => Expanded(
                   child: Column(
                     children: [
-                      _SummaryHeader(
+                      _SummaryCard(
                         summary: MonthlySummary.fromTransactions(transactions),
                       ),
                       Expanded(
@@ -206,7 +210,7 @@ class _MonthNavigator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s, vertical: AppSpacing.s),
       child: Row(
         children: [
           IconButton(
@@ -232,40 +236,55 @@ class _MonthNavigator extends StatelessWidget {
   }
 }
 
-class _SummaryHeader extends StatelessWidget {
-  const _SummaryHeader({required this.summary});
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.summary});
 
   final MonthlySummary summary;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final finance = theme.extension<FinanceColors>()!;
+    final balanceColor = summary.balanceCents < 0 ? finance.expense : finance.income;
+
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.m, vertical: AppSpacing.s),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+        padding: const EdgeInsets.all(AppSpacing.m),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: _SummaryItem(
-                label: 'Ingresos',
-                value: formatCents(summary.incomeCents),
-                color: Colors.green.shade700,
+            Text('Balance del mes', style: theme.textTheme.labelLarge),
+            const SizedBox(height: AppSpacing.xs),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                formatCents(summary.balanceCents),
+                style: theme.textTheme.displaySmall?.copyWith(
+                  color: balanceColor,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            Expanded(
-              child: _SummaryItem(
-                label: 'Gastos',
-                value: formatCents(-summary.expenseCents),
-                color: colors.error,
-              ),
-            ),
-            Expanded(
-              child: _SummaryItem(
-                label: 'Balance',
-                value: formatCents(summary.balanceCents),
-                color: colors.onSurface,
-              ),
+            const SizedBox(height: AppSpacing.m),
+            Row(
+              children: [
+                Expanded(
+                  child: _SummaryItem(
+                    label: 'Ingresos',
+                    value: formatCents(summary.incomeCents),
+                    color: finance.income,
+                  ),
+                ),
+                Expanded(
+                  child: _SummaryItem(
+                    label: 'Gastos',
+                    value: formatCents(-summary.expenseCents),
+                    color: finance.expense,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -283,15 +302,18 @@ class _SummaryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: Theme.of(context).textTheme.labelMedium),
-        const SizedBox(height: 4),
+        Text(label, style: theme.textTheme.bodySmall),
+        const SizedBox(height: AppSpacing.xs),
         FittedBox(
           fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
           child: Text(
             value,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(color: color),
+            style: theme.textTheme.titleMedium?.copyWith(color: color),
           ),
         ),
       ],
@@ -307,15 +329,34 @@ class _EmptyMonth extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.l),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('No hay movimientos este mes', textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 56,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(height: AppSpacing.m),
+            Text(
+              'No hay movimientos este mes',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Añade uno con el botón Nuevo o carga datos de ejemplo para probar la app.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.l),
+            FilledButton.tonalIcon(
               onPressed: isLoadingDemo ? null : onLoadDemo,
               icon: const Icon(Icons.dataset_outlined),
               label: const Text('Cargar datos de ejemplo'),
@@ -340,36 +381,78 @@ class _TransactionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return ListView.separated(
+    final theme = Theme.of(context);
+    final groups = groupByDay(transactions);
+
+    return ListView(
       padding: const EdgeInsets.only(bottom: 88),
-      itemCount: transactions.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final transaction = transactions[index];
-        final amountColor = transaction.isExpense ? colors.error : Colors.green.shade700;
-        return ListTile(
-          onTap: () => onEdit(transaction),
-          title: Text(transaction.description),
-          subtitle: Text(
-            '${formatDate(transaction.date)} · ${transaction.categoryId.label}',
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                formatCents(transaction.amountCents),
-                style: TextStyle(color: amountColor, fontWeight: FontWeight.w600),
+      children: [
+        for (final group in groups) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.m, AppSpacing.m, AppSpacing.m, AppSpacing.xs),
+            child: Text(
+              formatDayHeader(group.day),
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-              IconButton(
-                tooltip: 'Eliminar',
-                onPressed: () => onDelete(transaction),
-                icon: const Icon(Icons.delete_outline),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+          for (final transaction in group.transactions)
+            _TransactionTile(
+              transaction: transaction,
+              onEdit: () => onEdit(transaction),
+              onDelete: () => onDelete(transaction),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _TransactionTile extends StatelessWidget {
+  const _TransactionTile({
+    required this.transaction,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final Transaction transaction;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final finance = theme.extension<FinanceColors>()!;
+    final category = transaction.categoryId;
+    final amountColor = transaction.isExpense ? finance.expense : finance.income;
+
+    return ListTile(
+      onTap: onEdit,
+      leading: CircleAvatar(
+        backgroundColor: category.color.withValues(alpha: 0.15),
+        child: Icon(category.icon, color: category.color, size: 20),
+      ),
+      title: Text(transaction.description, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(category.label),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 96,
+            child: Text(
+              formatCents(transaction.amountCents),
+              textAlign: TextAlign.end,
+              style: theme.textTheme.titleSmall?.copyWith(color: amountColor),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Eliminar',
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline),
+          ),
+        ],
+      ),
     );
   }
 }
