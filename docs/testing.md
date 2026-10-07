@@ -33,8 +33,19 @@ Ejecutar ambos antes de cada PR.
 | `test/domain/transactions/activity_summary_test.dart` | Resumen en memoria: cero movimientos, recuentos por origen, ingresos y gastos separados, fechas extremas. |
 | `test/application/auth/delete_account_test.dart` | Borrado exitoso, reautenticación fallida (no borra nada), Google sin contraseña, contraseña vacía, fallo a mitad del borrado con reintento y fallo al borrar la cuenta con reintento. |
 | `test/presentation/profile/profile_screen_test.dart` | Datos de cuenta y resumen, confirmación con correo exacto, reautenticación fallida, borrado completo y reintento tras fallo de la cuenta. |
+| `test/domain/transactions/parsed_transaction_test.dart` | Creación válida, importe cero, límite del importe, descripción vacía o demasiado larga; `categoryFromName` con nombre válido e inexistente. |
+| `test/domain/transactions/number_detection_test.dart` | `textContainsNumber`: dígitos, palabras de número en español, mayúsculas y acentos, y texto sin ningún número (`asdf`, `hola`, vacío, `bar ayer`). |
+| `test/application/transactions/parse_natural_language_transaction_test.dart` | Con `FakeLlmGateway`: propuesta correcta, importe con palabras ("doce euros"), `understood: false`, contraste determinista (el gateway devuelve un importe para un texto sin números y se rechaza igual), "hola", texto vacío, "bar ayer", `understood: true` con un campo que falta, categoría inválida, importe por encima del límite, respuesta malformada, error de cuota, fecha futura y fecha demasiado antigua. |
 
-Total: 91 tests (`flutter test`).
+Total: 116 tests (`flutter test`).
+
+## Entrada en lenguaje natural
+
+`FakeLlmGateway` (en `test/fakes/`) se configura con `FakeLlmGateway.returning(...)` para devolver un `RawParsedTransaction` fijo, o `FakeLlmGateway.throwing(...)` para simular un error del gateway (por ejemplo `LlmGatewayException('quota-exceeded')`). Así se prueba `ParseNaturalLanguageTransaction` sin llamar a Gemini.
+
+El contraste determinista (`textContainsNumber`) se prueba dos veces: aislado, en `number_detection_test.dart`, y dentro del caso de uso, configurando el fake para que devuelva un importe válido ante un texto sin ningún número — y comprobando que se rechaza igual, porque esa comprobación no depende de lo que diga el gateway.
+
+No hay test de `GeminiLlmGateway` ni del campo de la pantalla de movimientos: requieren un proyecto de Firebase con AI Logic habilitado y no se han ejecutado contra el servicio real en esta sesión.
 
 ## Casos de borde del límite del importe
 
@@ -50,3 +61,4 @@ El límite es 1.000.000 € en valor absoluto (`maxAbsoluteAmountCents`, 100.000
 - Tests automatizados de las reglas de Firestore. Las reglas se han comprobado a mano contra el emulador local, pero no hay test en el repositorio.
 - Widget tests del estado de carga y del estado de error del listado.
 - Widget tests del formulario (validación) y del diálogo de borrado.
+- Tests de `GeminiLlmGateway` y del campo "Añadir con lenguaje natural": requieren un proyecto con Firebase AI Logic habilitado.

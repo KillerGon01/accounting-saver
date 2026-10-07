@@ -37,9 +37,10 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: login (email/contraseña con registro, verificación, recuperación y mostrar/ocultar
-contraseña; Google), perfil con resumen agregado de Firestore y eliminación de cuenta con
-reautenticación y borrado en lotes, movimientos responsive, tema Material 3 y reglas con límite de 1.000.000 €.
-Pendiente: flutter_localizations (selector de fecha en inglés), decisión sobre el registro
-abierto (ver docs/security.md) y revisión visual en navegador.
-Siguiente: entrada en lenguaje natural (LlmGateway con JSON estructurado y validado).
+Hecho: login, perfil con eliminación de cuenta, movimientos responsive, tema Material 3 y
+reglas con límite de 1.000.000 €; entrada en lenguaje natural con Gemini (`LlmGateway`/
+`GeminiLlmGateway`, JSON estructurado y validado) con App Check en modo depuración
+(solo si `ENABLE_AI`, ver docs/security.md) para que Gemini no rechace las peticiones.
+Pendiente: flutter_localizations, decisión sobre el registro abierto y sobre App Check en
+producción (ver docs/security.md), revisión visual en navegador.
+Siguiente: chat con function calling sobre Firestore.

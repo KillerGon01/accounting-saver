@@ -3,15 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/transactions/add_transaction.dart';
 import '../../application/transactions/delete_transaction.dart';
 import '../../application/transactions/load_demo_data.dart';
+import '../../application/transactions/parse_natural_language_transaction.dart';
 import '../../application/transactions/update_transaction.dart';
 import '../../application/transactions/watch_monthly_transactions.dart';
+import '../../domain/transactions/llm_gateway.dart';
 import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_repository.dart';
 import '../../infrastructure/transactions/firestore_transaction_repository.dart';
+import '../../infrastructure/transactions/gemini_llm_gateway.dart';
 
 final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
   return FirestoreTransactionRepository();
 });
+
+final llmGatewayProvider = Provider<LlmGateway>((ref) => GeminiLlmGateway());
+
+final parseNaturalLanguageTransactionProvider = Provider<ParseNaturalLanguageTransaction>(
+  (ref) => ParseNaturalLanguageTransaction(ref.watch(llmGatewayProvider)),
+);
 
 final addTransactionProvider = Provider<AddTransaction>(
   (ref) => AddTransaction(ref.watch(transactionRepositoryProvider)),

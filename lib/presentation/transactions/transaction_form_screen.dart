@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/transactions/amount_parser.dart';
 import '../../domain/transactions/category.dart';
+import '../../domain/transactions/parsed_transaction.dart';
 import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_source.dart';
 import '../theme/app_theme.dart';
@@ -12,10 +13,21 @@ import 'formatters.dart';
 import 'transaction_providers.dart';
 
 class TransactionFormScreen extends ConsumerStatefulWidget {
-  const TransactionFormScreen({super.key, required this.userId, this.transaction});
+  const TransactionFormScreen({
+    super.key,
+    required this.userId,
+    this.transaction,
+    this.initialDraft,
+  });
 
   final String userId;
+
+  /// Movimiento existente a editar.
   final Transaction? transaction;
+
+  /// Propuesta de la IA para un movimiento nuevo, pendiente de confirmar.
+  /// Se ignora si [transaction] no es `null`.
+  final ParsedTransaction? initialDraft;
 
   @override
   ConsumerState<TransactionFormScreen> createState() => _TransactionFormScreenState();
@@ -36,15 +48,17 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   void initState() {
     super.initState();
     final transaction = widget.transaction;
+    final draft = widget.initialDraft;
+    final amountCents = transaction?.amountCents.abs() ?? draft?.amountCents.abs();
     _amountController = TextEditingController(
-      text: transaction == null
-          ? ''
-          : formatEditableAmount(transaction.amountCents.abs()),
+      text: amountCents == null ? '' : formatEditableAmount(amountCents),
     );
-    _descriptionController = TextEditingController(text: transaction?.description);
-    _isExpense = transaction?.isExpense ?? true;
-    _date = transaction?.date ?? _today();
-    _category = transaction?.categoryId;
+    _descriptionController = TextEditingController(
+      text: transaction?.description ?? draft?.description,
+    );
+    _isExpense = transaction?.isExpense ?? draft?.isExpense ?? true;
+    _date = transaction?.date ?? draft?.date ?? _today();
+    _category = transaction?.categoryId ?? draft?.categoryId;
   }
 
   @override
@@ -80,7 +94,8 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
       date: _date,
       description: _descriptionController.text.trim(),
       categoryId: _category!,
-      source: widget.transaction?.source ?? TransactionSource.manual,
+      source: widget.transaction?.source ??
+          (widget.initialDraft != null ? TransactionSource.naturalLanguage : TransactionSource.manual),
       createdAt: widget.transaction?.createdAt ?? DateTime.now(),
     );
 
@@ -111,7 +126,11 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Editar movimiento' : 'Nuevo movimiento'),
+        title: Text(switch ((_isEditing, widget.initialDraft != null)) {
+          (true, _) => 'Editar movimiento',
+          (false, true) => 'Confirmar movimiento',
+          (false, false) => 'Nuevo movimiento',
+        }),
       ),
       body: Center(
         child: ConstrainedBox(
