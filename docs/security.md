@@ -24,7 +24,7 @@ Las reglas se han comprobado a mano contra el emulador local de Firestore: el l�
 ## Límites conocidos
 
 - **Registro abierto.** La aplicación tiene el caso de uso `SignUpWithEmailAndPassword`, aunque la pantalla de login no lo expone. Firebase Auth acepta altas por correo y contraseña mientras el proveedor esté habilitado, y la configuración web de Firebase es pública. Cualquiera con esa configuración podría crear cuentas en masa y consumir la cuota gratuita de Firestore. No he comprobado la configuración del proyecto en la consola de Firebase.
-- **Sin App Check.** El proyecto no incluye App Check ni ninguna otra comprobación de que las peticiones provienen de la aplicación. No hay nada implementado que resuelva el punto anterior.
+- **App Check solo para Gemini, no para Firestore.** Se activa únicamente cuando `ENABLE_AI` es verdadero y solo con el proveedor de depuración (ver "App Check" más abajo). Firestore sigue sin ninguna comprobación de que las peticiones provienen de la aplicación; el punto anterior (registro abierto) sigue sin resolverse.
 - **Sin límite de frecuencia.** Las reglas no limitan cuántos documentos puede escribir un usuario autenticado. Sin Cloud Functions, la única protección de cuota es la que aplique Firebase.
 - **Lista de valores fijos.** Las categorías y fuentes válidas están escritas en `firestore.rules`. Si se añade un valor al enum en Dart, hay que añadirlo también en las reglas.
 - **La verificación de correo solo se aplica en la interfaz.** La app muestra
@@ -45,6 +45,32 @@ Las reglas se han comprobado a mano contra el emulador local de Firestore: el l�
 - **Confirmación por correo exacto.** Es una barrera contra clics accidentales, no contra un atacante con sesión iniciada, que ya puede borrar sus datos.
 - **Pendiente.** El borrado de movimientos no es atómico: se hace en lotes de 400 y un lote no puede abarcar toda una colección grande. Por eso un fallo a mitad deja datos parciales, que el reintento completa. Una atomicidad total requeriría una Cloud Function que el proyecto no usa por coste.
 
+## App Check (Firebase AI Logic)
+
+Desde noviembre de 2026 Firebase AI Logic exige App Check para llamar a Gemini; sin él, la petición falla con un 401 ("Firebase App Check token is invalid"). El proyecto solo configura el **proveedor de depuración**, pensado para desarrollo local, nunca reCAPTCHA ni ninguna clave de producción.
+
+**Dónde se activa.** `main.dart`, justo después de `Firebase.initializeApp()` y antes de que cualquier pantalla pueda llamar a Gemini, y solo si `enableAi` (`ENABLE_AI` en tiempo de compilación) es verdadero:
+
+```dart
+await FirebaseAppCheck.instance.activate(
+  providerWeb: WebDebugProvider(),
+  providerAndroid: const AndroidDebugProvider(),
+);
+```
+
+Sin `ENABLE_AI`, App Check no se activa nunca; es coherente con que la interfaz de IA tampoco se muestra.
+
+**Dónde aparece el token de depuración.**
+
+- **Web:** en la consola del navegador (F12 → Console), como `AppCheck debug token: "xxxxxxxx-xxxx-...".`. `WebDebugProvider()` sin `debugToken` hace que el SDK de Firebase lo genere y lo guarde en el almacenamiento local del navegador; se mantiene estable en ese navegador y esa máquina mientras no se borre el almacenamiento del sitio.
+- **Android:** en el log de Android (logcat / `flutter run` en la terminal), como `Enter this debug secret into the allow list in the Firebase Console: xxxxxxxx-xxxx-...`. Se genera una vez por instalación y se mantiene mientras no se desinstale la app o se borren sus datos.
+
+**Qué hace falta en la consola de Firebase.** Copiar ese token y registrarlo en *Firebase Console → (icono de engranaje) Project settings → App Check → pestaña Apps → menú de los tres puntos de la app correspondiente (web o Android) → Manage debug tokens → Add debug token*. Hay que registrarlo por separado para la app web y para la app Android, y volver a hacerlo si alguna vez se borra el almacenamiento/los datos que lo guardan (saldría un token nuevo).
+
+**Por qué no hay ningún token en el repositorio.** El token no lo escribe el código: se genera en el dispositivo (navegador o móvil) la primera vez que se activa App Check, y Firebase lo guarda localmente ahí, no en ningún archivo del proyecto. No se ha tocado `web/index.html`: el proveedor de depuración de `firebase_app_check` fija la variable global `FIREBASE_APPCHECK_DEBUG_TOKEN` desde Dart en tiempo de ejecución, dentro del propio paquete, así que no hace falta (ni se debe) añadir ese script a mano. Si en algún momento hiciera falta un token estable para otra cosa (por ejemplo CI), tendría que guardarse en un archivo local fuera de control de versiones; `.gitignore` ya reserva el nombre `app_check_debug_token.txt` para eso, aunque hoy no se usa.
+
+**`useLimitedUseAppCheckTokens`.** No se ha activado. Según la documentación de Firebase AI Logic, es opcional y solo aporta algo si además se activa la protección contra repetición ("replay protection") en App Check, convirtiendo los tokens en un solo uso; aquí no se ha activado esa protección y el proveedor es el de depuración, pensado solo para desarrollo, así que no tiene sentido añadir esa capa todavía. Si más adelante el proyecto pasa a un proveedor de producción (reCAPTCHA) y se activa replay protection, habría que revisar esta decisión.
+
 ## Configuración de Firebase en el cliente
 
 La configuración web de Firebase (`firebase_options.dart`) identifica el proyecto y no es un secreto. La protección de datos depende de las reglas anteriores, no de ocultar esa configuración.
@@ -58,6 +84,18 @@ La configuración web de Firebase (`firebase_options.dart`) identifica el proyec
 - Los importes se validan con `parseEurosToCents` (formato y límite) antes de crear la transacción.
 - Las descripciones se recortan con `trim()` y se limitan a 200 caracteres en el formulario, en el dominio y en las reglas.
 
+## Validación de la salida de Gemini (entrada en lenguaje natural)
+
+No nos fiamos de que el modelo solo devuelva lo que le hemos pedido. Hay tres capas, cada una independiente de las demás:
+
+1. **El esquema no obliga a inventar.** `amountCents`, `date`, `description` y `category` son `nullable` en el `responseSchema`, y hay un campo `understood` (booleano) aparte. Antes de este cambio, el esquema exigía esos cuatro campos siempre, así que un texto sin importe (`"asdf"`) obligaba al modelo a inventarse uno (devolvía 1 céntimo). El prompt le pide explícitamente que, si no hay un importe claro, devuelva `understood: false` y deje el resto sin indicar, y que nunca invente ni deduzca un importe, un concepto o una categoría que no estén en el texto.
+2. **El caso de uso no se fía solo de `understood`.** `ParseNaturalLanguageTransaction` rechaza igual si `understood` es `false`, o si es `true` pero falta cualquiera de los otros campos (una respuesta a medias no es mejor que una negativa).
+3. **Contraste determinista, sin modelo.** Antes incluso de llamar a Gemini, `textContainsNumber` (dominio, Dart puro, sin red) comprueba que el texto mencione alguna cifra o alguna palabra de número en español (uno a veinte, treinta, cuarenta, cincuenta, cien, mil...). Si no menciona ningún número, se rechaza sin gastar cuota, y esta comprobación se queda como el límite final: si por lo que sea el modelo devolviera un importe para un texto así, el resultado se descarta igualmente (se verifica con un `FakeLlmGateway` que devuelve un importe válido para un texto sin números).
+
+Las tres capas lanzan el mismo tipo, `NotUnderstoodException`, con un mensaje para reformular el texto. La pantalla lo muestra en un `SnackBar` y no abre el formulario: no hay forma de que una propuesta inventada llegue a la pantalla de confirmación, y mucho menos a Firestore.
+
+**Temperatura a 0.** La llamada a Gemini usa `temperature: 0`: es extracción de datos, no redacción, y conviene la lectura más literal y repetible del texto, no creatividad.
+
 ## Pendiente
 
 - **Pendiente de decisión antes de la entrega (26/10):** registro con email y contraseña. Opciones:
@@ -66,3 +104,4 @@ La configuración web de Firebase (`firebase_options.dart`) identifica el proyec
 - Tests automatizados de las reglas (ahora se verifican manualmente contra el emulador).
 - Revisión de dependencias antes de la entrega.
 - Exigir correo verificado en las reglas de Firestore.
+- **App Check en producción.** El proveedor de depuración no vale para una build publicada: antes de distribuir la app con `ENABLE_AI=true` fuera de desarrollo, hay que configurar reCAPTCHA (web) y Play Integrity (Android) en la consola de Firebase y en `main.dart`. Firebase AI Logic exige App Check de todas formas a partir de noviembre de 2026, así que esto no es opcional si la IA se publica.

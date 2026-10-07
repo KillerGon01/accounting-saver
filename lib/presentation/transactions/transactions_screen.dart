@@ -3,13 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/transactions/load_demo_data.dart';
 import '../../domain/transactions/monthly_summary.dart';
+import '../../domain/transactions/parsed_transaction.dart';
 import '../../domain/transactions/transaction.dart';
+import '../../enable_ai.dart';
 import '../auth/auth_providers.dart';
 import '../profile/profile_screen.dart';
 import '../theme/app_theme.dart';
 import 'category_style.dart';
 import 'day_groups.dart';
 import 'formatters.dart';
+import 'natural_language_input.dart';
 import 'transaction_form_screen.dart';
 import 'transaction_providers.dart';
 
@@ -49,6 +52,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         builder: (_) => TransactionFormScreen(
           userId: widget.userId,
           transaction: transaction,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openFormWithDraft(ParsedTransaction draft) {
+    return Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TransactionFormScreen(
+          userId: widget.userId,
+          initialDraft: draft,
         ),
       ),
     );
@@ -163,6 +177,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 onPrevious: () => _changeMonth(-1),
                 onNext: () => _changeMonth(1),
               ),
+              if (enableAi) NaturalLanguageInput(onParsed: _openFormWithDraft),
               transactionsAsync.when(
                 loading: () => const Expanded(
                   child: Center(child: CircularProgressIndicator()),

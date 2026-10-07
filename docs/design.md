@@ -8,11 +8,11 @@ Clean Architecture con cuatro capas. Las dependencias apuntan hacia el dominio.
 lib/
   domain/            Dart puro: entidades, interfaces de repositorio, reglas (sin Flutter ni Firebase)
   application/       Casos de uso que orquestan el dominio
-  infrastructure/    Implementaciones: Firestore, Firebase Auth (y Gemini, pendiente)
+  infrastructure/    Implementaciones: Firestore, Firebase Auth, Gemini
   presentation/      Widgets y providers de Riverpod
 ```
 
-Gemini irá siempre detrás de una interfaz `LlmGateway`, para poder sustituirlo en tests con un fake.
+Gemini vive siempre detrás de la interfaz `LlmGateway`, para poder sustituirlo en tests con un fake.
 
 ## Modelo de datos
 
@@ -90,3 +90,29 @@ Todas son consultas de un único campo, así que no necesitan índices compuesto
 **Reautenticación.** Correo y contraseña usa `reauthenticateWithCredential`. Google usa `reauthenticateWithPopup` en web y `reauthenticateWithProvider` en móvil, igual que el inicio de sesión. `FirebaseAuth` exige una reautenticación reciente para `user.delete()`, así que el borrado siempre se precede de ella.
 
 **Confirmación.** El diálogo compara el texto con el correo sin recortar ni normalizar, y con correo y contraseña exige además una contraseña no vacía. El botón solo se habilita si se cumplen las dos condiciones.
+
+## Entrada en lenguaje natural
+
+**Dos tipos para dos momentos.** `RawParsedTransaction` (dominio) es lo que devuelve `LlmGateway.extractTransaction`: el importe, la fecha, el concepto y la categoría *como texto*, sin validar. `ParsedTransaction` es la propuesta ya validada (mismas reglas que `Transaction`: importe distinto de cero y dentro de `maxAbsoluteAmountCents`, concepto de 1 a 200 caracteres) con la categoría resuelta al enum `Category`. Separar los dos tipos evita que una categoría inventada por el modelo ("otros_gastos", por ejemplo) se confunda con un valor real del enum, y deja claro en qué punto se hace cada validación.
+
+**El caso de uso no guarda nada.** `ParseNaturalLanguageTransaction` llama al gateway, convierte el nombre de categoría con `categoryFromName` (en `category.dart`) y comprueba que la fecha es razonable (no más de un día en el futuro, para absorber un desajuste de zona horaria, ni más de 5 años en el pasado) antes de construir el `ParsedTransaction`. Si la categoría no existe o la fecha no es razonable, lanza `ArgumentError`, igual que hace `Transaction` con sus propias validaciones. Guardar el movimiento sigue siendo responsabilidad exclusiva de `AddTransaction`, llamado desde el formulario tras confirmar.
+
+**Gemini Developer API, no Vertex AI.** `GeminiLlmGateway` usa `FirebaseAI.googleAI()` (backend Gemini Developer API) en vez de `FirebaseAI.vertexAI()`, porque el primero tiene un nivel de uso gratuito sin necesidad de vincular una cuenta de facturación; Vertex AI exige el plan Blaze. El modelo exacto vive en una única constante, `geminiModelName` (`lib/infrastructure/transactions/gemini_llm_gateway.dart`), comprobada contra la documentación oficial de modelos de Firebase AI Logic.
+
+**Salida estructurada, no texto libre.** El `GenerativeModel` se configura con `responseMimeType: 'application/json'` y un `responseSchema` (`Schema.object`) con los cuatro campos esperados; la categoría usa `Schema.enumString` con los nombres del enum `Category`, para que el modelo elija entre los valores válidos en vez de inventar uno. Aun así, la respuesta se vuelve a validar al convertirla a dominio, porque un esquema no garantiza que el modelo lo respete al cien por cien.
+
+**Se probó y se descartó bajar el nivel de "pensamiento".** `gemini-3.8-flash` piensa en nivel `medium` por defecto. Se probó `thinkingConfig: ThinkingConfig.withThinkingLevel(ThinkingLevel.low)` (`minimal` no está soportado en este modelo —la API responde `400 INVALID_ARGUMENT`— solo existe en `gemini-3.6-flash` y `gemini-3.5-flash-lite`) para reducir la latencia de 15-20 s. Se revirtió por dos motivos, comprobados al probarlo: no se notó ninguna mejora de velocidad (el cuello de botella no es el razonamiento, sino el propio viaje de ida y vuelta a Gemini), y sí empeoró la corrección — con `low` llegó a interpretar "un 2% de 1000" como un importe de 2, no de 20. La documentación de Gemini ya avisa de esto: pide el nivel por defecto o superior para tareas con cálculo. Se mantiene el nivel por defecto, sin fijar `thinkingConfig`.
+
+**El prompt resuelve los cálculos, no solo los extrae.** Como la frase puede describir un cálculo en vez de dar el importe final ("un 2% de la nómina de 1000"), el prompt pide explícitamente al modelo que resuelva la cuenta antes de devolver el importe, con un ejemplo numérico. Esto ayuda independientemente del nivel de pensamiento, pero no lo sustituye: por eso se mantiene el nivel por defecto.
+
+**El esquema permite decir "no entendido" en vez de obligar a inventar.** Con el esquema inicial, los cuatro campos (`amountCents`, `date`, `description`, `category`) eran obligatorios, así que un texto sin importe como `"asdf"` forzaba al modelo a rellenarlos de todas formas (devolvía 1 céntimo). Ahora el esquema tiene un campo `understood` (booleano, obligatorio) y los otros cuatro son `nullable` y opcionales; el prompt pide explícitamente que, si no hay un importe claro, se devuelva `understood: false` con el resto en `null`, y que nunca se invente un importe, un concepto o una categoría. `RawParsedTransaction` (dominio) refleja esto con campos anulables; `ParseNaturalLanguageTransaction` rechaza con `NotUnderstoodException` tanto si `understood` es `false` como si es `true` pero falta cualquier otro campo.
+
+**Contraste determinista antes de llamar al modelo.** Ni el esquema ni el prompt son una garantía: nada impide que el modelo, aun así, se invente un importe para un texto sin ningún número. `textContainsNumber` (`lib/domain/transactions/number_detection.dart`, Dart puro, sin red) comprueba que el texto mencione alguna cifra o alguna palabra de número en español antes de llamar a Gemini. Si no la menciona, se rechaza sin gastar cuota; y aunque el gateway devolviera igualmente un importe, el resultado ya se ha descartado antes de pedírselo. Es el límite final, independiente de lo bien o mal que se comporte el modelo.
+
+**Arranque en frío de la primera petición.** La primera llamada a Gemini de toda la sesión suele ser más lenta que las siguientes, porque suma el canje del token de App Check a la latencia propia de la primera conexión al modelo. `main.dart` adelanta la parte que no cuesta cuota: tras `activate()`, pide un token de App Check en segundo plano (`unawaited`, con el error ignorado si falla) para que ya esté en caché cuando el usuario escriba su primer texto. Esto no recorta la latencia de Gemini en sí (que es la parte que domina el tiempo total y no tiene un atajo barato sin perder corrección), solo evita sumarle el canje del token encima. No se precalienta Gemini: eso consumiría cuota gratuita en cada arranque de la app, incluso para quien no usa la IA.
+
+**Errores de la IA, no de la app.** `GeminiLlmGateway` traduce las excepciones de `firebase_ai` (`QuotaExceeded`, cualquier otra `FirebaseAIException`, fallos de red o de parseo del JSON) a `LlmGatewayException` con un código (`quota-exceeded`, `service-error`, `network-error`, `malformed-response`) y un mensaje en español, igual que `AuthException` hace con Firebase Auth. La presentación traduce el código a texto con `llmErrorMessage` (análogo a `authErrorMessage`).
+
+**Prellenar sin editar.** `TransactionFormScreen` acepta un `ParsedTransaction? initialDraft` además del `Transaction? transaction` que ya tenía para editar. Un borrador de IA rellena los mismos campos que una edición, pero sigue tratándose como alta nueva (`AddTransaction`, no `UpdateTransaction`) y, si se guarda sin cambiar el origen, usa `TransactionSource.naturalLanguage`.
+
+**Activación y límites.** El campo "Añadir con lenguaje natural" solo aparece si `const bool.fromEnvironment('ENABLE_AI')` es verdadero, para no mostrar una función que requiere configuración adicional en Firebase (Firebase AI Logic habilitado) a quien no la ha activado. El texto de entrada está limitado a 300 caracteres, y nunca se registra en logs.

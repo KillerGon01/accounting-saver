@@ -20,7 +20,7 @@ Un asistente financiero personal que permita registrar movimientos de forma manu
 | Perfil de usuario (datos de cuenta) | Hecho | `ProfileScreen`, acceso desde un icono de la barra superior. |
 | Resumen de actividad del histórico | Hecho | Consultas agregadas (`count` y `sum`); no lee todos los movimientos. |
 | Eliminar cuenta | Hecho | Reautenticación, borrado de movimientos en lotes y borrado de la cuenta de Auth. |
-| Entrada en lenguaje natural (JSON estructurado y validado) | Pendiente | |
+| Entrada en lenguaje natural (JSON estructurado y validado) | Hecho | `LlmGateway`/`GeminiLlmGateway`, caso de uso `ParseNaturalLanguageTransaction`, campo en la pantalla de movimientos tras `ENABLE_AI`. |
 | Chat con function calling sobre Firestore | Pendiente | |
 | Resumen mensual con IA | Pendiente | |
 
@@ -47,6 +47,23 @@ Fuera de alcance: importación CSV, foto de ticket, presupuestos y multidivisa.
 | Borrado con confirmación | Diálogo previo al `DeleteTransaction`. |
 | Datos de ejemplo sin duplicar | `LoadDemoData` comprueba si ya existen movimientos `demo` antes de escribir. |
 | Responsive | Columna única con ancho máximo de 720 px (listado) y 560 px (formulario). |
+
+## Requisitos de la entrada en lenguaje natural
+
+| Requisito | Decisión |
+|---|---|
+| Activación | Oculta por defecto; visible solo si `const bool.fromEnvironment('ENABLE_AI')` es verdadero (`--dart-define=ENABLE_AI=true`). |
+| Backend de IA | Gemini Developer API a través de Firebase AI Logic (`FirebaseAI.googleAI()`), no Vertex AI, para mantenerse en el nivel gratuito sin facturación. |
+| Salida del modelo | JSON estructurado con `responseSchema` (`Schema.object`), no texto libre: importe en céntimos, fecha ISO, concepto y categoría (`Schema.enumString` con los valores de `Category`). |
+| Resultado tipado | `LlmGateway.extractTransaction` devuelve `RawParsedTransaction` (sin validar); `ParseNaturalLanguageTransaction` lo convierte en `ParsedTransaction` (validado) o lanza una excepción. |
+| Validación | Importe distinto de cero y dentro de `maxAbsoluteAmountCents` (constructor de `ParsedTransaction`, igual que `Transaction`); categoría existente en el enum y fecha razonable (±1 día de margen y máximo 5 años atrás), comprobadas en el caso de uso. |
+| El modelo no puede inventar | El esquema permite `understood: false` en vez de obligar a rellenar los demás campos; si el texto no describe un importe claro, el caso de uso rechaza con `NotUnderstoodException` en vez de proponer un movimiento inventado. |
+| Contraste determinista | Antes de llamar a Gemini, `textContainsNumber` (Dart puro, sin red) comprueba que el texto mencione alguna cifra o alguna palabra de número en español; si no, se rechaza sin gastar cuota, y el resultado se descarta igual aunque el modelo devolviera un importe. |
+| Nada se guarda sin confirmar | El caso de uso solo devuelve la propuesta; `TransactionFormScreen` la recibe como `initialDraft` y el usuario confirma o edita antes de guardar. |
+| Origen del movimiento | Al guardar una propuesta de IA sin editar el origen, se usa `TransactionSource.naturalLanguage`. |
+| Errores de cuota o de red | `GeminiLlmGateway` los traduce a `LlmGatewayException` con mensaje en español; la pantalla los muestra en un `SnackBar`. |
+| Longitud de entrada | Máximo 300 caracteres en el campo de texto. |
+| Privacidad | El texto del usuario no se registra en logs. |
 
 ## Requisitos de autenticación
 
