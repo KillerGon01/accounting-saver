@@ -116,6 +116,27 @@ class FirestoreTransactionRepository implements TransactionRepository {
     );
   }
 
+  /// Único `where` aparte de la igualdad por fecha: ninguno. El rango de
+  /// fecha es el único filtro en el servidor, con `orderBy` sobre ese mismo
+  /// campo, así que no depende de ningún índice compuesto. Cualquier otro
+  /// filtro (categoría, importe, signo...) y toda suma la hace quien llama,
+  /// en código, sobre la lista devuelta.
+  @override
+  Future<List<Transaction>> findByDateRange({
+    required String userId,
+    required DateTime start,
+    required DateTime end,
+    required int limit,
+  }) async {
+    final snapshot = await _collection(userId)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('date', isLessThan: Timestamp.fromDate(end))
+        .orderBy('date', descending: true)
+        .limit(limit)
+        .get();
+    return snapshot.docs.map((doc) => _fromDocument(doc.id, doc.data())).toList();
+  }
+
   Future<int> _countBySource(
     CollectionReference<Map<String, dynamic>> collection,
     TransactionSource source,
@@ -132,12 +153,12 @@ class FirestoreTransactionRepository implements TransactionRepository {
   /// importes son enteros de céntimos, el redondeo recupera el valor exacto
   /// mientras la suma quede por debajo de 2^53 céntimos.
   Future<int> _sumAmounts(
-    CollectionReference<Map<String, dynamic>> collection, {
+    Query<Map<String, dynamic>> base, {
     required bool positive,
   }) async {
     final query = positive
-        ? collection.where('amountCents', isGreaterThan: 0)
-        : collection.where('amountCents', isLessThan: 0);
+        ? base.where('amountCents', isGreaterThan: 0)
+        : base.where('amountCents', isLessThan: 0);
     final result = await query
         .aggregate(sum('amountCents'))
         .get();
