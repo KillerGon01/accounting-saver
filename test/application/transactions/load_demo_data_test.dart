@@ -44,13 +44,18 @@ void main() {
       final transactions = await _load(DateTime(2026, 10, 31));
 
       const expected = {
-        'Netflix': (day: 5, amountCents: -1399),
-        'Spotify': (day: 8, amountCents: -1099),
-        'Gimnasio': (day: 2, amountCents: -3990),
+        'Netflix': (day: 5, amountCents: -1299),
+        'Spotify': (day: 12, amountCents: -1099),
+        'Gimnasio': (day: 1, amountCents: -3500),
       };
       for (final entry in expected.entries) {
         final occurrences = _named(transactions, entry.key);
         expect(occurrences.length, 3, reason: entry.key);
+        // Las 3 ocurrencias caen en 3 meses distintos (no 3 veces en el
+        // mismo mes), que es justo lo que necesita `recurringExpenses`
+        // para considerarlo un gasto recurrente.
+        final months = occurrences.map((t) => (t.date.year, t.date.month)).toSet();
+        expect(months, hasLength(3), reason: entry.key);
         expect(occurrences.map((t) => t.date.day).toSet(), {entry.value.day}, reason: entry.key);
         expect(occurrences.map((t) => t.amountCents).toSet(), {entry.value.amountCents},
             reason: entry.key);

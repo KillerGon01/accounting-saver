@@ -69,9 +69,9 @@ class _DemoEntry {
 
 const _monthlyEntries = [
   _DemoEntry(days: [1], amountCents: -85000, description: 'Alquiler', category: Category.hogar),
-  _DemoEntry(days: [2], amountCents: -3990, description: 'Gimnasio', category: Category.suscripciones),
-  _DemoEntry(days: [5], amountCents: -1399, description: 'Netflix', category: Category.suscripciones),
-  _DemoEntry(days: [8], amountCents: -1099, description: 'Spotify', category: Category.suscripciones),
+  _DemoEntry(days: [1], amountCents: -3500, description: 'Gimnasio', category: Category.suscripciones),
+  _DemoEntry(days: [5], amountCents: -1299, description: 'Netflix', category: Category.suscripciones),
+  _DemoEntry(days: [12], amountCents: -1099, description: 'Spotify', category: Category.suscripciones),
   _DemoEntry(days: [1, 28], amountCents: 235000, description: 'Nómina', category: Category.nomina),
   _DemoEntry(amountCents: -5480, description: 'Abono de transporte', category: Category.transporte),
   _DemoEntry(amountCents: -5482, description: 'Compra semanal', category: Category.supermercado),

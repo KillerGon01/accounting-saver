@@ -40,13 +40,15 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 Hecho: login, perfil con eliminación de cuenta, movimientos responsive, tema Material 3,
 reglas con límite de 1.000.000 €, entrada en lenguaje natural con Gemini y chat con function
 calling sobre Firestore (`ChatGateway`/`GeminiChatGateway`; funciones `getMonthlySummary`,
-`listTransactions` y `recurringExpenses`, esta última con una definición determinista de
-"recurrente" en código, sobre los últimos 3 meses completos), todo tras `ENABLE_AI` y con App
-Check en modo depuración (ver docs/security.md). Decisiones del chat: sin índices compuestos
-en Firestore (`findByDateRange` solo filtra por fecha, el resto en código); fecha de hoy
-resuelta en cada petición con un `Clock` inyectable; respuestas de función con un `Content`
-de rol `'user'` propio en vez de `Content.functionResponses` del paquete (fija un rol que el
-backend rechaza); respuesta siempre en texto plano, sin Markdown (ver docs/design.md).
+`listTransactions` y `recurringExpenses`, esta última determinista en código sobre los
+últimos 3 meses completos), todo tras `ENABLE_AI` y con App Check en modo depuración (ver
+docs/security.md). Decisiones del chat: sin índices compuestos en Firestore; fecha de hoy
+resuelta en cada petición con un `Clock` inyectable; respuestas de función con rol `'user'`
+propio en vez del `Content.functionResponses` del paquete; respuesta en texto plano, sin
+Markdown (ver docs/design.md). Los datos de ejemplo (`LoadDemoData`) ya incluyen Netflix,
+Spotify y Gimnasio como cargos recurrentes reales (mismo día e importe cada mes, con los
+importes exactos -12,99 €, -10,99 € y -35,00 €), comprobado con un test de integración contra
+`recurringExpenses`.
 Pendiente: flutter_localizations, decisión sobre el registro abierto y sobre App Check en
 producción (ver docs/security.md), revisión visual en navegador.
 Siguiente: revisión visual del chat en navegador y decisión sobre los pendientes de seguridad

@@ -41,7 +41,7 @@ Las categorías son fijas y viven en código (`Category`).
 
 **Datos demo con comprobación previa.** `LoadDemoData` consulta `source == demo` (limit 1) antes de escribir. Las escrituras se hacen en un `WriteBatch`. La UI deshabilita el botón mientras carga.
 
-**Datos demo recurrentes.** Netflix, Spotify, Gimnasio y el alquiler caen en el mismo día y con el mismo importe cada mes, para poder detectar gastos recurrentes más adelante. Nómina en día 1 o 28. El resto se reparte al azar con semilla fija, así los datos son reproducibles.
+**Datos demo recurrentes.** Netflix (día 5, -12,99 €), Spotify (día 12, -10,99 €), Gimnasio (día 1, -35,00 €) y el alquiler (día 1, -850,00 €) caen en el mismo día y con el mismo importe cada uno de los 3 meses que genera `LoadDemoData`, para que `recurringExpenses` (ver más abajo) los detecte de verdad en la demo en vez de devolver una lista vacía. Los importes de Netflix y Gimnasio se fijaron a estos valores concretos (antes eran -13,99 € y -39,90 €) al comprobar que el chat decía "no hay gastos recurrentes" porque no había ningún caso de prueba que lo verificara contra los datos de ejemplo reales; `test/application/chat/recurring_expenses_demo_data_test.dart` cierra ese hueco. Nómina en día 1 o 28. El resto se reparte al azar con semilla fija, así los datos son reproducibles.
 
 **Formato propio, sin `intl`.** Decisión: los importes (`1.234,56 €`), fechas (`dd/MM/yyyy`) y nombres de mes en español se formatean en `lib/presentation/transactions/formatters.dart`. Motivo: `intl` añadiría una dependencia para cuatro formatos fijos, y el proyecto evita dependencias innecesarias. Si más adelante hace falta localizar la app, se revisará esta decisión.
 
