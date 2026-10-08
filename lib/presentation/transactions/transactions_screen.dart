@@ -7,6 +7,7 @@ import '../../domain/transactions/parsed_transaction.dart';
 import '../../domain/transactions/transaction.dart';
 import '../../enable_ai.dart';
 import '../auth/auth_providers.dart';
+import '../chat/chat_screen.dart';
 import '../profile/profile_screen.dart';
 import '../theme/app_theme.dart';
 import 'category_style.dart';
@@ -117,6 +118,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
   }
 
+  void _openChat() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ChatScreen(userId: widget.userId)),
+    );
+  }
+
   void _openProfile() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const ProfileScreen()),
@@ -149,6 +156,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             onPressed: _isLoadingDemo ? null : _loadDemoData,
             icon: const Icon(Icons.dataset_outlined),
           ),
+          if (enableAi)
+            IconButton(
+              tooltip: 'Chat',
+              onPressed: _openChat,
+              icon: const Icon(Icons.chat_bubble_outline),
+            ),
           IconButton(
             tooltip: 'Perfil',
             onPressed: _openProfile,

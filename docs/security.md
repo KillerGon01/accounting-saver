@@ -96,6 +96,17 @@ Las tres capas lanzan el mismo tipo, `NotUnderstoodException`, con un mensaje pa
 
 **Temperatura a 0.** La llamada a Gemini usa `temperature: 0`: es extracción de datos, no redacción, y conviene la lectura más literal y repetible del texto, no creatividad.
 
+## Chat con function calling
+
+- **Argumentos del modelo, no de fiar.** El modelo decide él mismo con qué argumentos llama a `getMonthlySummary` o `listTransactions`, a partir de lo que ha escrito el usuario. `TransactionChatFunctions` valida año, mes (1-12), fechas (`desde` ≤ `hasta`, rango máximo de 5 años) y `categoryId` (contra el enum `Category`) antes de llamar al repositorio; si algo no es válido, no se ejecuta ninguna consulta a Firestore, y se devuelve `{'error': ...}` al propio modelo.
+- **Las reglas de Firestore no cambian.** Las funciones del chat solo hacen lecturas (`where` + `orderBy`/`aggregate`) sobre `users/{uid}/transactions`, la misma colección y la misma regla `allow read` que ya usa el resto de la app; no hace falta ninguna regla nueva.
+- **Inyección de instrucciones a través de un movimiento.** El concepto (`description`) de un movimiento es texto que el propio usuario (o la IA de entrada en lenguaje natural) ha escrito antes, y vuelve al modelo dentro del resultado de una función. La instrucción del sistema de `GeminiChatGateway` le pide explícitamente que lo trate como un dato a mostrar, nunca como una instrucción a seguir; no hay ninguna comprobación en código que impida que el modelo decida ignorar esa instrucción, así que esto es una mitigación, no una garantía.
+- **Sin persistencia ni logs.** La conversación vive solo en el estado de `ChatScreen`, en memoria; no se escribe en Firestore ni se registra en ningún log. Cerrar la pantalla la pierde.
+- **Límites para no agotar la cuota ni colgar la pantalla.** Historial recortado a los últimos 10 mensajes, máximo de 5 idas y vueltas con llamadas a función por turno (`_maxFunctionCallSteps`) y una sola petición en curso (`SendChatMessage` lanza `StateError` si se le llama mientras espera la anterior; la pantalla además deshabilita el envío mientras tanto).
+- **Errores de la IA, no de la app.** Igual que `GeminiLlmGateway`, `GeminiChatGateway` traduce los fallos de `firebase_ai` a `LlmGatewayException`; `chatErrorMessage` los convierte en "La IA no está disponible ahora mismo" (o un mensaje algo más específico para cuota o red), y el resto de la app sigue funcionando con normalidad.
+- **Mismo App Check que la entrada en lenguaje natural.** El chat usa el mismo `GenerativeModel` por debajo (Gemini Developer API vía Firebase AI Logic) y solo está disponible con `ENABLE_AI`, así que depende de la misma configuración de App Check descrita arriba; no se ha añadido nada nuevo.
+- **Sin índices compuestos.** Al probar el chat contra un proyecto real, una consulta que combinaba el rango de `date` con `amountCents` falló con `FAILED_PRECONDITION` pidiendo un índice compuesto. Decisión: en vez de crear ese índice (ni ningún otro), `FirestoreTransactionRepository.findByDateRange` solo filtra por `date` en el servidor; todo lo demás (categoría, signo del importe, sumas) se calcula en código, en `TransactionChatFunctions` (ver docs/design.md). No hace falta ni existe ningún `firestore.indexes.json` en el repositorio.
+
 ## Pendiente
 
 - **Pendiente de decisión antes de la entrega (26/10):** registro con email y contraseña. Opciones:

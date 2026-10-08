@@ -21,8 +21,7 @@ Un asistente financiero personal que permita registrar movimientos de forma manu
 | Resumen de actividad del histórico | Hecho | Consultas agregadas (`count` y `sum`); no lee todos los movimientos. |
 | Eliminar cuenta | Hecho | Reautenticación, borrado de movimientos en lotes y borrado de la cuenta de Auth. |
 | Entrada en lenguaje natural (JSON estructurado y validado) | Hecho | `LlmGateway`/`GeminiLlmGateway`, caso de uso `ParseNaturalLanguageTransaction`, campo en la pantalla de movimientos tras `ENABLE_AI`. |
-| Chat con function calling sobre Firestore | Pendiente | |
-| Resumen mensual con IA | Pendiente | |
+| Chat con function calling sobre Firestore | Hecho | `ChatGateway`/`GeminiChatGateway`, dos funciones (`getMonthlySummary`, `listTransactions`) validadas en `TransactionChatFunctions` antes de tocar Firestore. Pantalla de chat tras `ENABLE_AI`. |
 
 Fuera de alcance: importación CSV, foto de ticket, presupuestos y multidivisa.
 
@@ -64,6 +63,25 @@ Fuera de alcance: importación CSV, foto de ticket, presupuestos y multidivisa.
 | Errores de cuota o de red | `GeminiLlmGateway` los traduce a `LlmGatewayException` con mensaje en español; la pantalla los muestra en un `SnackBar`. |
 | Longitud de entrada | Máximo 300 caracteres en el campo de texto. |
 | Privacidad | El texto del usuario no se registra en logs. |
+
+## Requisitos del chat con function calling
+
+| Requisito | Decisión |
+|---|---|
+| Activación | Oculta por defecto, igual que la entrada en lenguaje natural; visible solo con `ENABLE_AI`. |
+| Funciones expuestas al modelo | `getMonthlySummary(year, month)`, `listTransactions(desde, hasta, categoryId?)` y `recurringExpenses()` (sin argumentos), declaradas en `GeminiChatGateway` con los nombres de `ChatFunctions` (dominio). |
+| Gastos recurrentes | `recurringExpenses` analiza al menos los últimos 3 meses naturales completos (sin contar el mes en curso) y define "recurrente" de forma determinista en código: mismo concepto normalizado (minúsculas, sin espacios de más) e importe exacto en 2 o más meses distintos. Devuelve el concepto, el importe en euros (formateado como texto, nunca `double`) y los meses en los que aparece, además del rango analizado (`desde`/`hasta`) siempre, incluso cuando no hay ninguno. |
+| Argumentos no fiables | `TransactionChatFunctions` valida año, mes (1-12), fechas (`desde` ≤ `hasta`, máximo 5 años de rango) y `categoryId` contra el enum `Category` antes de tocar Firestore; si algo es inválido, devuelve `{'error': ...}` sin ejecutar ninguna consulta. |
+| "Este mes", "el mes pasado", "este año" | La instrucción de sistema resuelve estos periodos a valores concretos (`year`/`month` enteros) con la fecha de hoy, obtenida de un `Clock` inyectable y recalculada en cada petición; así el modelo nunca necesita preguntar por el año o el mes para deducirlos, ni se queda con la fecha del momento en que arrancó la app. |
+| Sin índices compuestos | `TransactionRepository.findByDateRange` solo filtra por fecha en el servidor (Firestore); categoría, signo del importe y todas las sumas se calculan en código, en `TransactionChatFunctions`. Decisión tomada al chocar con un `FAILED_PRECONDITION` que pedía un índice compuesto `amountCents` + `date`. |
+| El modelo no calcula | Todas las sumas y comparaciones de importes (céntimos) se hacen en código; el modelo solo lee los totales ya calculados. |
+| Tope de lectura | Como máximo se leen `TransactionChatFunctions.maxFetchLimit` (2.000) movimientos por consulta; si se alcanza, se avisa con `safetyLimitReached: true` en vez de calcular en silencio con datos parciales. |
+| Límite de resultados mostrados | `listTransactions` devuelve como máximo 30 movimientos (recorte aplicado después de filtrar por categoría); si el conjunto filtrado tiene más, se avisa al modelo con `truncated: true` y un campo `note` (los totales no se ven afectados, se calculan sobre el conjunto filtrado completo). |
+| Datos, no órdenes | El campo `description` de cada movimiento devuelto es un dato para mostrar; la instrucción del sistema le pide al modelo explícitamente que lo trate así, nunca como una instrucción a seguir. |
+| Historial | Solo se envían los últimos 10 mensajes (`SendChatMessage.maxHistoryLength`). |
+| Una petición a la vez | `SendChatMessage` lanza `StateError` si se le llama mientras una petición anterior no ha terminado. |
+| Errores de la IA | Mensaje genérico "La IA no está disponible ahora mismo" (`chatErrorMessage`); el resto de la app sigue funcionando. |
+| Privacidad | La conversación solo vive en memoria mientras la pantalla de chat está abierta: no se guarda en Firestore ni se registra en logs. |
 
 ## Requisitos de autenticación
 

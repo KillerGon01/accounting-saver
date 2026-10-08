@@ -37,10 +37,17 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: login, perfil con eliminación de cuenta, movimientos responsive, tema Material 3 y
-reglas con límite de 1.000.000 €; entrada en lenguaje natural con Gemini (`LlmGateway`/
-`GeminiLlmGateway`, JSON estructurado y validado) con App Check en modo depuración
-(solo si `ENABLE_AI`, ver docs/security.md) para que Gemini no rechace las peticiones.
+Hecho: login, perfil con eliminación de cuenta, movimientos responsive, tema Material 3,
+reglas con límite de 1.000.000 €, entrada en lenguaje natural con Gemini y chat con function
+calling sobre Firestore (`ChatGateway`/`GeminiChatGateway`; funciones `getMonthlySummary`,
+`listTransactions` y `recurringExpenses`, esta última con una definición determinista de
+"recurrente" en código, sobre los últimos 3 meses completos), todo tras `ENABLE_AI` y con App
+Check en modo depuración (ver docs/security.md). Decisiones del chat: sin índices compuestos
+en Firestore (`findByDateRange` solo filtra por fecha, el resto en código); fecha de hoy
+resuelta en cada petición con un `Clock` inyectable; respuestas de función con un `Content`
+de rol `'user'` propio en vez de `Content.functionResponses` del paquete (fija un rol que el
+backend rechaza); respuesta siempre en texto plano, sin Markdown (ver docs/design.md).
 Pendiente: flutter_localizations, decisión sobre el registro abierto y sobre App Check en
 producción (ver docs/security.md), revisión visual en navegador.
-Siguiente: chat con function calling sobre Firestore.
+Siguiente: revisión visual del chat en navegador y decisión sobre los pendientes de seguridad
+antes de la entrega (26/10).
