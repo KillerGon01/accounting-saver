@@ -6,6 +6,7 @@ import '../../domain/transactions/category.dart';
 import '../../domain/transactions/llm_gateway.dart';
 import '../../domain/transactions/llm_gateway_exception.dart';
 import '../../domain/transactions/raw_parsed_transaction.dart';
+import '../common/app_check_error.dart';
 import '../common/gemini_model_fallback.dart';
 import '../common/gemini_transient_retry.dart';
 
@@ -99,6 +100,12 @@ class GeminiLlmGateway implements LlmGateway {
             'Inténtalo más tarde o añade el movimiento a mano.',
       );
     } on FirebaseAIException catch (error) {
+      if (isAppCheckAttestationError(error)) {
+        throw const LlmGatewayException(
+          'app-check-failed',
+          message: 'La IA no está disponible ahora mismo.',
+        );
+      }
       throw LlmGatewayException(
         'service-error',
         message: 'No se pudo generar el movimiento con la IA: ${error.message}',
