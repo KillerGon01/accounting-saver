@@ -14,6 +14,11 @@ String chatErrorMessage(Object error) {
       'No se pudo contactar con la IA. Comprueba tu conexión e inténtalo de nuevo.',
     'session-limit-reached' =>
       'Has llegado al máximo de preguntas de esta sesión. Cierra y vuelve a abrir el chat para seguir preguntando.',
+    // Mismo texto que el genérico: se deja explícito (en vez de caer en
+    // el `_` de abajo) para que quede claro que un token de App Check
+    // inválido (403, "App attestation failed") se traduce a propósito a
+    // este mensaje, nunca al JSON crudo del error.
+    'app-check-failed' => _genericMessage,
     _ => _genericMessage,
   };
 }

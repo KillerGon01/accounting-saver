@@ -6,6 +6,7 @@ import '../../domain/chat/chat_message.dart';
 import '../../domain/common/clock.dart';
 import '../../domain/transactions/category.dart';
 import '../../domain/transactions/llm_gateway_exception.dart';
+import '../common/app_check_error.dart';
 import '../common/gemini_model_fallback.dart';
 import '../common/gemini_transient_retry.dart';
 
@@ -170,6 +171,12 @@ class GeminiChatGateway implements ChatGateway {
         message: 'Se ha agotado la cuota gratuita de la IA por ahora. Inténtalo más tarde.',
       );
     } on FirebaseAIException catch (error) {
+      if (isAppCheckAttestationError(error)) {
+        throw const LlmGatewayException(
+          'app-check-failed',
+          message: 'La IA no está disponible ahora mismo.',
+        );
+      }
       throw LlmGatewayException('service-error', message: 'Error de la IA: ${error.message}');
     } catch (error) {
       // Fallos de red (sin conexión, timeout, etc.) llegan como excepciones

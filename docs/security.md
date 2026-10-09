@@ -35,6 +35,7 @@ Las reglas se han comprobado a mano contra el emulador local de Firestore: el l�
   `request.auth.token.email_verified == true` en las reglas (la app tendría que
   refrescar el token tras verificar).
 - **Detección del 503 de Gemini por texto, no por código.** `isTransientGeminiError` (`lib/infrastructure/common/gemini_transient_retry.dart`) reconoce un fallo transitorio del servidor buscando `UNAVAILABLE`, `Deadline expired` o `Server Error [503]` dentro del `message` de la excepción, porque el paquete `firebase_ai` no expone el código de estado HTTP como un campo propio para este caso (ver docs/design.md). Si Google cambia el texto exacto de este error, la detección deja de funcionar silenciosamente: el fallo pasaría a tratarse como cualquier otro `service-error`, sin reintento, pero sin romper nada más.
+- **Detección del 403 de App Check también por texto.** Igual que el 503, `isAppCheckAttestationError` (`lib/infrastructure/common/app_check_error.dart`) reconoce el 403 `PERMISSION_DENIED`/"App attestation failed" buscando ese texto en el mensaje, no por un código o campo estructurado — la misma limitación, el mismo riesgo si Google cambia el texto exacto (ver "App Check" más abajo).
 - **Un 429 por minuto agota un modelo durante 1 hora, aunque la cuota real ya esté disponible.** `GeminiModelAvailability` (mismo archivo) marca un modelo como agotado durante `geminiModelExhaustionDuration` (1 hora) ante cualquier `QuotaExceeded`, sin distinguir el límite que lo causó: un solo pico puntual de 5 RPM (que se resetea en segundos) deja ese modelo fuera de la lista de fallback durante una hora entera, igual que si se hubiera agotado el cupo diario de 20 peticiones. No hay forma de diferenciar ambos casos con la información que da hoy el backend.
 
 ## Eliminación de cuenta
@@ -49,9 +50,38 @@ Las reglas se han comprobado a mano contra el emulador local de Firestore: el l�
 
 ## App Check (Firebase AI Logic)
 
-Desde noviembre de 2026 Firebase AI Logic exige App Check para llamar a Gemini; sin él, la petición falla con un 401 ("Firebase App Check token is invalid"). El proyecto solo configura el **proveedor de depuración**, pensado para desarrollo local, nunca reCAPTCHA ni ninguna clave de producción.
+Desde noviembre de 2026 Firebase AI Logic exige App Check para llamar a Gemini; sin él, la petición falla con un 401 ("Firebase App Check token is invalid"). Qué proveedor se activa depende de la build, calculado en `lib/app_check_config.dart` (lógica pura, sin Firebase ni Flutter más allá de `kReleaseMode`, probada en `test/app_check_config_test.dart`):
 
-**Dónde se activa.** `main.dart`, justo después de `Firebase.initializeApp()` y antes de que cualquier pantalla pueda llamar a Gemini, y solo si `enableAi` (`ENABLE_AI` en tiempo de compilación) es verdadero:
+| Build | `ENABLE_AI` | `RECAPTCHA_SITE_KEY` | Web | Android | ¿Se muestra la IA? |
+|---|---|---|---|---|---|
+| Cualquiera | `false` | — | ninguno | ninguno | No |
+| Debug/profile | `true` | — | `WebDebugProvider` | `AndroidDebugProvider` | Sí |
+| Release | `true` | vacía | ninguno | ninguno | **No** (se oculta, no se deja fallar) |
+| Release | `true` | con valor | `ReCaptchaEnterpriseProvider` | *(sin configurar, ver abajo)* | Sí |
+
+**Dónde se decide.** `main.dart`, justo después de `Firebase.initializeApp()`, activa App Check solo si `appCheckConfig.effectiveEnableAi` es verdadero — y `effectiveEnableAi` ya tiene en cuenta todo lo anterior, no solo `ENABLE_AI`:
+
+```dart
+// lib/app_check_config.dart
+AppCheckConfig chooseAppCheckConfig({
+  required bool enableAi,
+  required bool isRelease,
+  required String recaptchaSiteKey,
+}) {
+  if (!enableAi) return /* todo a `none`, IA oculta */;
+  if (!isRelease) return /* debug en web y Android, IA visible */;
+  final hasSiteKey = recaptchaSiteKey.isNotEmpty;
+  return /* web: reCAPTCHA Enterprise si hay clave, si no `none`;
+            Android: siempre el valor por defecto del SDK;
+            IA visible solo si hay clave */;
+}
+```
+
+Las pantallas (`TransactionsScreen`) comprueban `effectiveEnableAi`, no `enableAi` a secas, para decidir si muestran el botón del chat y la entrada en lenguaje natural. Así, un release con `ENABLE_AI=true` pero sin `RECAPTCHA_SITE_KEY` **no intenta activar la IA y deja que falle**: la oculta igual que si `ENABLE_AI` fuera `false`, sin ningún error visible para quien usa la app.
+
+### Depuración (desarrollo local)
+
+Sin cambios respecto a antes, solo que ahora está condicionado explícitamente a que la build **no** sea de release (`kReleaseMode` falso):
 
 ```dart
 await FirebaseAppCheck.instance.activate(
@@ -60,8 +90,6 @@ await FirebaseAppCheck.instance.activate(
 );
 ```
 
-Sin `ENABLE_AI`, App Check no se activa nunca; es coherente con que la interfaz de IA tampoco se muestra.
-
 **Dónde aparece el token de depuración.**
 
 - **Web:** en la consola del navegador (F12 → Console), como `AppCheck debug token: "xxxxxxxx-xxxx-...".`. `WebDebugProvider()` sin `debugToken` hace que el SDK de Firebase lo genere y lo guarde en el almacenamiento local del navegador; se mantiene estable en ese navegador y esa máquina mientras no se borre el almacenamiento del sitio.
@@ -69,9 +97,37 @@ Sin `ENABLE_AI`, App Check no se activa nunca; es coherente con que la interfaz 
 
 **Qué hace falta en la consola de Firebase.** Copiar ese token y registrarlo en *Firebase Console → (icono de engranaje) Project settings → App Check → pestaña Apps → menú de los tres puntos de la app correspondiente (web o Android) → Manage debug tokens → Add debug token*. Hay que registrarlo por separado para la app web y para la app Android, y volver a hacerlo si alguna vez se borra el almacenamiento/los datos que lo guardan (saldría un token nuevo).
 
-**Por qué no hay ningún token en el repositorio.** El token no lo escribe el código: se genera en el dispositivo (navegador o móvil) la primera vez que se activa App Check, y Firebase lo guarda localmente ahí, no en ningún archivo del proyecto. No se ha tocado `web/index.html`: el proveedor de depuración de `firebase_app_check` fija la variable global `FIREBASE_APPCHECK_DEBUG_TOKEN` desde Dart en tiempo de ejecución, dentro del propio paquete, así que no hace falta (ni se debe) añadir ese script a mano. Si en algún momento hiciera falta un token estable para otra cosa (por ejemplo CI), tendría que guardarse en un archivo local fuera de control de versiones; `.gitignore` ya reserva el nombre `app_check_debug_token.txt` para eso, aunque hoy no se usa.
+**Por qué no hay ningún token de depuración en el repositorio.** El token no lo escribe el código: se genera en el dispositivo (navegador o móvil) la primera vez que se activa App Check, y Firebase lo guarda localmente ahí, no en ningún archivo del proyecto. No se ha tocado `web/index.html`: el proveedor de depuración de `firebase_app_check` fija la variable global `FIREBASE_APPCHECK_DEBUG_TOKEN` desde Dart en tiempo de ejecución, dentro del propio paquete, así que no hace falta (ni se debe) añadir ese script a mano.
 
-**`useLimitedUseAppCheckTokens`.** No se ha activado. Según la documentación de Firebase AI Logic, es opcional y solo aporta algo si además se activa la protección contra repetición ("replay protection") en App Check, convirtiendo los tokens en un solo uso; aquí no se ha activado esa protección y el proveedor es el de depuración, pensado solo para desarrollo, así que no tiene sentido añadir esa capa todavía. Si más adelante el proyecto pasa a un proveedor de producción (reCAPTCHA) y se activa replay protection, habría que revisar esta decisión.
+### Producción en web: Fraud Defense (reCAPTCHA Enterprise)
+
+**Proveedor.** `ReCaptchaEnterpriseProvider(siteKey)` (paquete `firebase_app_check` 0.4.8 / `firebase_app_check_platform_interface` 0.4.2+1, clase confirmada leyendo `lib/src/web_providers.dart` del paquete en `.pub-cache`). Es el proveedor "Fraud Defense" que recomienda la consola de Firebase para App Check en web.
+
+**Clave de sitio, nunca en el repo.** `recaptchaSiteKey` (`lib/enable_ai.dart`) es `String.fromEnvironment('RECAPTCHA_SITE_KEY')`: vacía por defecto, solo tiene un valor real si quien compila la pasa con `--dart-define`. No se escribe en ningún archivo del repositorio ni se hardcodea en ningún sitio; hay que crearla en *Firebase Console → App Check → Apps → app web → reCAPTCHA Enterprise* (o directamente en Google Cloud Console, reCAPTCHA Enterprise) y pegarla solo en el comando de compilación, o en un `--dart-define-from-file` que apunte a un archivo fuera de control de versiones.
+
+**Comando de compilación (producción, web):**
+
+```bash
+flutter build web --release \
+  --dart-define=ENABLE_AI=true \
+  --dart-define=RECAPTCHA_SITE_KEY=<clave-de-sitio-de-reCAPTCHA-Enterprise>
+```
+
+Sin el segundo `--dart-define`, la build compila igual (no rompe nada: ver la tabla de arriba), pero la IA queda oculta por `effectiveEnableAi`.
+
+**Nivel gratuito.** reCAPTCHA Enterprise (evaluaciones de "assessment", que es lo que consume App Check al canjear un token) tiene un nivel gratuito de **10.000 evaluaciones al mes por organización de Google Cloud** (no por proyecto ni por app). Superado ese límite, las peticiones de evaluación empiezan a fallar — no se cobra automáticamente, hay que activar explícitamente la facturación de reCAPTCHA Enterprise en Google Cloud para que siga funcionando por encima del nivel gratuito. Con 20 peticiones/día de cuota gratuita de Gemini como tope real de uso (ver docs/design.md), 10.000 evaluaciones/mes es muy holgado para este proyecto.
+
+**TTL del token.** 1 hora: igual que el resto de proveedores de App Check, el SDK cliente cachea el token y solo canjea uno nuevo cuando el que tiene en memoria/almacenamiento está a punto de caducar (o no existe), así que no se gasta una evaluación de reCAPTCHA en cada llamada a Gemini, solo aproximadamente una por hora de uso continuado.
+
+**`useLimitedUseAppCheckTokens`.** Sigue sin activarse (igual que con el proveedor de depuración): solo aporta algo junto con la protección contra repetición ("replay protection") de App Check, que no se ha activado.
+
+### Android: pendiente
+
+No se ha implementado un proveedor de producción para Android en esta tarea. En una build de release con `ENABLE_AI=true`, `main.dart` activa App Check **sin pasar `providerAndroid`**, así que el SDK usa su propio valor por defecto, `AndroidPlayIntegrityProvider()` — pero Play Integrity no está configurado ni probado: falta registrar la huella SHA-256 de la build de release en Firebase Console y vincular la app a un listado de Play Console. Hasta que se haga esa configuración, una build de release para Android con `ENABLE_AI=true` fallaría al llamar a Gemini (la IA se mostraría, porque `effectiveEnableAi` no depende de nada específico de Android, pero las llamadas fallarían con el mismo 403 que se describe más abajo). El proveedor de depuración de Android (`AndroidDebugProvider`) solo se usa en builds que no son de release, nunca en una build de release aunque `RECAPTCHA_SITE_KEY` esté vacía.
+
+### Errores de App Check al llamar a Gemini (403, no 401)
+
+Visto de verdad el 8 de octubre de 2026, al activar App Check contra un proyecto real: cuando el token de App Check no es válido, Gemini (vía Firebase AI Logic) no siempre responde con el 401 genérico de "token inválido" — con un token que el backend rechaza específicamente, responde **403 `PERMISSION_DENIED`** con un mensaje como `"App attestation failed."`. `isAppCheckAttestationError` (`lib/infrastructure/common/app_check_error.dart`) reconoce este caso por texto (`App attestation failed` o `PERMISSION_DENIED` en el mensaje del `FirebaseAIException`, descartando explícitamente `QuotaExceeded`) y los dos gateways (`GeminiChatGateway`, `GeminiLlmGateway`) lo traducen a `LlmGatewayException('app-check-failed', ...)`, que la presentación muestra siempre como "La IA no está disponible ahora mismo" — nunca el JSON crudo del error. No se reintenta (no es un fallo transitorio: `isTransientGeminiError` no lo reconoce) ni marca el modelo como agotado (no es `QuotaExceeded`, así que `withGeminiModelFallback` no lo toca). Probado con fakes en `test/infrastructure/common/app_check_error_test.dart` y en `test/presentation/chat/chat_error_messages_test.dart` / `test/presentation/transactions/llm_error_messages_test.dart` (este último también cubre la entrada en lenguaje natural). Esta misma detección por texto (en vez de por un campo estructurado) es la misma limitación que ya tiene `isTransientGeminiError` para el 503 — ver "Límites conocidos" más abajo.
 
 ## Configuración de Firebase en el cliente
 
@@ -118,4 +174,4 @@ Las tres capas lanzan el mismo tipo, `NotUnderstoodException`, con un mensaje pa
 - Tests automatizados de las reglas (ahora se verifican manualmente contra el emulador).
 - Revisión de dependencias antes de la entrega.
 - Exigir correo verificado en las reglas de Firestore.
-- **App Check en producción.** El proveedor de depuración no vale para una build publicada: antes de distribuir la app con `ENABLE_AI=true` fuera de desarrollo, hay que configurar reCAPTCHA (web) y Play Integrity (Android) en la consola de Firebase y en `main.dart`. Firebase AI Logic exige App Check de todas formas a partir de noviembre de 2026, así que esto no es opcional si la IA se publica.
+- **App Check en producción para Android.** Resuelto para web (reCAPTCHA Enterprise / Fraud Defense, ver "App Check" más arriba). Para Android sigue pendiente: hay que registrar la huella SHA-256 de la build de release en Firebase Console y vincular la app en Play Console para que `AndroidPlayIntegrityProvider` (el valor por defecto del SDK, ya usado por `main.dart` en release) funcione de verdad.

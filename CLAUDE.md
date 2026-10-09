@@ -51,7 +51,16 @@ historial del chat aislados por usuario (`sendChatMessageProvider` como `Provide
 docs/design.md y docs/security.md; propuesta de `thinkingConfig` pendiente de confirmar, sin
 aplicar. Datos demo corregidos: solo Alquiler, Gimnasio, Netflix y Spotify quedan fijos
 (recurrentes de verdad); el resto varía de importe cada mes a propósito
-(`_DemoEntry.monthlyShiftCents`, determinista, sin azar).
-Pendiente: flutter_localizations, decisión sobre registro abierto y App Check en producción
-(ver docs/security.md), revisión visual en navegador (contador del chat incluido).
+(`_DemoEntry.monthlyShiftCents`, determinista, sin azar). App Check de producción en web:
+Fraud Defense (reCAPTCHA Enterprise, `ReCaptchaEnterpriseProvider`) con la clave de
+`--dart-define=RECAPTCHA_SITE_KEY` (nunca en el repo); `lib/app_check_config.dart` calcula un
+`effectiveEnableAi` (`enableAi && (!release || hay clave)`) que oculta el chat y el lenguaje
+natural en vez de dejarlos fallar en un release sin clave; el proveedor de depuración solo en
+builds que no son de release; Android release sin proveedor de depuración, pendiente de
+configurar Play Integrity (el SDK ya usa su valor por defecto). El 403
+`PERMISSION_DENIED`/"App attestation failed" de un token de App Check inválido se traduce al
+mensaje de siempre, nunca al JSON crudo (`app_check_error.dart`); detalles en docs/security.md
+y README.
+Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
+Android (ver docs/security.md), revisión visual en navegador (contador del chat incluido).
 Siguiente: esa revisión visual y decidir los pendientes de seguridad antes de la entrega (26/10).

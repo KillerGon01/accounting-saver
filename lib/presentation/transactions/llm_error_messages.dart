@@ -18,6 +18,11 @@ String llmErrorMessage(Object error) {
         'Inténtalo más tarde o añade el movimiento a mano.',
     'network-error' =>
       'No se pudo contactar con la IA. Comprueba tu conexión e inténtalo de nuevo.',
+    // Token de App Check inválido (403, "App attestation failed"): se
+    // traduce al mensaje de la IA no disponible, no al genérico de "no se
+    // pudo interpretar el texto" (sería engañoso: el problema no es el
+    // texto) ni, por supuesto, al JSON crudo del error.
+    'app-check-failed' => 'La IA no está disponible ahora mismo.',
     _ => _genericMessage,
   };
 }

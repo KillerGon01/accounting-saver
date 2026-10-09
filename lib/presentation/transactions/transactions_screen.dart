@@ -5,7 +5,7 @@ import '../../application/transactions/load_demo_data.dart';
 import '../../domain/transactions/monthly_summary.dart';
 import '../../domain/transactions/parsed_transaction.dart';
 import '../../domain/transactions/transaction.dart';
-import '../../enable_ai.dart';
+import '../../app_check_config.dart';
 import '../auth/auth_providers.dart';
 import '../chat/chat_screen.dart';
 import '../profile/profile_screen.dart';
@@ -156,7 +156,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             onPressed: _isLoadingDemo ? null : _loadDemoData,
             icon: const Icon(Icons.dataset_outlined),
           ),
-          if (enableAi)
+          if (effectiveEnableAi)
             IconButton(
               tooltip: 'Chat',
               onPressed: _openChat,
@@ -190,7 +190,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 onPrevious: () => _changeMonth(-1),
                 onNext: () => _changeMonth(1),
               ),
-              if (enableAi) NaturalLanguageInput(onParsed: _openFormWithDraft),
+              if (effectiveEnableAi) NaturalLanguageInput(onParsed: _openFormWithDraft),
               transactionsAsync.when(
                 loading: () => const Expanded(
                   child: Center(child: CircularProgressIndicator()),
