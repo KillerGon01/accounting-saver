@@ -3,13 +3,15 @@ import '../../domain/auth/app_user.dart';
 import '../../domain/auth/auth_exception.dart';
 import '../../domain/auth/auth_repository.dart';
 import '../../domain/auth/user_profile.dart';
+import '../../domain/common/transactions_change_notifier.dart';
 import '../../domain/user_data/user_data_repository.dart';
 
 class DeleteAccount {
-  DeleteAccount(this._authRepository, this._userDataRepository);
+  DeleteAccount(this._authRepository, this._userDataRepository, [this._changeNotifier]);
 
   final AuthRepository _authRepository;
   final UserDataRepository _userDataRepository;
+  final TransactionsChangeNotifier? _changeNotifier;
 
   /// Orden fijo: (1) reautenticar, (2) borrar los movimientos, (3) borrar la
   /// cuenta de Auth. Si la reautenticación falla, no se borra nada. Si falla
@@ -29,6 +31,7 @@ class DeleteAccount {
     } catch (error) {
       throw AccountDeletionException(AccountDeletionStage.userData, error);
     }
+    _changeNotifier?.notifyChanged();
 
     try {
       await _authRepository.deleteAccount();

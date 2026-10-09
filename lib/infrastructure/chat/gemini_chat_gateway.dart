@@ -6,14 +6,18 @@ import '../../domain/chat/chat_message.dart';
 import '../../domain/common/clock.dart';
 import '../../domain/transactions/category.dart';
 import '../../domain/transactions/llm_gateway_exception.dart';
-import '../transactions/gemini_llm_gateway.dart' show geminiModelName;
+import '../common/gemini_model_fallback.dart';
+import '../common/gemini_transient_retry.dart';
 
 /// Implementación de [ChatGateway] con Gemini (Firebase AI Logic, Gemini
 /// Developer API), con function calling sobre los movimientos del usuario.
-/// Usa el mismo modelo que la entrada en lenguaje natural
-/// ([geminiModelName]): ambas llamadas comparten el nivel gratuito.
+/// Usa los mismos modelos (con el mismo fallback) que la entrada en
+/// lenguaje natural: ver [geminiModelFallbacks]. Ambas llamadas comparten el
+/// nivel gratuito y, a través de [GeminiModelAvailability], la misma
+/// memoria de qué modelo está agotado.
 class GeminiChatGateway implements ChatGateway {
-  GeminiChatGateway({this._clock = const SystemClock()});
+  GeminiChatGateway({this._clock = const SystemClock(), GeminiModelAvailability? availability})
+    : _availability = availability ?? GeminiModelAvailability();
 
   /// Límite de idas y vueltas con llamadas a función en un mismo turno, para
   /// no encadenar peticiones sin fin si el modelo no deja de pedir
@@ -21,6 +25,7 @@ class GeminiChatGateway implements ChatGateway {
   static const _maxFunctionCallSteps = 5;
 
   final Clock _clock;
+  final GeminiModelAvailability _availability;
 
   /// Un `GenerativeModel` nuevo por petición, en vez de uno guardado en el
   /// campo de la clase: la instrucción de sistema lleva la fecha de hoy
@@ -29,10 +34,11 @@ class GeminiChatGateway implements ChatGateway {
   /// `generateContent`. Si se guardara un solo modelo, la fecha quedaría
   /// congelada en el momento en que se creó el gateway (normalmente al
   /// arrancar la app), y el chat volvería a fallar al deducir "este mes"
-  /// en sesiones largas o que cruzan la medianoche.
-  GenerativeModel _buildModel() {
+  /// en sesiones largas o que cruzan la medianoche. Además, el modelo puede
+  /// cambiar de una petición a otra por el fallback de [withGeminiModelFallback].
+  GenerativeModel _buildModel(String model) {
     return FirebaseAI.googleAI().generativeModel(
-      model: geminiModelName,
+      model: model,
       systemInstruction: Content.system(buildChatSystemInstruction(_clock)),
       tools: [
         Tool.functionDeclarations([
@@ -112,14 +118,13 @@ class GeminiChatGateway implements ChatGateway {
     required String message,
     required ChatFunctionExecutor executeFunction,
   }) async {
-    final model = _buildModel();
     final contents = <Content>[
       for (final entry in history) _toContent(entry),
       Content.text(message),
     ];
 
     for (var step = 0; step < _maxFunctionCallSteps; step++) {
-      final response = await _generate(model, contents);
+      final response = await _generate(contents);
       final calls = response.functionCalls.toList();
       if (calls.isEmpty) {
         final text = response.text;
@@ -150,9 +155,15 @@ class GeminiChatGateway implements ChatGateway {
     );
   }
 
-  Future<GenerateContentResponse> _generate(GenerativeModel model, List<Content> contents) async {
+  Future<GenerateContentResponse> _generate(List<Content> contents) async {
     try {
-      return await model.generateContent(contents);
+      return await withGeminiModelFallback(
+        availability: _availability,
+        attempt: (model) {
+          final generativeModel = _buildModel(model);
+          return withTransientRetry(() => generativeModel.generateContent(contents));
+        },
+      );
     } on QuotaExceeded {
       throw const LlmGatewayException(
         'quota-exceeded',

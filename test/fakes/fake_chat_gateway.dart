@@ -32,6 +32,7 @@ class FakeChatGateway implements ChatGateway {
   List<ChatMessage>? lastHistory;
   String? lastMessage;
   Map<String, Object?>? lastFunctionResult;
+  int callCount = 0;
 
   @override
   Future<String> sendMessage({
@@ -39,6 +40,7 @@ class FakeChatGateway implements ChatGateway {
     required String message,
     required ChatFunctionExecutor executeFunction,
   }) async {
+    callCount++;
     lastHistory = history;
     lastMessage = message;
     if (_error != null) throw _error;

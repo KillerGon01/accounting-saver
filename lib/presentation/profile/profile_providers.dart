@@ -7,6 +7,7 @@ import '../../domain/transactions/activity_summary.dart';
 import '../../domain/user_data/user_data_repository.dart';
 import '../../infrastructure/user_data/firestore_user_data_repository.dart';
 import '../auth/auth_providers.dart';
+import '../common/ai_providers.dart';
 import '../transactions/transaction_providers.dart';
 
 final userDataRepositoryProvider = Provider<UserDataRepository>((ref) {
@@ -29,5 +30,6 @@ final deleteAccountProvider = Provider<DeleteAccount>(
   (ref) => DeleteAccount(
     ref.watch(authRepositoryProvider),
     ref.watch(userDataRepositoryProvider),
+    ref.watch(transactionsChangeNotifierProvider),
   ),
 );

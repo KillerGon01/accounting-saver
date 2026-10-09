@@ -12,6 +12,8 @@ String chatErrorMessage(Object error) {
     'quota-exceeded' => 'Se ha agotado la cuota gratuita de la IA por ahora. Inténtalo más tarde.',
     'network-error' =>
       'No se pudo contactar con la IA. Comprueba tu conexión e inténtalo de nuevo.',
+    'session-limit-reached' =>
+      'Has llegado al máximo de preguntas de esta sesión. Cierra y vuelve a abrir el chat para seguir preguntando.',
     _ => _genericMessage,
   };
 }

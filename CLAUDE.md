@@ -38,18 +38,20 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 
 ## Estado
 Hecho: login, perfil con eliminación de cuenta, movimientos responsive, tema Material 3,
-reglas con límite de 1.000.000 €, entrada en lenguaje natural con Gemini y chat con function
-calling sobre Firestore (`ChatGateway`/`GeminiChatGateway`; funciones `getMonthlySummary`,
-`listTransactions` y `recurringExpenses`, esta última determinista en código sobre los
-últimos 3 meses completos), todo tras `ENABLE_AI` y con App Check en modo depuración (ver
-docs/security.md). Decisiones del chat: sin índices compuestos en Firestore; fecha de hoy
-resuelta en cada petición con un `Clock` inyectable; respuestas de función con rol `'user'`
-propio en vez del `Content.functionResponses` del paquete; respuesta en texto plano, sin
-Markdown (ver docs/design.md). Los datos de ejemplo (`LoadDemoData`) ya incluyen Netflix,
-Spotify y Gimnasio como cargos recurrentes reales (mismo día e importe cada mes, con los
-importes exactos -12,99 €, -10,99 € y -35,00 €), comprobado con un test de integración contra
-`recurringExpenses`.
-Pendiente: flutter_localizations, decisión sobre el registro abierto y sobre App Check en
-producción (ver docs/security.md), revisión visual en navegador.
-Siguiente: revisión visual del chat en navegador y decisión sobre los pendientes de seguridad
-antes de la entrega (26/10).
+reglas con límite de 1.000.000 €, entrada en lenguaje natural y chat con function calling
+sobre Firestore, todo tras `ENABLE_AI`. Protección de la cuota gratuita de Gemini: fallback
+de modelo tras un 429 (`gemini-3.8-flash` → `gemini-2.5-flash` → `gemini-2.5-flash-lite`,
+1 h de memoria por modelo) y reintento de un solo intento tras 1,5 s ante un 503/`UNAVAILABLE`
+transitorio (mismo modelo, sin tocar esa memoria); tope de 8 preguntas por sesión de chat
+(solo cuenta una llamada al modelo con éxito, ni caché ni error) con contador visible; caché
+en memoria por pregunta invalidada al crear, editar o borrar un movimiento, y también al
+cargar o borrar datos de ejemplo (`LoadDemoData`, `DeleteAccount`); caché, contador e
+historial del chat aislados por usuario (`sendChatMessageProvider` como `Provider.family` por
+`userId`, para que cerrar sesión y entrar con otra cuenta no comparta nada) — todo en
+docs/design.md y docs/security.md; propuesta de `thinkingConfig` pendiente de confirmar, sin
+aplicar. Datos demo corregidos: solo Alquiler, Gimnasio, Netflix y Spotify quedan fijos
+(recurrentes de verdad); el resto varía de importe cada mes a propósito
+(`_DemoEntry.monthlyShiftCents`, determinista, sin azar).
+Pendiente: flutter_localizations, decisión sobre registro abierto y App Check en producción
+(ver docs/security.md), revisión visual en navegador (contador del chat incluido).
+Siguiente: esa revisión visual y decidir los pendientes de seguridad antes de la entrega (26/10).

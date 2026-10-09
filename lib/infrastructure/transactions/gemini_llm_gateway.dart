@@ -6,24 +6,22 @@ import '../../domain/transactions/category.dart';
 import '../../domain/transactions/llm_gateway.dart';
 import '../../domain/transactions/llm_gateway_exception.dart';
 import '../../domain/transactions/raw_parsed_transaction.dart';
-
-/// Modelo de Gemini para extraer movimientos, disponible en el nivel
-/// gratuito de la Gemini Developer API a través de Firebase AI Logic
-/// (comprobado en https://firebase.google.com/docs/ai-logic/models,
-/// octubre de 2026). Si Google retira este modelo del nivel gratuito,
-/// basta con cambiar esta constante.
-const geminiModelName = 'gemini-3.8-flash';
+import '../common/gemini_model_fallback.dart';
+import '../common/gemini_transient_retry.dart';
 
 /// Implementación de [LlmGateway] con el backend Gemini Developer API de
 /// Firebase AI Logic (no Vertex AI, para mantenerse en el nivel gratuito).
+/// Modelos disponibles en el nivel gratuito, con fallback entre ellos si
+/// alguno agota su cuota: ver [geminiModelFallbacks].
 class GeminiLlmGateway implements LlmGateway {
-  GeminiLlmGateway({GenerativeModel? model}) : _model = model ?? _buildModel();
+  GeminiLlmGateway({GeminiModelAvailability? availability})
+    : _availability = availability ?? GeminiModelAvailability();
 
-  final GenerativeModel _model;
+  final GeminiModelAvailability _availability;
 
-  static GenerativeModel _buildModel() {
+  static GenerativeModel _buildModel(String model) {
     return FirebaseAI.googleAI().generativeModel(
-      model: geminiModelName,
+      model: model,
       generationConfig: GenerationConfig(
         responseMimeType: 'application/json',
         // Se probó a bajar el nivel de "pensamiento" a `low` para reducir la
@@ -84,8 +82,16 @@ class GeminiLlmGateway implements LlmGateway {
 
     String? responseText;
     try {
-      final response = await _model.generateContent([Content.text(prompt)]);
-      responseText = response.text;
+      responseText = await withGeminiModelFallback(
+        availability: _availability,
+        attempt: (model) {
+          final generativeModel = _buildModel(model);
+          return withTransientRetry(() async {
+            final response = await generativeModel.generateContent([Content.text(prompt)]);
+            return response.text;
+          });
+        },
+      );
     } on QuotaExceeded {
       throw const LlmGatewayException(
         'quota-exceeded',
