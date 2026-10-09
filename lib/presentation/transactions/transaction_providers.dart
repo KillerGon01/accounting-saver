@@ -11,27 +11,39 @@ import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_repository.dart';
 import '../../infrastructure/transactions/firestore_transaction_repository.dart';
 import '../../infrastructure/transactions/gemini_llm_gateway.dart';
+import '../common/ai_providers.dart';
 
 final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
   return FirestoreTransactionRepository();
 });
 
-final llmGatewayProvider = Provider<LlmGateway>((ref) => GeminiLlmGateway());
+final llmGatewayProvider = Provider<LlmGateway>(
+  (ref) => GeminiLlmGateway(availability: ref.watch(geminiModelAvailabilityProvider)),
+);
 
 final parseNaturalLanguageTransactionProvider = Provider<ParseNaturalLanguageTransaction>(
   (ref) => ParseNaturalLanguageTransaction(ref.watch(llmGatewayProvider)),
 );
 
 final addTransactionProvider = Provider<AddTransaction>(
-  (ref) => AddTransaction(ref.watch(transactionRepositoryProvider)),
+  (ref) => AddTransaction(
+    ref.watch(transactionRepositoryProvider),
+    ref.watch(transactionsChangeNotifierProvider),
+  ),
 );
 
 final updateTransactionProvider = Provider<UpdateTransaction>(
-  (ref) => UpdateTransaction(ref.watch(transactionRepositoryProvider)),
+  (ref) => UpdateTransaction(
+    ref.watch(transactionRepositoryProvider),
+    ref.watch(transactionsChangeNotifierProvider),
+  ),
 );
 
 final deleteTransactionProvider = Provider<DeleteTransaction>(
-  (ref) => DeleteTransaction(ref.watch(transactionRepositoryProvider)),
+  (ref) => DeleteTransaction(
+    ref.watch(transactionRepositoryProvider),
+    ref.watch(transactionsChangeNotifierProvider),
+  ),
 );
 
 final watchMonthlyTransactionsProvider = Provider<WatchMonthlyTransactions>(
@@ -39,7 +51,10 @@ final watchMonthlyTransactionsProvider = Provider<WatchMonthlyTransactions>(
 );
 
 final loadDemoDataProvider = Provider<LoadDemoData>(
-  (ref) => LoadDemoData(ref.watch(transactionRepositoryProvider)),
+  (ref) => LoadDemoData(
+    ref.watch(transactionRepositoryProvider),
+    ref.watch(transactionsChangeNotifierProvider),
+  ),
 );
 
 class MonthlyTransactionsParams {

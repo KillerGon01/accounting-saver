@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../application/chat/send_chat_message.dart';
 import '../../domain/chat/chat_message.dart';
 import '../theme/app_theme.dart';
 import 'chat_error_messages.dart';
@@ -25,6 +26,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _isSending = false;
+  int? _remainingQuestions;
+
+  @override
+  void initState() {
+    super.initState();
+    _remainingQuestions = ref.read(sendChatMessageProvider(widget.userId)).remainingQuestions;
+  }
 
   @override
   void dispose() {
@@ -35,7 +43,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _send() async {
     final text = _controller.text.trim();
-    if (text.isEmpty || _isSending) return;
+    if (text.isEmpty || _isSending || (_remainingQuestions ?? 1) <= 0) return;
 
     final history = List<ChatMessage>.from(_messages);
     final userMessage = ChatMessage(role: ChatRole.user, text: text, sentAt: DateTime.now());
@@ -48,7 +56,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _scrollToBottom();
 
     try {
-      final reply = await ref.read(sendChatMessageProvider)(
+      final reply = await ref.read(sendChatMessageProvider(widget.userId))(
         userId: widget.userId,
         history: history,
         message: text,
@@ -61,7 +69,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(chatErrorMessage(error))));
     } finally {
-      if (mounted) setState(() => _isSending = false);
+      final remaining = ref.read(sendChatMessageProvider(widget.userId)).remainingQuestions;
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+          _remainingQuestions = remaining;
+        });
+      }
       _scrollToBottom();
     }
   }
@@ -79,6 +93,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final remaining = _remainingQuestions ?? SendChatMessage.maxQuestionsPerSession;
+    final limitReached = remaining <= 0;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Chat')),
       body: Center(
@@ -86,6 +104,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           constraints: const BoxConstraints(maxWidth: 720),
           child: Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.m, vertical: AppSpacing.xs),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    limitReached
+                        ? 'Has llegado al máximo de preguntas de esta sesión'
+                        : 'Te quedan $remaining preguntas',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+              ),
               Expanded(
                 child: _messages.isEmpty
                     ? const _EmptyChat()
@@ -117,20 +147,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     Expanded(
                       child: TextField(
                         controller: _controller,
-                        enabled: !_isSending,
+                        enabled: !_isSending && !limitReached,
                         maxLength: ChatScreen.maxLength,
                         textInputAction: TextInputAction.send,
                         onSubmitted: (_) => _send(),
-                        decoration: const InputDecoration(
-                          hintText: '¿Cuánto he gastado este mes?',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          hintText: limitReached
+                              ? 'Has llegado al máximo de preguntas de esta sesión'
+                              : '¿Cuánto he gastado este mes?',
+                          border: const OutlineInputBorder(),
                         ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.s),
                     IconButton.filled(
                       tooltip: 'Enviar',
-                      onPressed: _isSending ? null : _send,
+                      onPressed: (_isSending || limitReached) ? null : _send,
                       icon: const Icon(Icons.send),
                     ),
                   ],

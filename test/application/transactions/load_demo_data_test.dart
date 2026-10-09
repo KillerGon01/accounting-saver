@@ -1,4 +1,5 @@
 import 'package:accounting_saver/application/transactions/load_demo_data.dart';
+import 'package:accounting_saver/domain/common/transactions_change_notifier.dart';
 import 'package:accounting_saver/domain/transactions/category.dart';
 import 'package:accounting_saver/domain/transactions/transaction.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
@@ -116,6 +117,30 @@ void main() {
       await LoadDemoData(repository)(userId: _userId, now: DateTime(2026, 10, 31));
 
       expect(repository.transactionsOf('otro-usuario'), isEmpty);
+    });
+
+    test('avisa a TransactionsChangeNotifier al cargar los datos con éxito', () async {
+      final repository = FakeTransactionRepository();
+      final changeNotifier = TransactionsChangeNotifier();
+      final versionBefore = changeNotifier.version;
+
+      await LoadDemoData(repository, changeNotifier)(userId: _userId, now: DateTime(2026, 10, 31));
+
+      expect(changeNotifier.version, greaterThan(versionBefore));
+    });
+
+    test('no avisa a TransactionsChangeNotifier si ya estaban cargados', () async {
+      final repository = FakeTransactionRepository();
+      final changeNotifier = TransactionsChangeNotifier();
+      final loadDemoData = LoadDemoData(repository, changeNotifier);
+      final now = DateTime(2026, 10, 31);
+
+      await loadDemoData(userId: _userId, now: now);
+      final versionAfterFirstLoad = changeNotifier.version;
+
+      await loadDemoData(userId: _userId, now: now);
+
+      expect(changeNotifier.version, versionAfterFirstLoad);
     });
   });
 }

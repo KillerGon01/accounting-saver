@@ -2,6 +2,7 @@ import 'package:accounting_saver/application/auth/delete_account.dart';
 import 'package:accounting_saver/domain/auth/account_deletion_exception.dart';
 import 'package:accounting_saver/domain/auth/app_user.dart';
 import 'package:accounting_saver/domain/auth/auth_exception.dart';
+import 'package:accounting_saver/domain/common/transactions_change_notifier.dart';
 import 'package:accounting_saver/domain/transactions/category.dart';
 import 'package:accounting_saver/domain/transactions/transaction.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
@@ -150,5 +151,27 @@ void main() {
     await deleteAccount(password: 'secreta123');
 
     expect(auth.accountDeleted, isTrue);
+  });
+
+  test('tras borrar los datos con éxito, avisa a TransactionsChangeNotifier', () async {
+    final changeNotifier = TransactionsChangeNotifier();
+    deleteAccount = DeleteAccount(auth, userData, changeNotifier);
+    await seed('user-1', 2);
+    final versionBefore = changeNotifier.version;
+
+    await deleteAccount(password: 'secreta123');
+
+    expect(changeNotifier.version, greaterThan(versionBefore));
+  });
+
+  test('si la reautenticación falla, no avisa a TransactionsChangeNotifier', () async {
+    final changeNotifier = TransactionsChangeNotifier();
+    deleteAccount = DeleteAccount(auth, userData, changeNotifier);
+    auth.reauthError = const AuthException('wrong-password');
+    final versionBefore = changeNotifier.version;
+
+    await expectLater(deleteAccount(password: 'mal'), throwsA(isA<AuthException>()));
+
+    expect(changeNotifier.version, versionBefore);
   });
 }

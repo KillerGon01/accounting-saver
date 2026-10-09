@@ -1,15 +1,18 @@
+import '../../domain/common/transactions_change_notifier.dart';
 import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_repository.dart';
 
 class UpdateTransaction {
-  UpdateTransaction(this._transactionRepository);
+  UpdateTransaction(this._transactionRepository, [this._changeNotifier]);
 
   final TransactionRepository _transactionRepository;
+  final TransactionsChangeNotifier? _changeNotifier;
 
-  Future<void> call({required String userId, required Transaction transaction}) {
-    return _transactionRepository.update(
+  Future<void> call({required String userId, required Transaction transaction}) async {
+    await _transactionRepository.update(
       userId: userId,
       transaction: transaction,
     );
+    _changeNotifier?.notifyChanged();
   }
 }

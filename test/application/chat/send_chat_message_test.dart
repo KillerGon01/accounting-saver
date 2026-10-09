@@ -1,6 +1,7 @@
 import 'package:accounting_saver/application/chat/send_chat_message.dart';
 import 'package:accounting_saver/application/chat/transaction_chat_functions.dart';
 import 'package:accounting_saver/domain/chat/chat_message.dart';
+import 'package:accounting_saver/domain/common/transactions_change_notifier.dart';
 import 'package:accounting_saver/domain/transactions/llm_gateway_exception.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -94,5 +95,127 @@ void main() {
 
     expect(gateway.lastFunctionResult?['year'], 2026);
     expect(gateway.lastFunctionResult?['month'], 10);
+  });
+
+  group('tope de preguntas por sesión', () {
+    test('permite hasta el máximo de preguntas configurado', () async {
+      final gateway = FakeChatGateway.returning('ok');
+      final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
+
+      for (var i = 0; i < SendChatMessage.maxQuestionsPerSession; i++) {
+        await sendChatMessage(userId: userId, history: const [], message: 'pregunta $i');
+      }
+
+      expect(sendChatMessage.remainingQuestions, 0);
+    });
+
+    test('rechaza la pregunta que supera el tope sin llamar al gateway', () async {
+      final gateway = FakeChatGateway.returning('ok');
+      final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
+
+      for (var i = 0; i < SendChatMessage.maxQuestionsPerSession; i++) {
+        await sendChatMessage(userId: userId, history: const [], message: 'pregunta $i');
+      }
+      final callsBeforeLimit = gateway.callCount;
+
+      await expectLater(
+        sendChatMessage(userId: userId, history: const [], message: 'una de más'),
+        throwsA(isA<LlmGatewayException>().having((e) => e.code, 'code', 'session-limit-reached')),
+      );
+      expect(gateway.callCount, callsBeforeLimit);
+    });
+
+    test('tras 8 respuestas con éxito, la novena se bloquea aunque sea una pregunta nueva', () async {
+      final gateway = FakeChatGateway.returning('ok');
+      final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
+
+      for (var i = 0; i < 8; i++) {
+        await sendChatMessage(userId: userId, history: const [], message: 'pregunta $i');
+      }
+
+      expect(sendChatMessage.remainingQuestions, 0);
+      await expectLater(
+        sendChatMessage(userId: userId, history: const [], message: 'pregunta 9'),
+        throwsA(isA<LlmGatewayException>().having((e) => e.code, 'code', 'session-limit-reached')),
+      );
+    });
+
+    test('una respuesta servida desde la caché no consume una de las 8 preguntas', () async {
+      final gateway = FakeChatGateway.returning('ok');
+      final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
+
+      await sendChatMessage(userId: userId, history: const [], message: '¿Cuánto gasté?');
+      expect(sendChatMessage.remainingQuestions, SendChatMessage.maxQuestionsPerSession - 1);
+
+      // Repetida: la sirve la caché (mismo gateway.callCount), así que no
+      // debe restar otra pregunta del tope.
+      await sendChatMessage(userId: userId, history: const [], message: '¿Cuánto gasté?');
+      expect(gateway.callCount, 1);
+      expect(sendChatMessage.remainingQuestions, SendChatMessage.maxQuestionsPerSession - 1);
+    });
+
+    test('una pregunta que acaba en error no consume una de las 8 preguntas', () async {
+      final gateway = FakeChatGateway.throwing(const LlmGatewayException('quota-exceeded'));
+      final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
+
+      for (var i = 0; i < 3; i++) {
+        await expectLater(
+          sendChatMessage(userId: userId, history: const [], message: 'pregunta $i'),
+          throwsA(isA<LlmGatewayException>()),
+        );
+      }
+
+      expect(sendChatMessage.remainingQuestions, SendChatMessage.maxQuestionsPerSession);
+    });
+  });
+
+  group('caché en memoria', () {
+    test('repetir la misma pregunta devuelve la respuesta cacheada sin llamar al gateway', () async {
+      final gateway = FakeChatGateway.returning('Has gastado 10 €');
+      final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
+
+      final first = await sendChatMessage(userId: userId, history: const [], message: '¿Cuánto gasté?');
+      final second = await sendChatMessage(userId: userId, history: const [], message: '¿Cuánto gasté?');
+
+      expect(first, 'Has gastado 10 €');
+      expect(second, 'Has gastado 10 €');
+      expect(gateway.callCount, 1);
+    });
+
+    test('la pregunta se normaliza (espacios y mayúsculas) para acertar en la caché', () async {
+      final gateway = FakeChatGateway.returning('ok');
+      final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
+
+      await sendChatMessage(userId: userId, history: const [], message: '¿Cuánto gasté?');
+      await sendChatMessage(userId: userId, history: const [], message: '  ¿CUÁNTO   gasté?  ');
+
+      expect(gateway.callCount, 1);
+    });
+
+    test('invalida la caché si los movimientos cambian entre dos preguntas iguales', () async {
+      final gateway = FakeChatGateway.returning('ok');
+      final changeNotifier = TransactionsChangeNotifier();
+      final sendChatMessage = SendChatMessage(
+        gateway,
+        TransactionChatFunctions(FakeTransactionRepository()),
+        changeNotifier,
+      );
+
+      await sendChatMessage(userId: userId, history: const [], message: '¿Cuánto gasté?');
+      changeNotifier.notifyChanged();
+      await sendChatMessage(userId: userId, history: const [], message: '¿Cuánto gasté?');
+
+      expect(gateway.callCount, 2);
+    });
+
+    test('preguntas distintas no comparten entrada de caché', () async {
+      final gateway = FakeChatGateway.returning('ok');
+      final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
+
+      await sendChatMessage(userId: userId, history: const [], message: '¿Cuánto gasté?');
+      await sendChatMessage(userId: userId, history: const [], message: '¿Cuánto ingresé?');
+
+      expect(gateway.callCount, 2);
+    });
   });
 }
