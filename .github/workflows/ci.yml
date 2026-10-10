@@ -1,0 +1,84 @@
+name: CI
+
+# En cada pull request hacia main y en cada push a main. No se compila ni
+# se prueba nada con ENABLE_AI ni con ninguna clave: ver docs/testing.md
+# ("Integración continua (CI)") para el porqué no hace falta ningún
+# secreto.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Permisos mínimos: el workflow solo lee el repositorio, no escribe nada
+# (ni comentarios, ni releases, ni paquetes).
+permissions:
+  contents: read
+
+# Cancela la ejecución anterior de la misma rama si llega un push nuevo
+# antes de que termine, para no gastar minutos de CI en código ya
+# obsoleto.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Misma versión y canal que en local (`flutter --version`), fijada a
+  # propósito en vez de "la última estable": así CI no cambia de
+  # comportamiento solo porque Flutter publique una versión nueva.
+  FLUTTER_VERSION: "3.47.6"
+  FLUTTER_CHANNEL: "stable"
+
+jobs:
+  analyze_and_test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          # Caché del propio SDK de Flutter y de ~/.pub-cache, las dos a
+          # cargo de la action (sin ningún paso de actions/cache aparte):
+          # `pub-cache` cae de vuelta a `cache` si no se indica, pero se
+          # deja explícito para que quede claro que cachea las dos cosas.
+          cache: true
+          pub-cache: true
+
+      - run: flutter pub get
+
+      # Falla si hay cualquier aviso (comportamiento por defecto de
+      # `flutter analyze`, sin flags adicionales: ya en 0 avisos en local).
+      - run: flutter analyze
+
+      - run: flutter test
+
+  build_web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # TEMPORAL: continue-on-error mientras no se ha visto pasar este job
+    # una vez de verdad en GitHub Actions. Quitar esta línea (y hacerlo
+    # bloqueante) tras la primera ejecución correcta — ver docs/testing.md.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+          pub-cache: true
+
+      - run: flutter pub get
+
+      # Sin --dart-define de IA: comprueba solo que la app compila para
+      # web, no la interfaz de IA (que además necesitaría App Check de
+      # producción, no solo una clave). No necesita ningún secreto:
+      # lib/firebase_options.dart ya está en el repositorio (no es un
+      # secreto, es la configuración pública de cliente de Firebase para
+      # web), y android/app/google-services.json (sí en .gitignore) no lo
+      # usa `flutter build web` en absoluto.
+      - run: flutter build web --release

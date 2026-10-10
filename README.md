@@ -1,5 +1,11 @@
 # accounting-saver
+[![CI](https://github.com/KillerGon01/accounting-saver/actions/workflows/ci.yml/badge.svg)](https://github.com/KillerGon01/accounting-saver/actions/workflows/ci.yml)
+
 Personal finance assistant powered by AI (Gemini), built with Flutter and Firebase. Final Master's project for the AI Development Master's program.
+
+## Integración continua
+
+En cada pull request hacia `main` y en cada push a `main`, GitHub Actions ejecuta `flutter analyze` y `flutter test` (job `analyze_and_test`, bloqueante) y comprueba que `flutter build web --release` compila (job `build_web`, temporalmente no bloqueante). Sin secretos ni IA activada: ver docs/testing.md ("Integración continua (CI)") para el detalle.
 
 ## Compilar con la IA activada
 

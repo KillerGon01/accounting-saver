@@ -15,6 +15,17 @@ flutter test
 
 Ejecutar ambos antes de cada PR.
 
+## Integración continua (CI)
+
+`.github/workflows/ci.yml`, en cada pull request hacia `main` y en cada push a `main`. Dos jobs, los dos en `ubuntu-latest` con `timeout-minutes: 15`:
+
+- **`analyze_and_test`** (bloqueante): `actions/checkout@v4` → `subosito/flutter-action@v2` con la versión de Flutter fijada (`3.47.6`, canal `stable` — la misma que en local, no "la última estable") y sus propias opciones de caché (`cache: true`, `pub-cache: true`, sin ningún paso de `actions/cache` aparte: cachean el SDK de Flutter y `~/.pub-cache`) → `flutter pub get` → `flutter analyze` (falla con cualquier aviso, comportamiento por defecto del comando) → `flutter test`.
+- **`build_web`** (comprobación de que compila, no prueba nada): mismo *setup*, `flutter build web --release`, **sin** ningún `--dart-define` de IA. **Temporal:** tiene `continue-on-error: true` porque aún no se ha visto pasar en GitHub Actions; quitar esa línea (y, si se quiere exigir en la protección de la rama, marcarlo como *required status check*) tras la primera ejecución correcta.
+
+`permissions: contents: read` a nivel de workflow (no escribe nada) y `concurrency` por rama con `cancel-in-progress: true` (cancela la ejecución anterior de la misma rama si llega un push nuevo).
+
+**Sin secretos.** `flutter build web` no usa `android/app/google-services.json` (eso solo lo lee el plugin de Gradle al compilar Android, nunca en un build de web) y `lib/firebase_options.dart` ya está en el repositorio — es la configuración pública de cliente de Firebase para web, no un secreto: lo que protege los datos son las reglas de Firestore y App Check, no ocultar esa clave. Ningún job pasa `ENABLE_AI` ni ninguna clave de reCAPTCHA, así que `enableAi` es `false` por defecto (igual que ya pasa al ejecutar `flutter test` o `flutter analyze` sin ese define) y no se llama a Gemini ni a Firebase AI Logic desde CI.
+
 ## Cobertura actual
 
 | Archivo | Qué prueba |
