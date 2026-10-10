@@ -5,6 +5,7 @@ import '../../domain/auth/user_profile.dart';
 import '../../domain/transactions/activity_summary.dart';
 import '../auth/auth_error_messages.dart';
 import '../auth/auth_providers.dart';
+import '../common/firestore_error_messages.dart';
 import '../theme/app_theme.dart';
 import '../transactions/formatters.dart';
 import 'account_deletion_messages.dart';
@@ -115,8 +116,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               child: CircularProgressIndicator(),
                             ),
                           ),
-                          error: (_, _) => const Text(
-                            'No se pudo cargar el resumen. Inténtalo de nuevo más tarde.',
+                          error: (error, _) => Text(
+                            firestoreErrorMessage(
+                              error,
+                              fallback: 'No se pudo cargar el resumen. Inténtalo de nuevo más tarde.',
+                            ),
                           ),
                           data: (value) => Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,

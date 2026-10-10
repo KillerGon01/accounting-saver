@@ -6,6 +6,16 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // Exige el correo verificado del token (no un dato que haya que leer
+    // de otro sitio): las cuentas de Google ya llegan con
+    // `email_verified: true` desde el primer inicio de sesión, y las de
+    // correo/contraseña lo consiguen tras verificar y refrescar el token
+    // (`FirebaseAuthRepository.reloadUser`, que llama a `getIdToken(true)`
+    // después de `reload()`; ver docs/security.md).
+    function isVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
     function isValidAmount(amount) {
       return amount is int
         && amount != 0
@@ -46,8 +56,8 @@ service cloud.firestore {
     }
 
     match /users/{userId}/transactions/{txId} {
-      allow read, delete: if isOwner(userId);
-      allow create, update: if isOwner(userId)
+      allow read, delete: if isOwner(userId) && isVerified();
+      allow create, update: if isOwner(userId) && isVerified()
         && isValidTransaction(request.resource.data);
     }
   }

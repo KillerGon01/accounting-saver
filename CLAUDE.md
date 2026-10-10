@@ -40,14 +40,18 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 Hecho: MVP completo (login, movimientos, lenguaje natural, chat con function calling, datos
 demo, resumen mensual con gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini
 (fallback de modelo, timeout de 90 s sin reintento, reintento único ante 503, topes de 8
-preguntas/3 comentarios, caché, aislamiento por usuario) y App Check de producción en web
-(reCAPTCHA Enterprise); detalles en docs/design.md, docs/testing.md y docs/security.md. Nuevo:
-resumen mensual (`MonthlyReport`/`BuildMonthlyReport`/`ExplainMonthlyReport`, en
-`lib/domain|application/reports/`) con gasto por categoría, comparación con el mes anterior
-(`null` si no hay datos), aviso de mes en curso/informe truncado (también en el prompt de la
-IA, que nunca recibe conceptos de movimiento, solo cifras agregadas) y refresco automático al
-cambiar los movimientos (`transactionsVersionProvider`, nuevo). `thinkingConfig` sigue sin
-aplicarse (riesgo sin forma de probarlo contra Gemini real en este entorno).
+preguntas/3 comentarios, caché, aislamiento por usuario), App Check de producción en web
+(reCAPTCHA Enterprise) e **integración continua** (`.github/workflows/ci.yml`: `analyze_and_test`
+y `build_web`, los dos bloqueantes en `ubuntu-latest`, Flutter 3.47.6 fijado, sin secretos);
+detalles en docs/design.md, docs/testing.md y docs/security.md. Nuevo: `firestore.rules` exige
+`email_verified` en el token (no solo en la interfaz) para leer/escribir movimientos;
+`FirebaseAuthRepository.reloadUser()` ahora hace `reload()` y `getIdToken(true)` en ese orden
+antes de dejar pasar a `TransactionsScreen`; un `permission-denied` de Firestore se traduce a un
+mensaje fijo, nunca al error crudo (`firestore_error_messages.dart`). Pruebas de las reglas
+contra el emulador real (6/6, ver docs/security.md) en `firestore-tests/` (Node aparte, sin
+tocar `pubspec.yaml` ni el CI). `thinkingConfig` sigue sin aplicarse (riesgo sin forma de
+probarlo contra Gemini real en este entorno).
 Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
-Android, revisión visual en navegador (resumen mensual incluido), confirmar `thinkingConfig`.
+Android, revisión visual en navegador, confirmar `thinkingConfig`, CI opcional para
+`firestore-tests/`.
 Siguiente: esa revisión visual y decidir los pendientes de seguridad antes de la entrega (26/10).

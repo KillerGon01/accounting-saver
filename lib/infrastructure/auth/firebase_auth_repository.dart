@@ -71,7 +71,17 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<AppUser> reloadUser() {
     return _mapErrors(() async {
-      await _currentUserOrThrow().reload();
+      final user = _currentUserOrThrow();
+      await user.reload();
+      // Las reglas de Firestore leen `email_verified` del token, no del
+      // perfil recargado por `reload()`: sin forzar un token nuevo aquí,
+      // el cambio seguiría sin verse en Firestore hasta que el token
+      // expirase solo (hasta 1 h) o se cerrara y abriera sesión de nuevo.
+      // Va después de `reload()` y antes de devolver el usuario, para que
+      // quien llama (`VerifyEmailScreen`, vía `RefreshEmailVerification`)
+      // no pase a una pantalla que use Firestore con un token todavía
+      // antiguo.
+      await user.getIdToken(true);
       return _requireAppUser(_firebaseAuth.currentUser);
     });
   }

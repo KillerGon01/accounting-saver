@@ -8,7 +8,7 @@
 
 ## Reglas de Firestore (`firestore.rules`)
 
-Cada usuario solo puede leer y borrar sus propios movimientos. Crear o editar exige que el documento tenga exactamente los campos que escribe `FirestoreTransactionRepository`, con los tipos y valores válidos:
+Cada usuario solo puede leer y borrar sus propios movimientos, **y solo si su correo está verificado** (`isVerified()`: `request.auth.token.email_verified == true`, combinada con `isOwner(userId)` en las dos reglas, `read/delete` y `create/update`). Crear o editar exige además que el documento tenga exactamente los campos que escribe `FirestoreTransactionRepository`, con los tipos y valores válidos:
 
 | Campo | Condición |
 |---|---|
@@ -19,7 +19,31 @@ Cada usuario solo puede leer y borrar sus propios movimientos. Crear o editar ex
 | `source` | Uno de los nombres de `TransactionSource`. |
 | `date`, `createdAt` | `timestamp`. |
 
-Las reglas se han comprobado a mano contra el emulador local de Firestore: el límite exacto se acepta, un céntimo por encima se rechaza, y también se rechazan cada campo inválido, los campos extra y la escritura en la cuenta de otro usuario.
+### Correo verificado, también en las reglas (no solo en la interfaz)
+
+Antes, `AuthGate` ya ocultaba las pantallas con Firestore a quien no hubiera verificado su correo (ver "Autenticación" más abajo), pero las reglas no lo exigían: alguien que llamara directamente a la API de Firebase con una cuenta sin verificar podía seguir leyendo y escribiendo en su propio espacio. `isVerified()` cierra ese hueco exigiéndolo también en el servidor.
+
+- **Las cuentas de Google no necesitan nada nuevo.** Firebase ya marca `email_verified: true` en su token desde el primer inicio de sesión, así que `AppUser.needsEmailVerification` (dominio) ya las trataba como verificadas y la regla nueva no les añade ninguna fricción.
+- **El hueco real era el token, no el perfil.** `user.reload()` (lo único que hacía `FirebaseAuthRepository.reloadUser()` hasta ahora) actualiza el `emailVerified` que lee la app para decidir qué pantalla mostrar, pero **no** el token que Firestore valida en sus reglas — ese token puede seguir diciendo `email_verified: false` hasta que expire solo (hasta 1 hora) o se cierre y abra sesión de nuevo. `reloadUser()` ahora hace `await user.reload(); await user.getIdToken(true);`, en ese orden, antes de devolver el `AppUser` — así, para cuando `VerifyEmailScreen` deja pasar a `TransactionsScreen` (`ref.invalidate(authStateChangesProvider)`, que solo se llama después de esperar a `reloadUser()`), el token que usará Firestore ya es el nuevo. Probado en `test/widget_test.dart` ("no muestra la pantalla de movimientos hasta que termina el refresco completo...") con un `FakeAuthRepository.responseGate` que retrasa esa operación a propósito: mientras no se completa, sigue en `VerifyEmailScreen`.
+  - Esto no se puede probar con un fake hasta el nivel de `FirebaseAuthRepository` (requeriría un mock del `User` de `firebase_auth`, un paquete nuevo que no se ha añadido): el test de arriba comprueba el contrato que depende de ello (la pantalla no cambia hasta que la operación termina), no las dos llamadas de bajo nivel por separado.
+- **Mensaje de error, nunca crudo.** Si Firestore deniega una lectura o escritura (`FirebaseException` con `code: 'permission-denied'` — por ejemplo, con un token todavía no refrescado), `firestoreErrorMessage` (`lib/presentation/common/firestore_error_messages.dart`) lo traduce a "No tienes permiso para ver estos datos. Si acabas de verificar tu correo, cierra sesión y vuelve a entrar.", usado en `TransactionsScreen`, `MonthlyReportScreen` y el resumen de actividad de `ProfileScreen`. A propósito no afirma que la causa sea el correo (podría ser otra), solo lo sugiere como la pista más probable. Cualquier otro error muestra un mensaje genérico de la propia pantalla, nunca el error crudo (`$error`) que se mostraba antes.
+- **Flujos no afectados.** Login con Google (ya verificado desde el principio), carga de datos de ejemplo y borrado de cuenta (los dos solo son accesibles tras pasar la verificación, nunca antes) siguen funcionando igual; el orden de `DeleteAccount` (reautenticar → borrar movimientos → borrar la cuenta de Auth) no cambia.
+
+### Pruebas de las reglas contra el emulador (`firestore-tests/`)
+
+Carpeta aparte, sin relación con el proyecto Flutter ni con `pubspec.yaml`: tiene su propio `package.json` (un solo paquete, `@firebase/rules-unit-testing`, versión exacta `6.0.0` sin `^`, con `package-lock.json` versionado; `firestore-tests/node_modules/` en `.gitignore`). Las pruebas (`firestore-tests/rules.test.js`, con el *test runner* nativo de Node, sin `mocha` ni ningún otro paquete) cargan el **`firestore.rules` real de la raíz** por ruta relativa (`path.resolve(__dirname, '..', 'firestore.rules')`) y lo suben al emulador con `initializeTestEnvironment`, nunca una copia.
+
+Para ejecutarlas (Node, npm, Java y el CLI de `firebase` instalados; el emulador de Firestore se descarga solo la primera vez):
+
+```bash
+cd firestore-tests
+npm install
+npm run test:emulator
+```
+
+Casos cubiertos, los seis ejecutados de verdad contra el emulador el 10/10/2026 (**6 de 6 superados**, `firebase emulators:exec --only firestore "npm test"`, código de salida 0): un usuario verificado lee, escribe y borra su propio movimiento; uno sin verificar no puede ni leyendo ni escribiendo, aunque sea el dueño; otro usuario verificado no puede leer ni escribir los movimientos de alguien distinto; sin sesión no se puede nada; los campos inválidos o el importe fuera de rango se rechazan aunque el usuario esté verificado (importe 0, importe por encima de 100.000.000, importe decimal, categoría inexistente, origen inexistente, descripción vacía, campo que falta, campo que no debería estar); y las colecciones no previstas se deniegan, tanto dentro de `users/{uid}` como sueltas.
+
+**Mejora pendiente, opcional, para el CI:** estas pruebas no se ejecutan en `.github/workflows/ci.yml` (que sigue sin tocarse) porque requieren Java y el CLI de `firebase`, software más pesado que lo que ya instala el job de Flutter; se pueden añadir más adelante como un job aparte (`firestore-rules` o similar) que instale Node/Java, haga `cd firestore-tests && npm ci && npm run test:emulator`, y decidir entonces si debe ser bloqueante.
 
 ## Límites conocidos
 
@@ -27,13 +51,6 @@ Las reglas se han comprobado a mano contra el emulador local de Firestore: el l�
 - **App Check solo para Gemini, no para Firestore.** Se activa únicamente cuando `ENABLE_AI` es verdadero y solo con el proveedor de depuración (ver "App Check" más abajo). Firestore sigue sin ninguna comprobación de que las peticiones provienen de la aplicación; el punto anterior (registro abierto) sigue sin resolverse.
 - **Sin límite de frecuencia.** Las reglas no limitan cuántos documentos puede escribir un usuario autenticado. Sin Cloud Functions, la única protección de cuota es la que aplique Firebase.
 - **Lista de valores fijos.** Las categorías y fuentes válidas están escritas en `firestore.rules`. Si se añade un valor al enum en Dart, hay que añadirlo también en las reglas.
-- **La verificación de correo solo se aplica en la interfaz.** La app muestra
-  `VerifyEmailScreen` a los usuarios de correo y contraseña con el correo sin
-  verificar, pero Firestore no lo exige. Alguien que llame directamente a la API
-  de Firebase con una cuenta no verificada podría seguir leyendo y escribiendo en
-  su propio espacio. Mejora pendiente: exigir
-  `request.auth.token.email_verified == true` en las reglas (la app tendría que
-  refrescar el token tras verificar).
 - **Detección del 503 de Gemini por texto, no por código.** `isTransientGeminiError` (`lib/infrastructure/common/gemini_transient_retry.dart`) reconoce un fallo transitorio del servidor buscando `UNAVAILABLE`, `Deadline expired` o `Server Error [503]` dentro del `message` de la excepción, porque el paquete `firebase_ai` no expone el código de estado HTTP como un campo propio para este caso (ver docs/design.md). Si Google cambia el texto exacto de este error, la detección deja de funcionar silenciosamente: el fallo pasaría a tratarse como cualquier otro `service-error`, sin reintento, pero sin romper nada más.
 - **Detección del 403 de App Check también por texto.** Igual que el 503, `isAppCheckAttestationError` (`lib/infrastructure/common/app_check_error.dart`) reconoce el 403 `PERMISSION_DENIED`/"App attestation failed" buscando ese texto en el mensaje, no por un código o campo estructurado — la misma limitación, el mismo riesgo si Google cambia el texto exacto (ver "App Check" más abajo).
 - **Un 429 por minuto agota un modelo durante 1 hora, aunque la cuota real ya esté disponible.** `GeminiModelAvailability` (mismo archivo) marca un modelo como agotado durante `geminiModelExhaustionDuration` (1 hora) ante cualquier `QuotaExceeded`, sin distinguir el límite que lo causó: un solo pico puntual de 5 RPM (que se resetea en segundos) deja ese modelo fuera de la lista de fallback durante una hora entera, igual que si se hubiera agotado el cupo diario de 20 peticiones. No hay forma de diferenciar ambos casos con la información que da hoy el backend.
