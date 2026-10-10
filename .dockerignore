@@ -1,0 +1,18 @@
+# Nada de esto hace falta para `flutter build web`, y parte de ello nunca
+# debe entrar en el contexto de build (y por tanto en la imagen): ni google-services.json y cualquier token o log local.
+.git
+.github
+.dart_tool
+.pub-cache
+.flutter-plugins-dependencies
+build
+coverage
+node_modules
+firestore-tests
+test
+.idea
+.vscode
+*.log
+
+android/app/google-services.json
+app_check_debug_token.txt

@@ -49,8 +49,11 @@ detalles en docs/design.md, docs/testing.md y docs/security.md. Nuevo: `firestor
 antes de dejar pasar a `TransactionsScreen`; un `permission-denied` de Firestore se traduce a un
 mensaje fijo, nunca al error crudo (`firestore_error_messages.dart`). Pruebas de las reglas
 contra el emulador real (6/6, ver docs/security.md) en `firestore-tests/` (Node aparte, sin
-tocar `pubspec.yaml` ni el CI). `thinkingConfig` sigue sin aplicarse (riesgo sin forma de
-probarlo contra Gemini real en este entorno).
+tocar `pubspec.yaml` ni el CI). **Docker** para servir la web (`Dockerfile` multi-etapa + nginx
+sin privilegios, puerto 8080; ver README.md y docs/design.md): build y contenedor probados de
+verdad (`GET /` 200, fallback de SPA, cabeceras, sin IA por defecto), sin tocar el CI.
+`thinkingConfig` sigue sin aplicarse (riesgo sin forma de probarlo contra Gemini real en este
+entorno).
 Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
 Android, revisión visual en navegador, confirmar `thinkingConfig`, CI opcional para
 `firestore-tests/`.
