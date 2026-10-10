@@ -17,10 +17,10 @@ Ejecutar ambos antes de cada PR.
 
 ## Integración continua (CI)
 
-`.github/workflows/ci.yml`, en cada pull request hacia `main` y en cada push a `main`. Dos jobs, los dos en `ubuntu-latest` con `timeout-minutes: 15`:
+`.github/workflows/ci.yml`, en cada pull request hacia `main` y en cada push a `main`. Dos jobs, los dos en `ubuntu-latest` con `timeout-minutes: 15` y **los dos bloqueantes** (sin `continue-on-error`):
 
-- **`analyze_and_test`** (bloqueante): `actions/checkout@v4` → `subosito/flutter-action@v2` con la versión de Flutter fijada (`3.47.6`, canal `stable` — la misma que en local, no "la última estable") y sus propias opciones de caché (`cache: true`, `pub-cache: true`, sin ningún paso de `actions/cache` aparte: cachean el SDK de Flutter y `~/.pub-cache`) → `flutter pub get` → `flutter analyze` (falla con cualquier aviso, comportamiento por defecto del comando) → `flutter test`.
-- **`build_web`** (comprobación de que compila, no prueba nada): mismo *setup*, `flutter build web --release`, **sin** ningún `--dart-define` de IA. **Temporal:** tiene `continue-on-error: true` porque aún no se ha visto pasar en GitHub Actions; quitar esa línea (y, si se quiere exigir en la protección de la rama, marcarlo como *required status check*) tras la primera ejecución correcta.
+- **`analyze_and_test`**: `actions/checkout@v4` → `subosito/flutter-action@v2` con la versión de Flutter fijada (`3.47.6`, canal `stable` — la misma que en local, no "la última estable") y sus propias opciones de caché (`cache: true`, `pub-cache: true`, sin ningún paso de `actions/cache` aparte: cachean el SDK de Flutter y `~/.pub-cache`) → `flutter pub get` → `flutter analyze` (falla con cualquier aviso, comportamiento por defecto del comando) → `flutter test`.
+- **`build_web`** (comprobación de que compila, no prueba nada): mismo *setup*, `flutter build web --release`, **sin** ningún `--dart-define` de IA.
 
 `permissions: contents: read` a nivel de workflow (no escribe nada) y `concurrency` por rama con `cancel-in-progress: true` (cancela la ejecución anterior de la misma rama si llega un push nuevo).
 

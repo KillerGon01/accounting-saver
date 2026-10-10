@@ -58,10 +58,6 @@ jobs:
   build_web:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # TEMPORAL: continue-on-error mientras no se ha visto pasar este job
-    # una vez de verdad en GitHub Actions. Quitar esta línea (y hacerlo
-    # bloqueante) tras la primera ejecución correcta — ver docs/testing.md.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
