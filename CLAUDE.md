@@ -38,17 +38,16 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 
 ## Estado
 Hecho: MVP completo (login, movimientos, lenguaje natural, chat con function calling, datos
-demo) tras `ENABLE_AI`, con protección de cuota de Gemini (fallback de modelo, reintento ante
-503, tope de 8 preguntas, caché, aislamiento por usuario) y App Check de producción en web
-(reCAPTCHA Enterprise); detalles en docs/design.md y docs/security.md. Nuevo: timeout de 90 s
-por petición (`geminiRequestTimeout`, único sitio: `gemini_transient_retry.dart`); a diferencia
-de un 503/`UNAVAILABLE` (que sí se reintenta una vez, como antes), un timeout **nunca** se
-reintenta —`.timeout()` no cancela la petición en el servidor— y falla directamente con "La IA
-no está disponible ahora mismo" (peor caso: 90 s, una sola petición), sin marcar modelo agotado
-ni consumir pregunta; indicador de progreso en el chat con avisos a los 10 s y 45 s sin bloquear
-la app. `thinkingConfig` existe en el paquete pero sigue
-sin aplicarse (riesgo de romper function calling o cálculos, sin forma de probarlo contra
-Gemini real en este entorno).
+demo, resumen mensual con gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini
+(fallback de modelo, timeout de 90 s sin reintento, reintento único ante 503, topes de 8
+preguntas/3 comentarios, caché, aislamiento por usuario) y App Check de producción en web
+(reCAPTCHA Enterprise); detalles en docs/design.md, docs/testing.md y docs/security.md. Nuevo:
+resumen mensual (`MonthlyReport`/`BuildMonthlyReport`/`ExplainMonthlyReport`, en
+`lib/domain|application/reports/`) con gasto por categoría, comparación con el mes anterior
+(`null` si no hay datos), aviso de mes en curso/informe truncado (también en el prompt de la
+IA, que nunca recibe conceptos de movimiento, solo cifras agregadas) y refresco automático al
+cambiar los movimientos (`transactionsVersionProvider`, nuevo). `thinkingConfig` sigue sin
+aplicarse (riesgo sin forma de probarlo contra Gemini real en este entorno).
 Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
-Android, revisión visual en navegador (contador del chat incluido), confirmar `thinkingConfig`.
+Android, revisión visual en navegador (resumen mensual incluido), confirmar `thinkingConfig`.
 Siguiente: esa revisión visual y decidir los pendientes de seguridad antes de la entrega (26/10).
