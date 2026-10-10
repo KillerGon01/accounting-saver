@@ -190,6 +190,13 @@ Las tres capas lanzan el mismo tipo, `NotUnderstoodException`, con un mensaje pa
 - **Mismo tratamiento de errores y de App Check.** `GeminiMonthlyReportGateway` reutiliza `withGeminiModelFallback`, `withTransientRetry` (90 s, sin reintento ante timeout) e `isAppCheckAttestationError` sin modificarlos; `reportErrorMessage` traduce los códigos a los mismos mensajes en español que `chatErrorMessage`/`llmErrorMessage`.
 - **Sin persistencia ni logs.** El comentario generado vive solo en el estado de `MonthlyReportScreen`, en memoria; no se escribe en Firestore ni se registra en ningún log. El informe en sí (`MonthlyReport`) tampoco se guarda: se recalcula cada vez a partir de los movimientos ya existentes.
 
+## Docker
+
+- **Ningún secreto en la imagen.** `.dockerignore` excluye explícitamente `android/app/google-services.json` y `app_check_debug_token.txt`, además de `.git`, `firestore-tests/`, `test/` y los directorios de build/caché: nada de eso llega al contexto de `docker build`, así que no puede acabar en una capa de la imagen. Los dos `ARG` de IA (`ENABLE_AI`, `RECAPTCHA_SITE_KEY`) son cadenas vacías por defecto en el `Dockerfile` y en `docker-compose.yml`; un valor real solo se pasa en el comando de quien construye la imagen (`--build-arg`), nunca se escribe en el repositorio.
+- **Pensada para ejecutarse sin IA.** La clave de reCAPTCHA Enterprise que protege App Check en producción solo admite los dominios registrados para ella (normalmente los de Firebase Hosting); servir la imagen en `localhost` u otro dominio con `ENABLE_AI=true` no pasaría App Check, aunque la interfaz de IA se mostrara. El despliegue real sigue siendo Firebase Hosting (ver README.md, "Ejecución con Docker").
+- **Cabeceras, sin romper los flujos de Firebase.** `docker/nginx.conf` añade `X-Content-Type-Options`, `Referrer-Policy` y `X-Frame-Options`, pero no `Cross-Origin-Opener-Policy` ni `Cross-Origin-Embedder-Policy` (las dos rompen el popup de Google Sign-In, que depende de comunicación entre ventanas de distinto origen) ni ninguna `Content-Security-Policy` (sin probarla a fondo contra todos los orígenes de Google que usa la app, rompería algo en silencio; detalle de qué orígenes harían falta en docs/design.md, "Docker").
+- **Verificación real de lo que entra en la imagen.** Las dos imágenes base (`debian:bookworm-20261005-slim`, `nginxinc/nginx-unprivileged:1.30.5-alpine`) y el `sha256` del SDK de Flutter que se descarga dentro del build se comprobaron de verdad (`docker pull`, y el manifiesto oficial de Google), no se dieron por buenos sin mirar — detalle completo en docs/design.md, "Docker".
+
 ## Pendiente
 
 - **Pendiente de decisión antes de la entrega (26/10):** registro con email y contraseña. Opciones:

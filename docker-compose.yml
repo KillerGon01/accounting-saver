@@ -1,0 +1,9 @@
+services:
+  web:
+    build:
+      context: .
+      args:
+        ENABLE_AI: ""
+        RECAPTCHA_SITE_KEY: ""
+    ports:
+      - "8080:8080"
