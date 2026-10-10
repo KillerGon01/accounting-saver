@@ -37,30 +37,18 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: login, perfil con eliminación de cuenta, movimientos responsive, tema Material 3,
-reglas con límite de 1.000.000 €, entrada en lenguaje natural y chat con function calling
-sobre Firestore, todo tras `ENABLE_AI`. Protección de la cuota gratuita de Gemini: fallback
-de modelo tras un 429 (`gemini-3.8-flash` → `gemini-2.5-flash` → `gemini-2.5-flash-lite`,
-1 h de memoria por modelo) y reintento de un solo intento tras 1,5 s ante un 503/`UNAVAILABLE`
-transitorio (mismo modelo, sin tocar esa memoria); tope de 8 preguntas por sesión de chat
-(solo cuenta una llamada al modelo con éxito, ni caché ni error) con contador visible; caché
-en memoria por pregunta invalidada al crear, editar o borrar un movimiento, y también al
-cargar o borrar datos de ejemplo (`LoadDemoData`, `DeleteAccount`); caché, contador e
-historial del chat aislados por usuario (`sendChatMessageProvider` como `Provider.family` por
-`userId`, para que cerrar sesión y entrar con otra cuenta no comparta nada) — todo en
-docs/design.md y docs/security.md; propuesta de `thinkingConfig` pendiente de confirmar, sin
-aplicar. Datos demo corregidos: solo Alquiler, Gimnasio, Netflix y Spotify quedan fijos
-(recurrentes de verdad); el resto varía de importe cada mes a propósito
-(`_DemoEntry.monthlyShiftCents`, determinista, sin azar). App Check de producción en web:
-Fraud Defense (reCAPTCHA Enterprise, `ReCaptchaEnterpriseProvider`) con la clave de
-`--dart-define=RECAPTCHA_SITE_KEY` (nunca en el repo); `lib/app_check_config.dart` calcula un
-`effectiveEnableAi` (`enableAi && (!release || hay clave)`) que oculta el chat y el lenguaje
-natural en vez de dejarlos fallar en un release sin clave; el proveedor de depuración solo en
-builds que no son de release; Android release sin proveedor de depuración, pendiente de
-configurar Play Integrity (el SDK ya usa su valor por defecto). El 403
-`PERMISSION_DENIED`/"App attestation failed" de un token de App Check inválido se traduce al
-mensaje de siempre, nunca al JSON crudo (`app_check_error.dart`); detalles en docs/security.md
-y README.
+Hecho: MVP completo (login, movimientos, lenguaje natural, chat con function calling, datos
+demo) tras `ENABLE_AI`, con protección de cuota de Gemini (fallback de modelo, reintento ante
+503, tope de 8 preguntas, caché, aislamiento por usuario) y App Check de producción en web
+(reCAPTCHA Enterprise); detalles en docs/design.md y docs/security.md. Nuevo: timeout de 90 s
+por petición (`geminiRequestTimeout`, único sitio: `gemini_transient_retry.dart`); a diferencia
+de un 503/`UNAVAILABLE` (que sí se reintenta una vez, como antes), un timeout **nunca** se
+reintenta —`.timeout()` no cancela la petición en el servidor— y falla directamente con "La IA
+no está disponible ahora mismo" (peor caso: 90 s, una sola petición), sin marcar modelo agotado
+ni consumir pregunta; indicador de progreso en el chat con avisos a los 10 s y 45 s sin bloquear
+la app. `thinkingConfig` existe en el paquete pero sigue
+sin aplicarse (riesgo de romper function calling o cálculos, sin forma de probarlo contra
+Gemini real en este entorno).
 Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
-Android (ver docs/security.md), revisión visual en navegador (contador del chat incluido).
+Android, revisión visual en navegador (contador del chat incluido), confirmar `thinkingConfig`.
 Siguiente: esa revisión visual y decidir los pendientes de seguridad antes de la entrega (26/10).

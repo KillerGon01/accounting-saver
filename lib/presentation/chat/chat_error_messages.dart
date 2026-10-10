@@ -19,6 +19,10 @@ String chatErrorMessage(Object error) {
     // inválido (403, "App attestation failed") se traduce a propósito a
     // este mensaje, nunca al JSON crudo del error.
     'app-check-failed' => _genericMessage,
+    // Mismo texto que el genérico, explícito por la misma razón que
+    // 'app-check-failed': un timeout (90 s, con un reintento) también se
+    // traduce a este mensaje, no a uno distinto sobre "tardando mucho".
+    'timeout' => _genericMessage,
     _ => _genericMessage,
   };
 }

@@ -167,6 +167,18 @@ void main() {
 
       expect(sendChatMessage.remainingQuestions, SendChatMessage.maxQuestionsPerSession);
     });
+
+    test('un timeout tampoco consume una de las 8 preguntas', () async {
+      final gateway = FakeChatGateway.throwing(const LlmGatewayException('timeout'));
+      final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
+
+      await expectLater(
+        sendChatMessage(userId: userId, history: const [], message: '¿Cuánto gasté?'),
+        throwsA(isA<LlmGatewayException>().having((e) => e.code, 'code', 'timeout')),
+      );
+
+      expect(sendChatMessage.remainingQuestions, SendChatMessage.maxQuestionsPerSession);
+    });
   });
 
   group('caché en memoria', () {
