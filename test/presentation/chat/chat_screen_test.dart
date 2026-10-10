@@ -1,3 +1,4 @@
+import 'package:accounting_saver/domain/transactions/llm_gateway_exception.dart';
 import 'package:accounting_saver/presentation/chat/chat_providers.dart';
 import 'package:accounting_saver/presentation/chat/chat_screen.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
@@ -87,4 +88,80 @@ void main() {
       expect(find.text('Te quedan 7 preguntas'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'mientras hay una petición en curso: aviso a los 10s, otro a los 45s, botón y campo desactivados',
+    (tester) async {
+      final gateway = FakeChatGateway.pending();
+      final container = ProviderContainer(
+        overrides: [
+          transactionRepositoryProvider.overrideWithValue(FakeTransactionRepository()),
+          chatGatewayProvider.overrideWithValue(gateway),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await _pump(tester, container, 'user-A');
+      await tester.enterText(find.byType(TextField), '¿Cuánto gasté?');
+      await tester.tap(find.byIcon(Icons.send));
+      await tester.pump();
+
+      expect(find.text('Consultando tus movimientos...'), findsOneWidget);
+      expect(tester.widget<IconButton>(find.byType(IconButton)).onPressed, isNull);
+      expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
+      // El contador aún no ha bajado: la petición no ha terminado.
+      expect(find.text('Te quedan 8 preguntas'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 10));
+      expect(
+        find.text('Consultando tus movimientos... Esto está tardando más de lo normal...'),
+        findsOneWidget,
+      );
+      // Sigue sin bloquear el resto de la app: el contador se puede seguir
+      // leyendo con normalidad.
+      expect(find.text('Te quedan 8 preguntas'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 35));
+      expect(
+        find.text(
+          'Consultando tus movimientos... Esto está tardando más de lo normal... '
+          'Puede tardar hasta un par de minutos.',
+        ),
+        findsOneWidget,
+      );
+
+      gateway.complete('Respuesta tras la espera');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Respuesta tras la espera'), findsOneWidget);
+      expect(find.text('Te quedan 7 preguntas'), findsOneWidget);
+      expect(tester.widget<IconButton>(find.byType(IconButton)).onPressed, isNotNull);
+      expect(tester.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+    },
+  );
+
+  testWidgets('un timeout muestra el mensaje de siempre y no consume una pregunta', (tester) async {
+    final gateway = FakeChatGateway.pending();
+    final container = ProviderContainer(
+      overrides: [
+        transactionRepositoryProvider.overrideWithValue(FakeTransactionRepository()),
+        chatGatewayProvider.overrideWithValue(gateway),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await _pump(tester, container, 'user-A');
+    await tester.enterText(find.byType(TextField), '¿Cuánto gasté?');
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pump();
+
+    gateway.completeWithError(
+      const LlmGatewayException('timeout', message: 'La IA no está disponible ahora mismo.'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('La IA no está disponible ahora mismo.'), findsOneWidget);
+    expect(find.text('Te quedan 8 preguntas'), findsOneWidget);
+    expect(tester.widget<IconButton>(find.byType(IconButton)).onPressed, isNotNull);
+  });
 }

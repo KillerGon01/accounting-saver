@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:firebase_ai/firebase_ai.dart';
@@ -98,6 +99,14 @@ class GeminiLlmGateway implements LlmGateway {
         'quota-exceeded',
         message: 'Se ha agotado la cuota gratuita de la IA por ahora. '
             'Inténtalo más tarde o añade el movimiento a mano.',
+      );
+    } on TimeoutException {
+      // Igual que en `GeminiChatGateway._generate`: ya se agotaron el
+      // intento inicial y el único reintento de `withTransientRetry`, cada
+      // uno con su propio `geminiRequestTimeout`.
+      throw const LlmGatewayException(
+        'timeout',
+        message: 'La IA no está disponible ahora mismo.',
       );
     } on FirebaseAIException catch (error) {
       if (isAppCheckAttestationError(error)) {

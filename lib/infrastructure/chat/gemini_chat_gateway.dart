@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_ai/firebase_ai.dart';
 
 import '../../domain/chat/chat_functions.dart';
@@ -169,6 +171,17 @@ class GeminiChatGateway implements ChatGateway {
       throw const LlmGatewayException(
         'quota-exceeded',
         message: 'Se ha agotado la cuota gratuita de la IA por ahora. Inténtalo más tarde.',
+      );
+    } on TimeoutException {
+      // El intento inicial y el único reintento de `withTransientRetry` ya
+      // han superado los dos [geminiRequestTimeout]: no hay más reintentos
+      // aquí. No consume una pregunta de las 8 (el contador solo sube tras
+      // un `sendMessage` que termina con éxito) ni marca ningún modelo como
+      // agotado (eso solo lo hace `withGeminiModelFallback` ante cuota
+      // agotada, nunca ante un timeout).
+      throw const LlmGatewayException(
+        'timeout',
+        message: 'La IA no está disponible ahora mismo.',
       );
     } on FirebaseAIException catch (error) {
       if (isAppCheckAttestationError(error)) {

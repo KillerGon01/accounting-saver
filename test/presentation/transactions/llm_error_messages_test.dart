@@ -18,6 +18,13 @@ void main() {
       expect(message, isNot(contains('PERMISSION_DENIED')));
     });
 
+    test('un timeout se traduce al mensaje de IA no disponible, no al genérico de texto', () {
+      expect(
+        llmErrorMessage(const LlmGatewayException('timeout', message: 'La IA no está disponible ahora mismo.')),
+        'La IA no está disponible ahora mismo.',
+      );
+    });
+
     test('cuota agotada', () {
       expect(
         llmErrorMessage(const LlmGatewayException('quota-exceeded')),

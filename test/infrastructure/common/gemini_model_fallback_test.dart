@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:accounting_saver/domain/common/clock.dart';
 import 'package:accounting_saver/infrastructure/common/gemini_model_fallback.dart';
 import 'package:firebase_ai/firebase_ai.dart';
@@ -142,6 +144,25 @@ void main() {
         throwsA(isA<QuotaExceeded>()),
       );
       expect(tried, isEmpty);
+    });
+
+    test('no reintenta con otro modelo ante un timeout, ni marca el modelo como agotado', () async {
+      final availability = GeminiModelAvailability(clock: FakeClock(DateTime(2026, 10, 9)));
+      final tried = <String>[];
+
+      await expectLater(
+        withGeminiModelFallback(
+          availability: availability,
+          models: const ['gemini-3.8-flash', 'gemini-2.5-flash'],
+          attempt: (model) async {
+            tried.add(model);
+            throw TimeoutException('tardó demasiado');
+          },
+        ),
+        throwsA(isA<TimeoutException>()),
+      );
+      expect(tried, ['gemini-3.8-flash']);
+      expect(availability.isAvailable('gemini-3.8-flash'), isTrue);
     });
 
     test('no reintenta ante un error que no es de cuota', () async {

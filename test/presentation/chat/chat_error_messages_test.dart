@@ -25,6 +25,13 @@ void main() {
       );
     });
 
+    test('un timeout se traduce al mensaje de siempre', () {
+      expect(
+        chatErrorMessage(const LlmGatewayException('timeout', message: 'La IA no está disponible ahora mismo.')),
+        'La IA no está disponible ahora mismo.',
+      );
+    });
+
     test('tope de preguntas de la sesión', () {
       expect(
         chatErrorMessage(const LlmGatewayException('session-limit-reached')),
