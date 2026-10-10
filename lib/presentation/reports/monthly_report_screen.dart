@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app_check_config.dart';
 import '../../domain/reports/monthly_report.dart';
+import '../common/firestore_error_messages.dart';
 import '../theme/app_theme.dart';
 import '../transactions/formatters.dart';
 import '../transactions/transaction_providers.dart';
@@ -176,7 +177,12 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                   error: (error, _) => Center(
                     child: Padding(
                       padding: const EdgeInsets.all(AppSpacing.l),
-                      child: Text('No se pudo calcular el resumen: $error'),
+                      child: Text(
+                        firestoreErrorMessage(
+                          error,
+                          fallback: 'No se pudo calcular el resumen. Inténtalo de nuevo más tarde.',
+                        ),
+                      ),
                     ),
                   ),
                 ),

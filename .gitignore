@@ -53,3 +53,7 @@ android/app/google-services.json
 .firebase/
 
 app_check_debug_token.txt
+
+# Pruebas de firestore.rules (carpeta Node aparte, ver docs/security.md).
+# package-lock.json SÍ se versiona (versión exacta de @firebase/rules-unit-testing).
+firestore-tests/node_modules/

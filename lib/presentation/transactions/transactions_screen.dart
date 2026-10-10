@@ -8,6 +8,7 @@ import '../../domain/transactions/transaction.dart';
 import '../../app_check_config.dart';
 import '../auth/auth_providers.dart';
 import '../chat/chat_screen.dart';
+import '../common/firestore_error_messages.dart';
 import '../profile/profile_screen.dart';
 import '../reports/monthly_report_screen.dart';
 import '../theme/app_theme.dart';
@@ -212,7 +213,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(AppSpacing.m),
                       child: Text(
-                        'No se pudieron cargar los movimientos: $error',
+                        firestoreErrorMessage(
+                          error,
+                          fallback: 'No se pudieron cargar los movimientos. Inténtalo de nuevo más tarde.',
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:accounting_saver/domain/auth/app_user.dart';
 import 'package:accounting_saver/main.dart';
 import 'package:accounting_saver/presentation/auth/auth_providers.dart';
@@ -92,4 +94,41 @@ void main() {
     expect(find.byType(TransactionsScreen), findsOneWidget);
     expect(find.byType(VerifyEmailScreen), findsNothing);
   });
+
+  testWidgets(
+    'no muestra la pantalla de movimientos hasta que termina el refresco completo '
+    '(reload + getIdToken) de reloadUser()',
+    (tester) async {
+      // `FakeAuthRepository.reloadUser()` no modela por separado `reload()`
+      // y `getIdToken(true)` (eso vive dentro de `FirebaseAuthRepository`,
+      // que depende del SDK real y no se puede probar aquí sin un paquete
+      // de mocks nuevo); lo que sí se puede comprobar con un fake, y es lo
+      // que depende el resto de la app, es que `AuthGate` no cambia de
+      // pantalla hasta que la `Future` de `reloadUser()` —que en producción
+      // no se completa hasta terminar las dos llamadas, en ese orden—
+      // termina de verdad. `responseGate` retrasa esa `Future` a propósito.
+      final repository = FakeAuthRepository(initialUser: _passwordUser);
+      await _pumpApp(tester, repository);
+      expect(find.byType(VerifyEmailScreen), findsOneWidget);
+
+      repository.emailVerifiedOnReload = true;
+      final gate = Completer<void>();
+      repository.responseGate = gate.future;
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Ya lo he verificado'));
+      await tester.pump();
+
+      // El refresco todavía no ha terminado: sigue en la pantalla de
+      // verificación, nunca en la de movimientos.
+      expect(repository.reloadCount, 1);
+      expect(find.byType(VerifyEmailScreen), findsOneWidget);
+      expect(find.byType(TransactionsScreen), findsNothing);
+
+      gate.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TransactionsScreen), findsOneWidget);
+      expect(find.byType(VerifyEmailScreen), findsNothing);
+    },
+  );
 }
