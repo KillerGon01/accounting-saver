@@ -25,6 +25,18 @@ void main() {
       );
     });
 
+    test('un modelo no encontrado (404) se traduce al mensaje de IA no disponible, no al genérico de texto', () {
+      final message = llmErrorMessage(
+        const LlmGatewayException(
+          'model-not-found',
+          message: 'models/gemini-2.5-flash is not found for API version v1beta.',
+        ),
+      );
+
+      expect(message, 'La IA no está disponible ahora mismo.');
+      expect(message, isNot(contains('gemini-2.5-flash')));
+    });
+
     test('cuota agotada', () {
       expect(
         llmErrorMessage(const LlmGatewayException('quota-exceeded')),

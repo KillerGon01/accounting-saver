@@ -101,6 +101,18 @@ void main() {
 
       expect(useCase.remainingComments, ExplainMonthlyReport.maxCommentsPerSession);
     });
+
+    test('un modelo no encontrado (404) tampoco consume cupo', () async {
+      final gateway = FakeMonthlyReportGateway.throwing(const LlmGatewayException('model-not-found'));
+      final useCase = ExplainMonthlyReport(gateway);
+
+      await expectLater(
+        useCase(report: reportOf(2026, 10)),
+        throwsA(isA<LlmGatewayException>().having((e) => e.code, 'code', 'model-not-found')),
+      );
+
+      expect(useCase.remainingComments, ExplainMonthlyReport.maxCommentsPerSession);
+    });
   });
 
   group('caché en memoria por mes', () {

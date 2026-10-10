@@ -109,6 +109,12 @@ class GeminiLlmGateway implements LlmGateway {
         message: 'La IA no está disponible ahora mismo.',
       );
     } on FirebaseAIException catch (error) {
+      if (isModelNotFoundError(error)) {
+        throw const LlmGatewayException(
+          'model-not-found',
+          message: 'La IA no está disponible ahora mismo.',
+        );
+      }
       if (isAppCheckAttestationError(error)) {
         throw const LlmGatewayException(
           'app-check-failed',

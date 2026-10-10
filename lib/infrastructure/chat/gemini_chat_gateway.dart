@@ -184,6 +184,16 @@ class GeminiChatGateway implements ChatGateway {
         message: 'La IA no está disponible ahora mismo.',
       );
     } on FirebaseAIException catch (error) {
+      if (isModelNotFoundError(error)) {
+        // Todos los modelos de `withGeminiModelFallback` han devuelto 404
+        // (ninguno existe ya en la API); cada uno ha quedado marcado como
+        // no disponible para el resto de la sesión, sin tocar el contador
+        // de preguntas ni reintentar con el mismo modelo.
+        throw const LlmGatewayException(
+          'model-not-found',
+          message: 'La IA no está disponible ahora mismo.',
+        );
+      }
       if (isAppCheckAttestationError(error)) {
         throw const LlmGatewayException(
           'app-check-failed',

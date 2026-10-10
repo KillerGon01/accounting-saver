@@ -39,6 +39,15 @@ void main() {
       expect(isTransientGeminiError(InvalidApiKey('clave inválida')), isFalse);
     });
 
+    test('un modelo no encontrado (404) no es transitorio: nunca se reintenta con el mismo modelo', () {
+      expect(
+        isTransientGeminiError(
+          ServerException('models/gemini-2.5-flash is not found for API version v1beta.'),
+        ),
+        isFalse,
+      );
+    });
+
     test('un error que no es de firebase_ai no es transitorio', () {
       expect(isTransientGeminiError(StateError('otra cosa')), isFalse);
     });

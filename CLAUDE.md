@@ -37,23 +37,23 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: MVP completo (login, movimientos, lenguaje natural, chat con function calling, datos
-demo, resumen mensual con gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini
-(fallback de modelo, timeout de 90 s sin reintento, reintento único ante 503, topes de 8
-preguntas/3 comentarios, caché, aislamiento por usuario), App Check de producción en web
-(reCAPTCHA Enterprise) e **integración continua** (`.github/workflows/ci.yml`: `analyze_and_test`
-y `build_web`, los dos bloqueantes en `ubuntu-latest`, Flutter 3.47.6 fijado, sin secretos);
-detalles en docs/design.md, docs/testing.md y docs/security.md. Nuevo: `firestore.rules` exige
-`email_verified` en el token (no solo en la interfaz) para leer/escribir movimientos;
-`FirebaseAuthRepository.reloadUser()` ahora hace `reload()` y `getIdToken(true)` en ese orden
-antes de dejar pasar a `TransactionsScreen`; un `permission-denied` de Firestore se traduce a un
-mensaje fijo, nunca al error crudo (`firestore_error_messages.dart`). Pruebas de las reglas
-contra el emulador real (6/6, ver docs/security.md) en `firestore-tests/` (Node aparte, sin
-tocar `pubspec.yaml` ni el CI). **Docker** para servir la web (`Dockerfile` multi-etapa + nginx
-sin privilegios, puerto 8080; ver README.md y docs/design.md): build y contenedor probados de
-verdad (`GET /` 200, fallback de SPA, cabeceras, sin IA por defecto), sin tocar el CI.
-`thinkingConfig` sigue sin aplicarse (riesgo sin forma de probarlo contra Gemini real en este
-entorno).
+Hecho: MVP completo (login con verificación de correo exigida también en `firestore.rules`,
+movimientos, lenguaje natural, chat con function calling, datos demo, resumen mensual con
+gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini (fallback de modelo —incluido un
+404 de modelo retirado, ver abajo—, timeout de 90 s sin reintento, reintento único ante 503,
+topes de 8 preguntas/3 comentarios, caché, aislamiento por usuario), App Check de producción en
+web (reCAPTCHA Enterprise), integración continua (`.github/workflows/ci.yml`, dos jobs
+bloqueantes, Flutter 3.47.6 fijado, sin secretos) y Docker para servir la web (`Dockerfile`
+multi-etapa + nginx sin privilegios, puerto 8080; probado de verdad); detalles en docs/design.md,
+docs/testing.md y docs/security.md. Nuevo: `withGeminiModelFallback` ahora también salta al
+siguiente modelo ante un 404 "is not found for API version..." (los `gemini-2.5-*` están
+anunciados para apagarse en octubre de 2026), marcándolo no disponible para el resto de la
+sesión (sin expirar, a diferencia de la cuota agotada) con `isModelNotFoundError`
+(`gemini_model_fallback.dart`) — nunca se reintenta con el mismo modelo, nunca consume pregunta
+ni comentario, y si todos fallan el mensaje de siempre, nunca el nombre del modelo ni el error
+crudo. Pruebas de `firestore.rules` contra el emulador real (6/6) en `firestore-tests/` (Node
+aparte, sin tocar `pubspec.yaml` ni el CI). `thinkingConfig` sigue sin aplicarse (riesgo sin
+forma de probarlo contra Gemini real en este entorno).
 Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
 Android, revisión visual en navegador, confirmar `thinkingConfig`, CI opcional para
 `firestore-tests/`.
