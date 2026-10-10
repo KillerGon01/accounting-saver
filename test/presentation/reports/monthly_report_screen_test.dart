@@ -87,7 +87,7 @@ void main() {
       expect(find.text('Te quedan 2 comentarios'), findsOneWidget);
     });
 
-    testWidgets('indicador de progreso con avisos a los 10s y 45s, sin bloquear la app', (tester) async {
+    testWidgets('indicador de progreso con avisos a los 10s, 45s y 120s, sin bloquear la app', (tester) async {
       final repository = FakeTransactionRepository();
       await repository.addAll(
         userId: _userId,
@@ -121,6 +121,16 @@ void main() {
         find.text(
           'Generando el comentario... Esto está tardando más de lo normal... '
           'Puede tardar hasta un par de minutos.',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.pump(const Duration(seconds: 75));
+      expect(
+        find.text(
+          'Generando el comentario... Esto está tardando más de lo normal... '
+          'Puede tardar hasta un par de minutos. Sigue en marcha: hoy el servicio está '
+          'lento y puede tardar hasta unos 3 minutos.',
         ),
         findsOneWidget,
       );

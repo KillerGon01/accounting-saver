@@ -11,10 +11,11 @@ import 'chat_providers.dart';
 
 /// Cuándo se añade cada aviso de progreso mientras se espera la respuesta
 /// (ver [_ChatScreenState._send]), sin relación con [geminiRequestTimeout]
-/// (90 s): son solo texto para que la espera no parezca colgada, no un
+/// (150 s): son solo texto para que la espera no parezca colgada, no un
 /// límite de tiempo.
 const _slowReplyWarningDelay = Duration(seconds: 10);
 const _verySlowReplyWarningDelay = Duration(seconds: 45);
+const _extremelySlowReplyWarningDelay = Duration(seconds: 120);
 
 /// Chat con la IA sobre los movimientos del usuario (function calling sobre
 /// Firestore). La conversación solo vive en esta pantalla, en memoria: no
@@ -38,8 +39,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   int? _remainingQuestions;
   Timer? _slowReplyTimer;
   Timer? _verySlowReplyTimer;
+  Timer? _extremelySlowReplyTimer;
   bool _isSlowReply = false;
   bool _isVerySlowReply = false;
+  bool _isExtremelySlowReply = false;
 
   @override
   void initState() {
@@ -51,6 +54,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void dispose() {
     _slowReplyTimer?.cancel();
     _verySlowReplyTimer?.cancel();
+    _extremelySlowReplyTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -68,6 +72,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _isSending = true;
       _isSlowReply = false;
       _isVerySlowReply = false;
+      _isExtremelySlowReply = false;
       _controller.clear();
     });
     _scrollToBottom();
@@ -83,6 +88,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _verySlowReplyTimer = Timer(_verySlowReplyWarningDelay, () {
       if (!mounted || !_isSending) return;
       setState(() => _isVerySlowReply = true);
+    });
+    _extremelySlowReplyTimer = Timer(_extremelySlowReplyWarningDelay, () {
+      if (!mounted || !_isSending) return;
+      setState(() => _isExtremelySlowReply = true);
     });
 
     try {
@@ -101,6 +110,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } finally {
       _slowReplyTimer?.cancel();
       _verySlowReplyTimer?.cancel();
+      _extremelySlowReplyTimer?.cancel();
       final remaining = ref.read(sendChatMessageProvider(widget.userId)).remainingQuestions;
       if (mounted) {
         setState(() {
@@ -120,6 +130,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final parts = ['Consultando tus movimientos...'];
     if (_isSlowReply) parts.add('Esto está tardando más de lo normal...');
     if (_isVerySlowReply) parts.add('Puede tardar hasta un par de minutos.');
+    if (_isExtremelySlowReply) {
+      parts.add('Sigue en marcha: hoy el servicio está lento y puede tardar hasta unos 3 minutos.');
+    }
     return parts.join(' ');
   }
 

@@ -53,7 +53,7 @@ class GeminiMonthlyReportGateway implements MonthlyReportGateway {
     } on TimeoutException {
       // Igual que en `GeminiChatGateway`/`GeminiLlmGateway`: un timeout
       // nunca se reintenta (ver `gemini_transient_retry.dart`), así que
-      // esto sale tras un único intento de 90 s.
+      // esto sale tras un único intento de `geminiRequestTimeout` (150 s).
       throw const LlmGatewayException(
         'timeout',
         message: 'La IA no está disponible ahora mismo.',

@@ -23,7 +23,7 @@ String llmErrorMessage(Object error) {
     // pudo interpretar el texto" (sería engañoso: el problema no es el
     // texto) ni, por supuesto, al JSON crudo del error.
     'app-check-failed' => 'La IA no está disponible ahora mismo.',
-    // Un timeout (90 s, con un reintento) se traduce igual que el fallo de
+    // Un timeout (150 s, sin reintento) se traduce igual que el fallo de
     // App Check: el problema es la disponibilidad de la IA, no el texto
     // del usuario, así que no cae en el genérico de "no se pudo
     // interpretar el texto".

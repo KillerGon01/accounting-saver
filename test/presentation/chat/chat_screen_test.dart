@@ -90,7 +90,7 @@ void main() {
   );
 
   testWidgets(
-    'mientras hay una petición en curso: aviso a los 10s, otro a los 45s, botón y campo desactivados',
+    'mientras hay una petición en curso: avisos a los 10s, 45s y 120s, botón y campo desactivados',
     (tester) async {
       final gateway = FakeChatGateway.pending();
       final container = ProviderContainer(
@@ -126,6 +126,16 @@ void main() {
         find.text(
           'Consultando tus movimientos... Esto está tardando más de lo normal... '
           'Puede tardar hasta un par de minutos.',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.pump(const Duration(seconds: 75));
+      expect(
+        find.text(
+          'Consultando tus movimientos... Esto está tardando más de lo normal... '
+          'Puede tardar hasta un par de minutos. Sigue en marcha: hoy el servicio está '
+          'lento y puede tardar hasta unos 3 minutos.',
         ),
         findsOneWidget,
       );

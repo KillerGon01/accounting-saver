@@ -16,6 +16,7 @@ import 'report_providers.dart';
 
 const _slowReplyWarningDelay = Duration(seconds: 10);
 const _verySlowReplyWarningDelay = Duration(seconds: 45);
+const _extremelySlowReplyWarningDelay = Duration(seconds: 120);
 
 /// Pantalla de resumen mensual: totales, gasto por categoría, comparación
 /// con el mes anterior y, si [showAiComment] lo permite, un comentario de
@@ -44,8 +45,10 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
   int? _remainingComments;
   Timer? _slowReplyTimer;
   Timer? _verySlowReplyTimer;
+  Timer? _extremelySlowReplyTimer;
   bool _isSlowReply = false;
   bool _isVerySlowReply = false;
+  bool _isExtremelySlowReply = false;
 
   @override
   void initState() {
@@ -59,6 +62,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
   void dispose() {
     _slowReplyTimer?.cancel();
     _verySlowReplyTimer?.cancel();
+    _extremelySlowReplyTimer?.cancel();
     super.dispose();
   }
 
@@ -73,6 +77,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       _comment = null;
       _isSlowReply = false;
       _isVerySlowReply = false;
+      _isExtremelySlowReply = false;
     });
   }
 
@@ -81,6 +86,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       _isGenerating = true;
       _isSlowReply = false;
       _isVerySlowReply = false;
+      _isExtremelySlowReply = false;
     });
 
     // Timers, no un `Future.delayed` esperado: no bloquean nada (mismo
@@ -93,6 +99,10 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       if (!mounted || !_isGenerating) return;
       setState(() => _isVerySlowReply = true);
     });
+    _extremelySlowReplyTimer = Timer(_extremelySlowReplyWarningDelay, () {
+      if (!mounted || !_isGenerating) return;
+      setState(() => _isExtremelySlowReply = true);
+    });
 
     try {
       final comment = await ref.read(explainMonthlyReportProvider(widget.userId))(report: report);
@@ -104,6 +114,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
     } finally {
       _slowReplyTimer?.cancel();
       _verySlowReplyTimer?.cancel();
+      _extremelySlowReplyTimer?.cancel();
       final remaining = ref.read(explainMonthlyReportProvider(widget.userId)).remainingComments;
       if (mounted) {
         setState(() {
@@ -118,6 +129,9 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
     final parts = ['Generando el comentario...'];
     if (_isSlowReply) parts.add('Esto está tardando más de lo normal...');
     if (_isVerySlowReply) parts.add('Puede tardar hasta un par de minutos.');
+    if (_isExtremelySlowReply) {
+      parts.add('Sigue en marcha: hoy el servicio está lento y puede tardar hasta unos 3 minutos.');
+    }
     return parts.join(' ');
   }
 
