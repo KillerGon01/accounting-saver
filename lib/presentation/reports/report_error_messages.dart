@@ -23,6 +23,7 @@ String reportErrorMessage(Object error) {
     // sobre "tardando mucho".
     'app-check-failed' => _genericMessage,
     'timeout' => _genericMessage,
+    'model-not-found' => _genericMessage,
     _ => _genericMessage,
   };
 }

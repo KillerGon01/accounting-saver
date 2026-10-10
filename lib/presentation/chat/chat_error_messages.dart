@@ -23,6 +23,10 @@ String chatErrorMessage(Object error) {
     // 'app-check-failed': un timeout (90 s, con un reintento) también se
     // traduce a este mensaje, no a uno distinto sobre "tardando mucho".
     'timeout' => _genericMessage,
+    // Igual: un modelo retirado (404 "is not found for API version...",
+    // ver `isModelNotFoundError`) se traduce a este mismo mensaje, nunca
+    // al nombre del modelo ni al texto crudo del error.
+    'model-not-found' => _genericMessage,
     _ => _genericMessage,
   };
 }

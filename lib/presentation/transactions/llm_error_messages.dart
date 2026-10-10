@@ -28,6 +28,10 @@ String llmErrorMessage(Object error) {
     // del usuario, así que no cae en el genérico de "no se pudo
     // interpretar el texto".
     'timeout' => 'La IA no está disponible ahora mismo.',
+    // Un modelo retirado (404 "is not found for API version...", ver
+    // `isModelNotFoundError`) tampoco es un problema del texto del
+    // usuario: mismo mensaje que el fallo de App Check o el timeout.
+    'model-not-found' => 'La IA no está disponible ahora mismo.',
     _ => _genericMessage,
   };
 }

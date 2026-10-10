@@ -179,6 +179,18 @@ void main() {
 
       expect(sendChatMessage.remainingQuestions, SendChatMessage.maxQuestionsPerSession);
     });
+
+    test('un modelo no encontrado (404) tampoco consume una de las 8 preguntas', () async {
+      final gateway = FakeChatGateway.throwing(const LlmGatewayException('model-not-found'));
+      final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
+
+      await expectLater(
+        sendChatMessage(userId: userId, history: const [], message: '¿Cuánto gasté?'),
+        throwsA(isA<LlmGatewayException>().having((e) => e.code, 'code', 'model-not-found')),
+      );
+
+      expect(sendChatMessage.remainingQuestions, SendChatMessage.maxQuestionsPerSession);
+    });
   });
 
   group('caché en memoria', () {

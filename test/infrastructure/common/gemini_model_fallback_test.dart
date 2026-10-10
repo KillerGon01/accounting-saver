@@ -49,6 +49,42 @@ void main() {
       clock.advance(const Duration(minutes: 2));
       expect(availability.isAvailable('gemini-3.8-flash'), isTrue);
     });
+
+    test('un modelo marcado como no disponible para la sesión no vuelve a estar disponible', () {
+      final clock = _MutableClock(DateTime(2026, 10, 9, 12));
+      final availability = GeminiModelAvailability(clock: clock);
+
+      availability.markUnavailableForSession('gemini-2.5-flash');
+      expect(availability.isAvailable('gemini-2.5-flash'), isFalse);
+
+      // A diferencia de `markExhausted`, no expira con el tiempo: una
+      // hora, un día, lo que sea, sigue sin estar disponible.
+      clock.advance(const Duration(days: 1));
+      expect(availability.isAvailable('gemini-2.5-flash'), isFalse);
+    });
+  });
+
+  group('isModelNotFoundError', () {
+    test('un 404 "is not found for API version..." lo es', () {
+      final error = ServerException(
+        'models/gemini-2.5-flash is not found for API version v1beta, or is not '
+        'supported for generateContent. Call ListModels to see the list of available '
+        'models and their supported methods.',
+      );
+      expect(isModelNotFoundError(error), isTrue);
+    });
+
+    test('la cuota agotada no lo es (lo gestiona el fallback de cuota)', () {
+      expect(isModelNotFoundError(QuotaExceeded('Quota exceeded')), isFalse);
+    });
+
+    test('otro FirebaseAIException sin ese texto no lo es', () {
+      expect(isModelNotFoundError(InvalidApiKey('clave inválida')), isFalse);
+    });
+
+    test('un error que no es de firebase_ai no lo es', () {
+      expect(isModelNotFoundError(StateError('otra cosa')), isFalse);
+    });
   });
 
   group('withGeminiModelFallback', () {
@@ -163,6 +199,118 @@ void main() {
       );
       expect(tried, ['gemini-3.8-flash']);
       expect(availability.isAvailable('gemini-3.8-flash'), isTrue);
+    });
+
+    test('404 en el primer modelo: pasa al siguiente y responde bien', () async {
+      final availability = GeminiModelAvailability(clock: FakeClock(DateTime(2026, 10, 9)));
+      final tried = <String>[];
+
+      final result = await withGeminiModelFallback(
+        availability: availability,
+        models: const ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+        attempt: (model) async {
+          tried.add(model);
+          if (model == 'gemini-2.5-flash') {
+            throw ServerException(
+              'models/gemini-2.5-flash is not found for API version v1beta, or is not '
+              'supported for generateContent.',
+            );
+          }
+          return 'respuesta de $model';
+        },
+      );
+
+      expect(result, 'respuesta de gemini-2.5-flash-lite');
+      expect(tried, ['gemini-2.5-flash', 'gemini-2.5-flash-lite']);
+      // Marcado para toda la sesión (no 1 hora como `markExhausted`): no
+      // hay fecha de la que "volver a estar disponible".
+      expect(availability.isAvailable('gemini-2.5-flash'), isFalse);
+      expect(availability.isAvailable('gemini-2.5-flash-lite'), isTrue);
+    });
+
+    test('404 en todos los modelos: relanza el error del último, todos quedan marcados', () async {
+      final availability = GeminiModelAvailability(clock: FakeClock(DateTime(2026, 10, 9)));
+      final tried = <String>[];
+
+      await expectLater(
+        withGeminiModelFallback(
+          availability: availability,
+          models: const ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+          attempt: (model) async {
+            tried.add(model);
+            throw ServerException('models/$model is not found for API version v1beta.');
+          },
+        ),
+        throwsA(isA<ServerException>()),
+      );
+
+      expect(tried, ['gemini-2.5-flash', 'gemini-2.5-flash-lite']);
+      expect(availability.isAvailable('gemini-2.5-flash'), isFalse);
+      expect(availability.isAvailable('gemini-2.5-flash-lite'), isFalse);
+    });
+
+    test('429 en el primero y 404 en el segundo: cada causa queda marcada con su propio mecanismo', () async {
+      final availability = GeminiModelAvailability(clock: FakeClock(DateTime(2026, 10, 9)));
+      final tried = <String>[];
+
+      final result = await withGeminiModelFallback(
+        availability: availability,
+        models: const ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+        attempt: (model) async {
+          tried.add(model);
+          switch (model) {
+            case 'gemini-3.8-flash':
+              throw QuotaExceeded('Quota exceeded');
+            case 'gemini-2.5-flash':
+              throw ServerException(
+                'models/gemini-2.5-flash is not found for API version v1beta.',
+              );
+            default:
+              return 'respuesta de $model';
+          }
+        },
+      );
+
+      expect(result, 'respuesta de gemini-2.5-flash-lite');
+      expect(tried, ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']);
+      expect(availability.isAvailable('gemini-3.8-flash'), isFalse);
+      expect(availability.isAvailable('gemini-2.5-flash'), isFalse);
+      expect(availability.isAvailable('gemini-2.5-flash-lite'), isTrue);
+    });
+
+    test('un modelo no disponible por 404 no se vuelve a intentar en una llamada posterior', () async {
+      final availability = GeminiModelAvailability(clock: FakeClock(DateTime(2026, 10, 9)));
+      final firstAttemptTried = <String>[];
+
+      await withGeminiModelFallback(
+        availability: availability,
+        models: const ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+        attempt: (model) async {
+          firstAttemptTried.add(model);
+          if (model == 'gemini-2.5-flash') {
+            throw ServerException(
+              'models/gemini-2.5-flash is not found for API version v1beta.',
+            );
+          }
+          return 'ok';
+        },
+      );
+      expect(firstAttemptTried, ['gemini-2.5-flash', 'gemini-2.5-flash-lite']);
+
+      // Una petición nueva (otra pregunta, otro movimiento...) con la misma
+      // `availability`: ya no debería ni intentar el modelo marcado.
+      final secondAttemptTried = <String>[];
+      final result = await withGeminiModelFallback(
+        availability: availability,
+        models: const ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+        attempt: (model) async {
+          secondAttemptTried.add(model);
+          return 'respuesta de $model';
+        },
+      );
+
+      expect(result, 'respuesta de gemini-2.5-flash-lite');
+      expect(secondAttemptTried, ['gemini-2.5-flash-lite']);
     });
 
     test('no reintenta ante un error que no es de cuota', () async {
