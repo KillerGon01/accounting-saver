@@ -9,6 +9,7 @@ import '../../app_check_config.dart';
 import '../auth/auth_providers.dart';
 import '../chat/chat_screen.dart';
 import '../profile/profile_screen.dart';
+import '../reports/monthly_report_screen.dart';
 import '../theme/app_theme.dart';
 import 'category_style.dart';
 import 'day_groups.dart';
@@ -124,6 +125,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
+  void _openMonthlyReport() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => MonthlyReportScreen(userId: widget.userId)),
+    );
+  }
+
   void _openProfile() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const ProfileScreen()),
@@ -155,6 +162,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             tooltip: 'Cargar datos de ejemplo',
             onPressed: _isLoadingDemo ? null : _loadDemoData,
             icon: const Icon(Icons.dataset_outlined),
+          ),
+          IconButton(
+            tooltip: 'Resumen del mes',
+            onPressed: _openMonthlyReport,
+            icon: const Icon(Icons.insights_outlined),
           ),
           if (effectiveEnableAi)
             IconButton(
