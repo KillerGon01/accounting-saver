@@ -20,7 +20,7 @@ String chatErrorMessage(Object error) {
     // este mensaje, nunca al JSON crudo del error.
     'app-check-failed' => _genericMessage,
     // Mismo texto que el genérico, explícito por la misma razón que
-    // 'app-check-failed': un timeout (90 s, con un reintento) también se
+    // 'app-check-failed': un timeout (150 s, sin reintento) también se
     // traduce a este mensaje, no a uno distinto sobre "tardando mucho".
     'timeout' => _genericMessage,
     // Igual: un modelo retirado (404 "is not found for API version...",

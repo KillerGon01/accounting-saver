@@ -8,16 +8,20 @@ const geminiTransientRetryDelay = Duration(milliseconds: 1500);
 
 /// Tope de tiempo para una sola llamada a `generateContent`, único sitio
 /// donde se define este valor (ver [withTransientRetry], que lo aplica a
-/// cada intento). 90 s porque la latencia observada en la web desplegada
-/// (nivel gratuito de Gemini) supera el minuto. Un timeout NUNCA se
-/// reintenta (ver [isTransientGeminiError]): el cliente no puede cancelar
-/// la petición ya enviada al servidor (`.timeout()` solo deja de esperar
-/// en el cliente, ver la limitación documentada en docs/design.md), así
-/// que reintentar duplicaría una petición que podría seguir procesándose
-/// en el backend, gastando el doble de cuota por una sola pregunta. El
-/// peor caso antes de "La IA no está disponible ahora mismo" ante un
-/// timeout es, por tanto, un único tiempo de espera de este valor, no dos.
-const geminiRequestTimeout = Duration(seconds: 90);
+/// cada intento). 150 s: la latencia observada de verdad en la web
+/// desplegada (Gemini 3.8 Flash, nivel gratuito) llegó a 84 s en una
+/// llamada y 108 s en otra — con el valor anterior (90 s), la segunda
+/// habría cortado una respuesta que Google sí iba a entregar, mostrando
+/// "La IA no está disponible ahora mismo" sin que hubiera ningún fallo
+/// real (ver docs/design.md). Un timeout NUNCA se reintenta (ver
+/// [isTransientGeminiError]): el cliente no puede cancelar la petición ya
+/// enviada al servidor (`.timeout()` solo deja de esperar en el cliente,
+/// ver la limitación documentada en docs/design.md), así que reintentar
+/// duplicaría una petición que podría seguir procesándose en el backend,
+/// gastando el doble de cuota por una sola pregunta. El peor caso antes de
+/// "La IA no está disponible ahora mismo" ante un timeout es, por tanto,
+/// un único tiempo de espera de este valor, no dos.
+const geminiRequestTimeout = Duration(seconds: 150);
 
 /// Si [error] es un fallo transitorio —temporal, no de cuota— al generar
 /// contenido: un 503, `UNAVAILABLE` o "Deadline expired" que el propio
