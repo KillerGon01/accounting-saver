@@ -1,0 +1,4 @@
+# Claves de cliente de Firebase (lib/firebase_options.dart): públicas por diseño.
+# La seguridad la dan las reglas de Firestore, Auth y App Check. Ver docs/security.md.
+11cbd941e466345721e7a415507c80e23c8de938:lib/firebase_options.dart:gcp-api-key:53
+11cbd941e466345721e7a415507c80e23c8de938:lib/firebase_options.dart:gcp-api-key:62
