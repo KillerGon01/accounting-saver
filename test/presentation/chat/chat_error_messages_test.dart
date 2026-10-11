@@ -51,6 +51,24 @@ void main() {
       );
     });
 
+    test('un "service-error" sin clasificar cae en el mensaje genérico, nunca en el texto crudo del error', () {
+      // El mismo "message" que de verdad devolvió Gemini para un modelo
+      // retirado para proyectos nuevos, antes de clasificarlo (ver
+      // `isModelNotFoundError`): aquí se comprueba que, aunque llegara sin
+      // clasificar, `chatErrorMessage` nunca lo traslada a la interfaz.
+      final message = chatErrorMessage(
+        const LlmGatewayException(
+          'service-error',
+          message: 'Error de la IA: This model models/gemini-2.5-flash-lite is no longer available '
+              'to new users. Please update your code to use models/gemini-3.5-flash-lite.',
+        ),
+      );
+
+      expect(message, 'La IA no está disponible ahora mismo.');
+      expect(message, isNot(contains('gemini-2.5-flash-lite')));
+      expect(message, isNot(contains('{')));
+    });
+
     test('un código desconocido cae en el mensaje genérico', () {
       expect(
         chatErrorMessage(const LlmGatewayException('codigo-que-no-existe')),

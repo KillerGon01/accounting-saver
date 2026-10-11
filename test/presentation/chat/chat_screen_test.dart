@@ -61,7 +61,7 @@ void main() {
       await _ask(tester, '¿Cuánto gasté?');
 
       expect(find.text('Respuesta del modelo'), findsOneWidget);
-      expect(find.text('Te quedan 7 preguntas'), findsOneWidget);
+      expect(find.text('Te quedan 19 preguntas'), findsOneWidget);
       expect(gateway.callCount, 1);
 
       // "Cierre de sesión y entrada de usuario B": la app real nunca
@@ -76,8 +76,8 @@ void main() {
       expect(find.text('¿Cuánto gasté?'), findsNothing);
       expect(find.text('Respuesta del modelo'), findsNothing);
 
-      // Contador de B a cero gastado (las 8 enteras disponibles).
-      expect(find.text('Te quedan 8 preguntas'), findsOneWidget);
+      // Contador de B a cero gastado (las 20 enteras disponibles).
+      expect(find.text('Te quedan 20 preguntas'), findsOneWidget);
 
       // La misma pregunta de B no debe devolver la respuesta cacheada de
       // A: tiene que volver a llamar al gateway (callCount sube a 2).
@@ -85,7 +85,7 @@ void main() {
 
       expect(find.text('Respuesta del modelo'), findsOneWidget);
       expect(gateway.callCount, 2);
-      expect(find.text('Te quedan 7 preguntas'), findsOneWidget);
+      expect(find.text('Te quedan 19 preguntas'), findsOneWidget);
     },
   );
 
@@ -110,7 +110,7 @@ void main() {
       expect(tester.widget<IconButton>(find.byType(IconButton)).onPressed, isNull);
       expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
       // El contador aún no ha bajado: la petición no ha terminado.
-      expect(find.text('Te quedan 8 preguntas'), findsOneWidget);
+      expect(find.text('Te quedan 20 preguntas'), findsOneWidget);
 
       await tester.pump(const Duration(seconds: 10));
       expect(
@@ -119,7 +119,7 @@ void main() {
       );
       // Sigue sin bloquear el resto de la app: el contador se puede seguir
       // leyendo con normalidad.
-      expect(find.text('Te quedan 8 preguntas'), findsOneWidget);
+      expect(find.text('Te quedan 20 preguntas'), findsOneWidget);
 
       await tester.pump(const Duration(seconds: 35));
       expect(
@@ -144,7 +144,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Respuesta tras la espera'), findsOneWidget);
-      expect(find.text('Te quedan 7 preguntas'), findsOneWidget);
+      expect(find.text('Te quedan 19 preguntas'), findsOneWidget);
       expect(tester.widget<IconButton>(find.byType(IconButton)).onPressed, isNotNull);
       expect(tester.widget<TextField>(find.byType(TextField)).enabled, isTrue);
     },
@@ -171,7 +171,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('La IA no está disponible ahora mismo.'), findsOneWidget);
-    expect(find.text('Te quedan 8 preguntas'), findsOneWidget);
+    expect(find.text('Te quedan 20 preguntas'), findsOneWidget);
     expect(tester.widget<IconButton>(find.byType(IconButton)).onPressed, isNotNull);
   });
 }

@@ -125,22 +125,25 @@ void main() {
       expect(gateway.callCount, callsBeforeLimit);
     });
 
-    test('tras 8 respuestas con éxito, la novena se bloquea aunque sea una pregunta nueva', () async {
-      final gateway = FakeChatGateway.returning('ok');
-      final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
+    test(
+      'tras maxQuestionsPerSession respuestas con éxito, la siguiente se bloquea aunque sea una pregunta nueva',
+      () async {
+        final gateway = FakeChatGateway.returning('ok');
+        final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
 
-      for (var i = 0; i < 8; i++) {
-        await sendChatMessage(userId: userId, history: const [], message: 'pregunta $i');
-      }
+        for (var i = 0; i < SendChatMessage.maxQuestionsPerSession; i++) {
+          await sendChatMessage(userId: userId, history: const [], message: 'pregunta $i');
+        }
 
-      expect(sendChatMessage.remainingQuestions, 0);
-      await expectLater(
-        sendChatMessage(userId: userId, history: const [], message: 'pregunta 9'),
-        throwsA(isA<LlmGatewayException>().having((e) => e.code, 'code', 'session-limit-reached')),
-      );
-    });
+        expect(sendChatMessage.remainingQuestions, 0);
+        await expectLater(
+          sendChatMessage(userId: userId, history: const [], message: 'una más'),
+          throwsA(isA<LlmGatewayException>().having((e) => e.code, 'code', 'session-limit-reached')),
+        );
+      },
+    );
 
-    test('una respuesta servida desde la caché no consume una de las 8 preguntas', () async {
+    test('una respuesta servida desde la caché no consume una de las preguntas de la sesión', () async {
       final gateway = FakeChatGateway.returning('ok');
       final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
 
@@ -154,7 +157,7 @@ void main() {
       expect(sendChatMessage.remainingQuestions, SendChatMessage.maxQuestionsPerSession - 1);
     });
 
-    test('una pregunta que acaba en error no consume una de las 8 preguntas', () async {
+    test('una pregunta que acaba en error no consume una de las preguntas de la sesión', () async {
       final gateway = FakeChatGateway.throwing(const LlmGatewayException('quota-exceeded'));
       final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
 
@@ -168,7 +171,7 @@ void main() {
       expect(sendChatMessage.remainingQuestions, SendChatMessage.maxQuestionsPerSession);
     });
 
-    test('un timeout tampoco consume una de las 8 preguntas', () async {
+    test('un timeout tampoco consume una de las preguntas de la sesión', () async {
       final gateway = FakeChatGateway.throwing(const LlmGatewayException('timeout'));
       final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
 
@@ -180,7 +183,7 @@ void main() {
       expect(sendChatMessage.remainingQuestions, SendChatMessage.maxQuestionsPerSession);
     });
 
-    test('un modelo no encontrado (404) tampoco consume una de las 8 preguntas', () async {
+    test('un modelo no encontrado (404) tampoco consume una de las preguntas de la sesión', () async {
       final gateway = FakeChatGateway.throwing(const LlmGatewayException('model-not-found'));
       final sendChatMessage = SendChatMessage(gateway, TransactionChatFunctions(FakeTransactionRepository()));
 

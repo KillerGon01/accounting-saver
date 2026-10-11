@@ -29,9 +29,16 @@ class SendChatMessage {
   /// provider que la crea), para acotar cuánta cuota gratuita puede gastar
   /// una sola sesión de chat. Solo cuenta una llamada al modelo que termina
   /// con éxito: ni una respuesta servida desde la caché ni una que acaba en
-  /// error (red, cuota, 503, respuesta malformada...) gastan una de las 8,
+  /// error (red, cuota, 503, respuesta malformada...) gastan una de las 20,
   /// porque ninguna de las dos gasta cuota de verdad.
-  static const maxQuestionsPerSession = 8;
+  ///
+  /// 20, no 8: con `gemini-3.5-flash-lite` como primer modelo del
+  /// fallback (ver `geminiModelFallbacks`), el cupo diario observado de
+  /// verdad el 11/10/2026 es 500 peticiones/día (y 15/min), muy por encima
+  /// de lo que una sola sesión de chat puede gastar; 8 era conservador
+  /// para el cupo mucho más bajo de `gemini-3.8-flash` (20/día). Ver
+  /// docs/design.md.
+  static const maxQuestionsPerSession = 20;
 
   final ChatGateway _chatGateway;
   final TransactionChatFunctions _functions;

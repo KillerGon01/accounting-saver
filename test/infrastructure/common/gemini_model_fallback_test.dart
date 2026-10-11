@@ -74,6 +74,21 @@ void main() {
       expect(isModelNotFoundError(error), isTrue);
     });
 
+    test('un 404 "no longer available to new users..." también lo es', () {
+      // Mensaje real devuelto por Gemini para un modelo retirado para
+      // proyectos nuevos (gemini-2.5-flash-lite), antes de que la API lo
+      // retire del todo con el otro mensaje de arriba. `ServerException`
+      // no expone el código HTTP (404) ni el "status" ("NOT_FOUND") del
+      // cuerpo del error (ver el comentario de `isModelNotFoundError`),
+      // solo este texto.
+      final error = ServerException(
+        'This model models/gemini-2.5-flash-lite is no longer available to new users. '
+        'Please update your code to use models/gemini-3.5-flash-lite before you make '
+        'additional requests to the Gemini API.',
+      );
+      expect(isModelNotFoundError(error), isTrue);
+    });
+
     test('la cuota agotada no lo es (lo gestiona el fallback de cuota)', () {
       expect(isModelNotFoundError(QuotaExceeded('Quota exceeded')), isFalse);
     });
@@ -277,6 +292,74 @@ void main() {
       expect(availability.isAvailable('gemini-2.5-flash'), isFalse);
       expect(availability.isAvailable('gemini-2.5-flash-lite'), isTrue);
     });
+
+    test(
+      '404 "no longer available to new users...": pasa al siguiente modelo y responde bien',
+      () async {
+        final availability = GeminiModelAvailability(clock: FakeClock(DateTime(2026, 10, 9)));
+        final tried = <String>[];
+
+        final result = await withGeminiModelFallback(
+          availability: availability,
+          models: const ['gemini-2.5-flash-lite', 'gemini-3.5-flash-lite'],
+          attempt: (model) async {
+            tried.add(model);
+            if (model == 'gemini-2.5-flash-lite') {
+              throw ServerException(
+                'This model models/gemini-2.5-flash-lite is no longer available to new '
+                'users. Please update your code to use models/gemini-3.5-flash-lite.',
+              );
+            }
+            return 'respuesta de $model';
+          },
+        );
+
+        expect(result, 'respuesta de gemini-3.5-flash-lite');
+        expect(tried, ['gemini-2.5-flash-lite', 'gemini-3.5-flash-lite']);
+        // Marcado para toda la sesión, igual que el otro mensaje de 404.
+        expect(availability.isAvailable('gemini-2.5-flash-lite'), isFalse);
+        expect(availability.isAvailable('gemini-3.5-flash-lite'), isTrue);
+      },
+    );
+
+    test(
+      'un modelo marcado por "no longer available..." no se vuelve a intentar en una llamada posterior',
+      () async {
+        final availability = GeminiModelAvailability(clock: FakeClock(DateTime(2026, 10, 9)));
+        final firstAttemptTried = <String>[];
+
+        await withGeminiModelFallback(
+          availability: availability,
+          models: const ['gemini-2.5-flash-lite', 'gemini-3.5-flash-lite'],
+          attempt: (model) async {
+            firstAttemptTried.add(model);
+            if (model == 'gemini-2.5-flash-lite') {
+              throw ServerException(
+                'This model models/gemini-2.5-flash-lite is no longer available to new '
+                'users. Please update your code to use models/gemini-3.5-flash-lite.',
+              );
+            }
+            return 'ok';
+          },
+        );
+        expect(firstAttemptTried, ['gemini-2.5-flash-lite', 'gemini-3.5-flash-lite']);
+
+        // Una petición nueva con la misma `availability`: el modelo
+        // marcado por este mensaje no debería ni intentarse.
+        final secondAttemptTried = <String>[];
+        final result = await withGeminiModelFallback(
+          availability: availability,
+          models: const ['gemini-2.5-flash-lite', 'gemini-3.5-flash-lite'],
+          attempt: (model) async {
+            secondAttemptTried.add(model);
+            return 'respuesta de $model';
+          },
+        );
+
+        expect(result, 'respuesta de gemini-3.5-flash-lite');
+        expect(secondAttemptTried, ['gemini-3.5-flash-lite']);
+      },
+    );
 
     test('un modelo no disponible por 404 no se vuelve a intentar en una llamada posterior', () async {
       final availability = GeminiModelAvailability(clock: FakeClock(DateTime(2026, 10, 9)));

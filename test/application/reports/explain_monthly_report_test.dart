@@ -42,28 +42,31 @@ void main() {
   });
 
   group('tope de comentarios por sesión', () {
-    test('permite hasta maxCommentsPerSession (3) con éxito', () async {
+    test('permite hasta maxCommentsPerSession con éxito', () async {
       final gateway = FakeMonthlyReportGateway.returning('ok');
       final useCase = ExplainMonthlyReport(gateway);
 
-      await useCase(report: reportOf(2026, 10));
-      await useCase(report: reportOf(2026, 9));
-      await useCase(report: reportOf(2026, 8));
+      // Un mes distinto por llamada: cada uno es una entrada de caché
+      // distinta, así que ninguna llamada acierta en caché y las
+      // `maxCommentsPerSession` cuentan todas como comentarios generados.
+      for (var i = 0; i < ExplainMonthlyReport.maxCommentsPerSession; i++) {
+        await useCase(report: reportOf(2026, 12 - i));
+      }
 
       expect(useCase.remainingComments, 0);
     });
 
-    test('rechaza el cuarto comentario sin llamar al gateway', () async {
+    test('rechaza el siguiente comentario tras el tope, sin llamar al gateway', () async {
       final gateway = FakeMonthlyReportGateway.returning('ok');
       final useCase = ExplainMonthlyReport(gateway);
 
-      await useCase(report: reportOf(2026, 10));
-      await useCase(report: reportOf(2026, 9));
-      await useCase(report: reportOf(2026, 8));
+      for (var i = 0; i < ExplainMonthlyReport.maxCommentsPerSession; i++) {
+        await useCase(report: reportOf(2026, 12 - i));
+      }
       final callsBeforeLimit = gateway.callCount;
 
       await expectLater(
-        useCase(report: reportOf(2026, 7)),
+        useCase(report: reportOf(2025, 12)),
         throwsA(isA<LlmGatewayException>().having((e) => e.code, 'code', 'comment-limit-reached')),
       );
       expect(gateway.callCount, callsBeforeLimit);

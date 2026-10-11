@@ -76,7 +76,7 @@ void main() {
       await _pump(tester, container, showAiComment: true);
 
       expect(find.text('Generar comentario con IA'), findsOneWidget);
-      expect(find.text('Te quedan 3 comentarios'), findsOneWidget);
+      expect(find.text('Te quedan 6 comentarios'), findsOneWidget);
 
       await tester.ensureVisible(find.text('Generar comentario con IA'));
       await tester.pumpAndSettle();
@@ -84,7 +84,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Has gastado 20,00 € en ocio este mes.'), findsOneWidget);
-      expect(find.text('Te quedan 2 comentarios'), findsOneWidget);
+      expect(find.text('Te quedan 5 comentarios'), findsOneWidget);
     });
 
     testWidgets('indicador de progreso con avisos a los 10s, 45s y 120s, sin bloquear la app', (tester) async {
