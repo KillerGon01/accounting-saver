@@ -9,9 +9,8 @@ import '../../domain/common/clock.dart';
 /// [GeminiModelAvailability], la misma memoria de qué modelo está agotado:
 /// los dos gastan la misma cuota diaria del proyecto.
 const geminiModelFallbacks = <String>[
+  'gemini-3.5-flash-lite',
   'gemini-3.8-flash',
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
 ];
 
 /// Cuánto se recuerda que un modelo está agotado antes de volver a probarlo.

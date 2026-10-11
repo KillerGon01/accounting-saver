@@ -192,6 +192,30 @@ void main() {
       expect(report.isCurrentMonth, isFalse);
       expect(report.elapsedDays, isNull);
     });
+
+    test('el parámetro now, si se pasa, decide isCurrentMonth/elapsedDays en vez del Clock', () async {
+      // Lo usa TransactionChatFunctions (getCategoryBreakdown/compareMonths),
+      // que ya tiene un `now` resuelto por petición y no quiere un segundo
+      // reloj con el mismo propósito; el Clock del constructor (aquí, a
+      // propósito, con un mes distinto) debe quedar sin usar.
+      final repository = FakeTransactionRepository();
+      final useCase = BuildMonthlyReport(repository, FakeClock(DateTime(2099, 1, 1)));
+
+      final report = await useCase(userId: userId, year: 2026, month: 10, now: DateTime(2026, 10, 20));
+
+      expect(report.isCurrentMonth, isTrue);
+      expect(report.elapsedDays, 20);
+    });
+
+    test('sin now, se sigue usando el Clock del constructor (comportamiento sin cambios)', () async {
+      final repository = FakeTransactionRepository();
+      final useCase = BuildMonthlyReport(repository, FakeClock(DateTime(2026, 10, 15)));
+
+      final report = await useCase(userId: userId, year: 2026, month: 10);
+
+      expect(report.isCurrentMonth, isTrue);
+      expect(report.elapsedDays, 15);
+    });
   });
 
   group('tope de movimientos leídos', () {

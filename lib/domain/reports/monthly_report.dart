@@ -116,3 +116,49 @@ class CategoryComparison {
   final int deltaCents;
   final double? deltaPercent;
 }
+
+/// Compara el gasto por categoría de dos meses ya calculados (por
+/// [BuildMonthlyReport] o equivalente): `currentBreakdown` es el mes que se
+/// evalúa, `previousBreakdown` el mes base de la comparación (el que
+/// aparece como "antes" o "frente a" en el resultado).
+///
+/// Pura: solo depende del desglose y el total ya agregados de cada mes, no
+/// de las transacciones originales. Así una sola función sirve tanto para
+/// "este mes contra el anterior" (la comparación que ya incluye
+/// [BuildMonthlyReport] en cada informe) como para comparar dos meses
+/// cualesquiera (ver `CompareMonths` del chat, en
+/// `TransactionChatFunctions`), sin duplicar la aritmética de céntimos en
+/// dos sitios.
+MonthlyComparison compareCategoryBreakdowns({
+  required List<CategoryExpense> currentBreakdown,
+  required int currentExpenseCents,
+  required List<CategoryExpense> previousBreakdown,
+  required int previousExpenseCents,
+}) {
+  final currentByCategory = {for (final expense in currentBreakdown) expense.category: expense.amountCents};
+  final previousByCategory = {for (final expense in previousBreakdown) expense.category: expense.amountCents};
+  final categories = {...currentByCategory.keys, ...previousByCategory.keys};
+
+  final perCategoryDeltas = {
+    for (final category in categories)
+      category: _compareCategoryAmount(currentByCategory[category] ?? 0, previousByCategory[category] ?? 0),
+  };
+
+  final expenseDeltaCents = currentExpenseCents - previousExpenseCents;
+  return MonthlyComparison(
+    previousExpenseCents: previousExpenseCents,
+    expenseDeltaCents: expenseDeltaCents,
+    expenseDeltaPercent: previousExpenseCents == 0 ? null : expenseDeltaCents / previousExpenseCents * 100,
+    perCategoryDeltas: perCategoryDeltas,
+  );
+}
+
+CategoryComparison _compareCategoryAmount(int currentAmountCents, int previousAmountCents) {
+  final deltaCents = currentAmountCents - previousAmountCents;
+  return CategoryComparison(
+    currentAmountCents: currentAmountCents,
+    previousAmountCents: previousAmountCents,
+    deltaCents: deltaCents,
+    deltaPercent: previousAmountCents == 0 ? null : deltaCents / previousAmountCents * 100,
+  );
+}
