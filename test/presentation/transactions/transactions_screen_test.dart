@@ -74,7 +74,7 @@ void main() {
   });
 
   group('pantalla pequeña con el teclado abierto', () {
-    Future<void> _withKeyboard(
+    Future<void> withKeyboard(
       WidgetTester tester,
       Size size,
       Future<void> Function() body,
@@ -91,7 +91,7 @@ void main() {
       testWidgets(
         'estado vacío sin desbordamiento en ${size.width.toInt()}x${size.height.toInt()} con teclado',
         (tester) async {
-          await _withKeyboard(tester, size, () async {
+          await withKeyboard(tester, size, () async {
             await _pump(tester, FakeTransactionRepository());
 
             expect(find.text('No hay movimientos este mes'), findsOneWidget);
@@ -119,7 +119,7 @@ void main() {
             ),
           );
 
-          await _withKeyboard(tester, size, () async {
+          await withKeyboard(tester, size, () async {
             await _pump(tester, repository);
 
             expect(find.text('Cena'), findsOneWidget);

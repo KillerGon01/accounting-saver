@@ -194,6 +194,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<Category>(
                     initialValue: _category,
+                    isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Categoría'),
                     items: [
                       for (final category in Category.values)
@@ -203,7 +204,9 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                             children: [
                               Icon(category.icon, color: category.color, size: 20),
                               const SizedBox(width: AppSpacing.s),
-                              Text(category.label),
+                              Flexible(
+                                child: Text(category.label, overflow: TextOverflow.ellipsis),
+                              ),
                             ],
                           ),
                         ),

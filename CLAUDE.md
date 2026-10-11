@@ -40,15 +40,17 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 Hecho: MVP completo (login, movimientos, lenguaje natural, chat con function calling, datos
 demo, resumen mensual con gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini, App
 Check de producción en web, CI y Docker para la web; detalles en docs/design.md, docs/testing.md
-y docs/security.md. Nuevo: en Android, con pantallas pequeñas y el teclado abierto, el estado
-vacío de movimientos y el de chat (`_EmptyMonth`/`_EmptyChat`, ambos `Center > Column` de tamaño
-fijo bajo un `Expanded`) desbordaban porque el `Scaffold` ya encoge el `body` con
-`resizeToAvoidBottomInset` pero su contenido no cedía; ahora ambos van en
-`LayoutBuilder + SingleChildScrollView + ConstrainedBox(minHeight: ...)`, igual se ven
-centrados con espacio de sobra y se vuelven desplazables cuando no cabe. Login, formulario de
-movimiento y borrado de cuenta ya usaban `SingleChildScrollView` y no tenían el problema; resumen
-mensual no tiene campo de texto. Tests nuevos a 360x640 y 407x904 con `viewInsets.bottom` de
-300 px simulado, con mes vacío/con datos y chat vacío/con mensajes.
+y docs/security.md. Nuevo: dos desbordamientos de layout en Android con pantallas pequeñas. (1)
+Vertical con el teclado abierto: el estado vacío de movimientos y el de chat (`Center > Column`
+de tamaño fijo bajo un `Expanded`) no cedían cuando el `Scaffold` encogía el `body`
+(`resizeToAvoidBottomInset`); ahora van en `LayoutBuilder + SingleChildScrollView +
+ConstrainedBox(minHeight: ...)`. (2) Horizontal en el resumen mensual: la fila "Comparación con
+el mes anterior" + "(parcial, mes en curso)" no cedía (ahora `Wrap`); y el desplegable de
+categoría del formulario de movimiento desbordaba porque su `Row` (icono + etiqueta) no tenía
+`isExpanded: true` en el `DropdownButtonFormField` (sin él, el `Row` interno de cada item se
+mide con ancho no acotado y ni `Expanded` ni `Flexible` son válidos ahí). Tests nuevos: teclado
+simulado (`viewInsets.bottom`) para los estados vacíos, y `textScaler` 1.3 con texto largo para
+resumen mensual, chat, formulario, login y registro, ambos a 360x640 y 407x904.
 Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
 Android, revisión visual en navegador, confirmar `thinkingConfig`, CI opcional para
 `firestore-tests/`.
