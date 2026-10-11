@@ -44,6 +44,21 @@ void main() {
       );
     });
 
+    test('un "service-error" sin clasificar cae en el genérico, nunca en el texto crudo ni el modelo', () {
+      final message = llmErrorMessage(
+        const LlmGatewayException(
+          'service-error',
+          message: 'No se pudo generar el movimiento con la IA: This model '
+              'models/gemini-2.5-flash-lite is no longer available to new users. '
+              'Please update your code to use models/gemini-3.5-flash-lite.',
+        ),
+      );
+
+      expect(message, 'No se pudo interpretar el texto. Inténtalo de nuevo o añade el movimiento a mano.');
+      expect(message, isNot(contains('gemini-2.5-flash-lite')));
+      expect(message, isNot(contains('{')));
+    });
+
     test('un código desconocido cae en el mensaje genérico', () {
       expect(
         llmErrorMessage(const LlmGatewayException('codigo-que-no-existe')),

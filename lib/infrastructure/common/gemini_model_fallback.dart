@@ -58,24 +58,35 @@ class GeminiModelAvailability {
 }
 
 /// `true` si [error] indica que un modelo de Gemini no existe o ya no está
-/// disponible en esta API: un 404 cuyo mensaje empieza por
-/// "models/&lt;nombre&gt; is not found for API version...". Se ve, por
-/// ejemplo, al pedir un modelo retirado (los `gemini-2.5-*` de
-/// [geminiModelFallbacks] están anunciados para apagarse en octubre de
-/// 2026).
+/// disponible en esta API. Dos formas vistas de verdad, ninguna del todo
+/// fiable por sí sola, así que se comprueban las dos:
+/// - Un modelo retirado de la API: "models/&lt;nombre&gt; is not found for
+///   API version...".
+/// - Un modelo ya no disponible para proyectos nuevos (así es como han
+///   empezado a devolver los `gemini-2.5-*`, antes de que la API los
+///   retire del todo): "This model models/&lt;nombre&gt; is no longer
+///   available to new users. Please update your code to use
+///   models/&lt;otro&gt; ...".
 ///
 /// El paquete `firebase_ai` (4.0.0, `lib/src/error.dart`, función
-/// `parseError`) no tiene un tipo propio para esto —comprobado con la
-/// fixture del propio paquete (`test/google_ai_response_parsing_test.dart`,
-/// caso "for general server errors")—: un 404 de modelo inexistente cae en
-/// `ServerException`, el mismo tipo que cualquier otro fallo del servidor
-/// sin clasificar. Así que, igual que [isTransientGeminiError] e
-/// `isAppCheckAttestationError`, hay que mirar el texto del mensaje en vez
-/// del tipo.
+/// `parseError`) no expone el código HTTP (404) ni el `status` del cuerpo
+/// del error ("NOT_FOUND"): los dos casos de arriba llegan como un 404 con
+/// cuerpo `{"error": {"code": 404, "message": "...", "status":
+/// "NOT_FOUND"}}`, pero el `switch` de `parseError` solo mira `message` (y,
+/// para otros tipos, `details`/`status` de casos muy concretos que no son
+/// este); cualquier error con un campo `message` de texto que no encaje en
+/// esos otros casos —éste incluido— cae en el `ServerException` genérico,
+/// que solo guarda ese texto. Comprobado con la fixture del propio paquete
+/// (`test/google_ai_response_parsing_test.dart`, caso "for general server
+/// errors"): no hay ningún campo de código o estado que mirar en el
+/// `error` de Dart, solo el texto. Así que, igual que [isTransientGeminiError]
+/// e `isAppCheckAttestationError`, hay que mirar el texto del mensaje en
+/// vez del tipo o de un código que el paquete no conserva.
 bool isModelNotFoundError(Object error) {
   if (error is QuotaExceeded) return false;
   if (error is! FirebaseAIException) return false;
-  return error.message.contains('is not found for API version');
+  final message = error.message;
+  return message.contains('is not found for API version') || message.contains('no longer available');
 }
 
 /// Prueba [attempt] con el primer modelo disponible de [models] según

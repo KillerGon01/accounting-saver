@@ -39,16 +39,22 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 ## Estado
 Hecho: MVP completo (login, movimientos, lenguaje natural, chat con function calling, datos
 demo, resumen mensual con gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini
-(fallback de modelo, timeout de 150 s, reintento único ante 503, topes de 8 preguntas/3
+(fallback de modelo, timeout de 150 s, reintento único ante 503, topes de 20 preguntas/6
 comentarios, caché, aislamiento por usuario), App Check de producción en web, CI
 (`.github/workflows/ci.yml`) y Docker para servir la web; detalles en docs/design.md,
 docs/testing.md y docs/security.md. Nuevo: el chat ya no improvisaba el gasto por categoría ni
-las comparaciones entre meses con `listTransactions` (daba cifras distintas al resumen, p. ej.
-Hogar 937,90 € frente a 938,90 €); `getCategoryBreakdown` y `compareMonths` reutilizan
-`BuildMonthlyReport`/`compareCategoryBreakdowns` (mismo cálculo que el resumen) y devuelven las
-cifras ya redactadas en texto plano para que el modelo las copie, con test de consistencia
-chat-resumen (ver docs/design.md); la fidelidad de esa copia por el modelo solo se ha
-comprobado a mano contra Gemini real, no con tests automáticos.
+las comparaciones entre meses con `listTransactions` (daba cifras distintas al resumen);
+`getCategoryBreakdown` y `compareMonths` reutilizan `BuildMonthlyReport`/
+`compareCategoryBreakdowns` y devuelven las cifras ya redactadas en texto plano, con un aviso
+obligatorio cuando el mes es el actual (datos parciales). `isModelNotFoundError` se le escapaba
+un 404 real ("...is no longer available to new users...", solo miraba la otra frase): ahora
+detecta las dos; `geminiModelFallbacks` es ahora `[gemini-3.5-flash-lite, gemini-3.8-flash]`
+(fuera los `gemini-2.5-*`, retirados para proyectos nuevos), con cupos (500/15 por min frente a
+20/5 por min) y latencia (~20 s frente a varios minutos) observados de verdad el 11/10/2026 —
+de ahí la subida de los topes. Confirmado que un error sin clasificar de cualquier gateway
+(chat, lenguaje natural, resumen) ya caía en un mensaje genérico antes de este cambio (la
+presentación decide por `error.code`, nunca por `error.message`), con test explícito nuevo por
+cada gateway. Ver docs/design.md para el detalle completo.
 Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
 Android, revisión visual en navegador, confirmar `thinkingConfig`, CI opcional para
 `firestore-tests/`.

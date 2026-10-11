@@ -20,9 +20,13 @@ class ExplainMonthlyReport {
   /// Tope de comentarios generados con éxito por sesión (una instancia;
   /// ver el provider que la crea). Igual que en el chat, ni una respuesta
   /// servida desde la caché ni una que acaba en error (red, cuota, 503,
-  /// timeout...) gastan una de las 3, porque ninguna de las dos cuesta
+  /// timeout...) gastan una de las 6, porque ninguna de las dos cuesta
   /// cuota de verdad.
-  static const maxCommentsPerSession = 3;
+  ///
+  /// 6, no 3: mismo motivo que `SendChatMessage.maxQuestionsPerSession`
+  /// (cupo diario de 500 peticiones/día observado el 11/10/2026 con
+  /// `gemini-3.5-flash-lite`). Ver docs/design.md.
+  static const maxCommentsPerSession = 6;
 
   final MonthlyReportGateway _gateway;
   final TransactionsChangeNotifier _changeNotifier;
