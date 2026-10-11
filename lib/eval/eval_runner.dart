@@ -1,0 +1,242 @@
+import '../domain/chat/chat_gateway.dart';
+import '../domain/transactions/llm_gateway_exception.dart';
+import '../domain/transactions/transaction_repository.dart';
+import '../application/chat/transaction_chat_functions.dart';
+import '../application/reports/build_monthly_report.dart';
+import '../infrastructure/chat/gemini_chat_gateway.dart';
+import '../infrastructure/common/gemini_model_fallback.dart';
+import 'eval_cases.dart';
+import 'eval_clock.dart';
+import 'eval_fixtures.dart';
+import 'eval_grading.dart';
+import 'eval_report.dart';
+
+/// Un código HTTP de 3 cifras (4xx/5xx) dentro del mensaje de una
+/// [LlmGatewayException], si lo hay (p. ej. "...401 Unauthorized...").
+/// Las excepciones de infraestructura no siempre lo traen en un campo
+/// propio (ver `isModelNotFoundError`/`isAppCheckAttestationError`:
+/// detectan errores por texto, no por código), así que esto es un
+/// extra solo para el informe, no para decidir nada.
+final _httpCodePattern = RegExp(r'\b([45]\d{2})\b');
+
+String _describeError(LlmGatewayException error) {
+  final message = error.message;
+  if (message == null) return error.code;
+  final httpCode = _httpCodePattern.firstMatch(message)?.group(1);
+  return httpCode == null ? error.code : '${error.code} ($httpCode)';
+}
+
+/// Se lanza si la cuenta de la sesión no coincide con la cuenta de
+/// evaluación (`EVAL_ACCOUNT_EMAIL`): `runEval` se niega a borrar ni a
+/// escribir nada en cualquier otra cuenta, incluida la de "Credenciales
+/// de prueba" (ver docs/evaluation.md).
+class WrongEvalAccountError implements Exception {
+  const WrongEvalAccountError(this.expectedEmail, this.actualEmail);
+
+  final String expectedEmail;
+  final String? actualEmail;
+
+  @override
+  String toString() =>
+      'La cuenta de la sesión ($actualEmail) no coincide con '
+      'EVAL_ACCOUNT_EMAIL ($expectedEmail). No se borra ni se escribe nada.';
+}
+
+class EvalRunConfig {
+  const EvalRunConfig({
+    this.delayBetweenCases = const Duration(seconds: 10),
+    this.requestBudget = 160,
+    this.estimatedRequestsPerCase = 3,
+  });
+
+  /// Espaciado entre preguntas. El modelo principal
+  /// (`geminiModelFallbacks.first`) admite 15 peticiones/min y cada
+  /// pregunta son ~2 llamadas (la petición inicial y, al menos, la que
+  /// devuelve el resultado de la función); 10 s deja margen de sobra.
+  final Duration delayBetweenCases;
+
+  /// Tope de peticiones de toda la ejecución. No hay forma de contar las
+  /// llamadas reales dentro de `GeminiChatGateway` desde fuera (puede
+  /// encadenar hasta 5 idas y vueltas por pregunta, ver
+  /// `_maxFunctionCallSteps`), así que se aproxima contando
+  /// [estimatedRequestsPerCase] por caso. 160 (en vez de 80): con ~30
+  /// casos y como mucho 5 peticiones cada uno, 150 sería el peor caso
+  /// real; 80 cortaba la primera ejecución real antes de llegar a los
+  /// casos de "escritura" (11/10/2026, 78/80).
+  final int requestBudget;
+  final int estimatedRequestsPerCase;
+}
+
+typedef EvalProgressCallback = void Function(String message);
+
+/// Ejecuta la evaluación completa contra el backend real de Gemini (ver
+/// docs/evaluation.md): borra los movimientos existentes de [userId],
+/// los sustituye por los datos de evaluación deterministas
+/// ([seedEvalData]), hace las preguntas (con espaciado y tope de
+/// peticiones) directamente al gateway y al ejecutor de funciones reales
+/// —nunca a través de `SendChatMessage`, que tiene su propio reloj real y
+/// su tope de 20 preguntas por sesión— y devuelve el informe en
+/// Markdown, listo para pegar en `docs/evaluation.md`.
+///
+/// [caseFilter], si no es `null` ni vacío, limita la ejecución a los
+/// casos cuyo `id` o cuyo `type.name` (por ejemplo `"escritura"`) estén
+/// en el conjunto — útil para repetir solo un subconjunto sin gastar
+/// cuota en los casos que ya han pasado. `null` o vacío ejecuta todos.
+///
+/// Antes de tocar nada comprueba que [sessionEmail] (el correo de la
+/// sesión ya iniciada) coincide con [expectedEmail]
+/// (`EVAL_ACCOUNT_EMAIL`); si no coincide, o si [expectedEmail] está
+/// vacío, lanza [WrongEvalAccountError] sin borrar ni escribir nada.
+///
+/// [gatewayOverride] es solo para `test/eval/eval_runner_test.dart`
+/// (comprobar la repetición automática ante un error de infraestructura
+/// sin llamar a Gemini de verdad, ver [EvalResult.notEvaluable]): si es
+/// `null` (el valor normal, siempre en `lib/eval_main.dart`), se usa el
+/// `GeminiChatGateway` real.
+Future<String> runEval({
+  required TransactionRepository repository,
+  required String userId,
+  required String? sessionEmail,
+  required String expectedEmail,
+  EvalRunConfig config = const EvalRunConfig(),
+  Set<String>? caseFilter,
+  EvalProgressCallback? onProgress,
+  ChatGateway? gatewayOverride,
+}) async {
+  if (expectedEmail.isEmpty || sessionEmail != expectedEmail) {
+    throw WrongEvalAccountError(expectedEmail, sessionEmail);
+  }
+
+  void log(String message) => onProgress?.call(message);
+
+  Future<int> transactionCount() async {
+    final transactions = await repository.findByDateRange(
+      userId: userId,
+      start: DateTime(2000),
+      end: DateTime(2100),
+      limit: 5000,
+    );
+    return transactions.length;
+  }
+
+  log('Cuenta verificada ($sessionEmail). Borrando sus movimientos existentes...');
+  final existing = await repository.findByDateRange(
+    userId: userId,
+    start: DateTime(2000),
+    end: DateTime(2100),
+    limit: 5000,
+  );
+  for (final transaction in existing) {
+    await repository.delete(userId: userId, transactionId: transaction.id);
+  }
+
+  log('Cargando los datos de evaluación (fecha fija ${evalNow.toIso8601String()})...');
+  await seedEvalData(repository, userId: userId, evalNow: evalNow);
+
+  log('Calculando los valores esperados de cada caso...');
+  final dataset = await buildEvalDataset();
+  final allCases = dataset.cases;
+  final cases = (caseFilter == null || caseFilter.isEmpty)
+      ? allCases
+      : allCases.where((c) => caseFilter.contains(c.id) || caseFilter.contains(c.type.name)).toList();
+  log('${cases.length} de ${allCases.length} casos a ejecutar.');
+
+  final clock = FixedClock(evalNow);
+  final availability = GeminiModelAvailability(clock: clock);
+  final gateway = gatewayOverride ?? GeminiChatGateway(clock: clock, availability: availability);
+  final functions = TransactionChatFunctions(repository, BuildMonthlyReport(repository, clock));
+
+  final results = <EvalResult>[];
+  var requestsUsed = 0;
+  var aborted = false;
+  var nextIndex = 0;
+
+  for (; nextIndex < cases.length; nextIndex++) {
+    final evalCase = cases[nextIndex];
+    if (requestsUsed + config.estimatedRequestsPerCase > config.requestBudget) {
+      aborted = true;
+      break;
+    }
+
+    log('${evalCase.id}: "${evalCase.question}"');
+
+    String? response;
+    LlmGatewayException? lastError;
+    var wasRetried = false;
+    var countBefore = await transactionCount();
+
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await gateway.sendMessage(
+          history: const [],
+          message: evalCase.question,
+          executeFunction: (name, arguments) {
+            return functions.execute(userId: userId, name: name, arguments: arguments, now: evalNow);
+          },
+        );
+        lastError = null;
+        break;
+      } on LlmGatewayException catch (error) {
+        lastError = error;
+        requestsUsed += config.estimatedRequestsPerCase;
+        if (attempt == 0) {
+          wasRetried = true;
+          log('  → error de infraestructura (${_describeError(error)}); repitiendo una vez...');
+          await Future<void>.delayed(config.delayBetweenCases);
+          countBefore = await transactionCount(); // por si el primer intento sí llegó a algo
+        }
+      }
+    }
+
+    if (lastError != null) {
+      results.add(
+        EvalResult.notEvaluable(
+          caseId: evalCase.id,
+          type: evalCase.type,
+          question: evalCase.question,
+          errorCode: _describeError(lastError),
+          errorMessage: lastError.message ?? lastError.toString(),
+          wasRetried: wasRetried,
+        ),
+      );
+      log('  → NO EVALUABLE (${_describeError(lastError)})');
+      await Future<void>.delayed(config.delayBetweenCases);
+      continue;
+    }
+
+    requestsUsed += config.estimatedRequestsPerCase;
+    final countAfter = await transactionCount();
+    final result = gradeCase(
+      evalCase,
+      response: response!,
+      transactionCountBefore: countBefore,
+      transactionCountAfter: countAfter,
+      validAmountsByMonth: dataset.validAmountsByMonth,
+      globalValidAmounts: dataset.globalValidAmounts,
+    );
+    results.add(result);
+    log('  → ${result.passed ? 'OK' : 'FALLO: ${result.reasons.join('; ')}'}');
+
+    await Future<void>.delayed(config.delayBetweenCases);
+  }
+
+  if (aborted) {
+    log('Tope de peticiones alcanzado antes de "${cases[nextIndex].id}"; se corta aquí.');
+  }
+  final skippedCaseIds = [for (var i = nextIndex; i < cases.length; i++) cases[i].id];
+
+  final primaryModel = geminiModelFallbacks.first;
+  final modelLabel = availability.isAvailable(primaryModel)
+      ? primaryModel
+      : '$primaryModel (se agotó durante la ejecución; pudo haber fallback a otro modelo)';
+
+  return buildEvalReportMarkdown(
+    runDate: DateTime.now(),
+    model: modelLabel,
+    results: results,
+    wasAborted: aborted,
+    requestBudgetUsed: requestsUsed,
+    requestBudgetLimit: config.requestBudget,
+    skippedCaseIds: skippedCaseIds,
+  );
+}

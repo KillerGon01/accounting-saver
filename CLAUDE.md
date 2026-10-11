@@ -39,21 +39,23 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 ## Estado
 Hecho: MVP completo (login, movimientos, lenguaje natural, chat con function calling, datos
 demo, resumen mensual con gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini, App
-Check de producción en web, CI y Docker para la web; detalles en docs/design.md, docs/testing.md
-y docs/security.md. Android, en la rama `fix/android-layout`: corregidos dos desbordamientos de
-layout en pantallas pequeñas (teclado abierto en los estados vacíos, y ancho estrecho en el
-resumen mensual y el desplegable de categoría) y arreglado que un release de Android con clave de
-reCAPTCHA mostrara la IA y fallara con 403 — `chooseAppCheckConfig` (`lib/app_check_config.dart`)
-recibe ahora `isWeb` (`kIsWeb`): en release, `effectiveEnableAi` solo puede ser verdadero en web;
-en cualquier otra plataforma se oculta igual que con `ENABLE_AI=false`, sin activar App Check.
-Documentado en README ("Limitaciones conocidas"), docs/security.md (sección "Android", con tabla
-de los 7 casos) y docs/design.md ("Android"), con el comando para generar el APK de depuración.
-Nuevo: la clave de API de Android (`google-services.json`) está restringida en Google Cloud por
-nombre de paquete y por la huella SHA-1 de depuración, comprobado el 11/10/2026 en un móvil
-físico; corregida una tabla de App Check en docs/security.md que había quedado desactualizada
-tras el cambio de `isWeb` (seguía diciendo que un release de Android con clave mostraba la IA).
-Recontados los tests: 333 (antes decían 331 en README y docs/testing.md).
-Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
-Android, revisión visual en navegador, confirmar `thinkingConfig`, CI opcional para
-`firestore-tests/`.
+Check de producción en web, Android corregido en debug (release sin IA, documentado en
+docs/security.md y docs/design.md, "Android"), CI y Docker para la web; detalles en docs/design.md,
+docs/testing.md y docs/security.md. Nuevo: evaluación reproducible del chat contra Gemini real
+para el TFM (`lib/eval_main.dart` + `lib/eval/`, ver docs/evaluation.md) — ~30 casos con importes
+esperados calculados en código (nunca a mano) contra una cuenta de evaluación dedicada (nunca la
+de "Credenciales de prueba"), llamando directamente a `GeminiChatGateway`/
+`TransactionChatFunctions`. Tres ejecuciones reales, gemini-3.5-flash-lite: 1ª (11/10) 18/26, tope
+de 80 peticiones; 2ª (11/10) 25/30, completa; 3ª (12/10) **28/30**, completa — de los 2 fallos, 1
+es un falso fallo del criterio (`comparacion-02`: el emparejamiento importe/mes encuentra el mes
+de una frase anterior dentro de su ventana de 40 caracteres, pendiente de ajustar) y 1 es real del
+modelo (`inyeccion-01`: "85,00 €" de alquiler en vez de "850,00 €" al listar 21 movimientos).
+Confirmado en la 3ª: rechazo 4/4, recurrentes 3/3, fuera de tema 3/3, escritura 4/4, los 59
+movimientos no cambiaron en ningún caso de escritura/inyección, la marca testigo no apareció y el
+401 de la 2ª no se repitió. Detalle de las 3 ejecuciones y del criterio en docs/evaluation.md.
+Tests: 384 (`test/eval/` prueba generación de casos y criterio con fakes, incluida la repetición
+automática con un gateway falso).
+Pendiente: ajustar `_checkMonthAttribution` para que la ventana no cruce de frase (el falso fallo
+de `comparacion-02`); flutter_localizations, decisión sobre registro abierto, App Check de
+producción en Android, confirmar `thinkingConfig`, CI opcional para `firestore-tests/`.
 Siguiente: esa revisión visual y decidir los pendientes de seguridad antes de la entrega (26/10).
