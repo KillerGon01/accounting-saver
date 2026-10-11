@@ -22,7 +22,18 @@ class BuildMonthlyReport {
   final TransactionRepository _repository;
   final Clock _clock;
 
-  Future<MonthlyReport> call({required String userId, required int year, required int month}) async {
+  /// [now] solo se usa para decidir [MonthlyReport.isCurrentMonth] y
+  /// [MonthlyReport.elapsedDays]. Es opcional (si no se pasa, se usa el
+  /// `Clock` del constructor, como siempre) para que quien ya tiene un
+  /// `now` resuelto para toda la petición (por ejemplo, el chat: ver
+  /// `TransactionChatFunctions`) pueda pasarlo sin que este caso de uso
+  /// tenga que guardar un segundo reloj con el mismo propósito.
+  Future<MonthlyReport> call({
+    required String userId,
+    required int year,
+    required int month,
+    DateTime? now,
+  }) async {
     final start = DateTime(year, month);
     final end = DateTime(year, month + 1);
     final previousStart = DateTime(year, month - 1);
@@ -35,10 +46,14 @@ class BuildMonthlyReport {
 
     final comparison = previous.transactions.isEmpty
         ? null
-        : _buildComparison(current: categoryBreakdown, previousTransactions: previous.transactions);
+        : _buildComparison(
+            current: categoryBreakdown,
+            currentExpenseCents: summary.expenseCents,
+            previousTransactions: previous.transactions,
+          );
 
-    final now = _clock.now();
-    final isCurrentMonth = now.year == year && now.month == month;
+    final effectiveNow = now ?? _clock.now();
+    final isCurrentMonth = effectiveNow.year == year && effectiveNow.month == month;
 
     return MonthlyReport(
       year: year,
@@ -50,7 +65,7 @@ class BuildMonthlyReport {
       comparison: comparison,
       truncated: current.truncated || previous.truncated,
       isCurrentMonth: isCurrentMonth,
-      elapsedDays: isCurrentMonth ? now.day : null,
+      elapsedDays: isCurrentMonth ? effectiveNow.day : null,
     );
   }
 
@@ -87,52 +102,23 @@ class BuildMonthlyReport {
     return breakdown;
   }
 
+  /// Delega la aritmética en [compareCategoryBreakdowns] (dominio): este
+  /// método solo convierte las transacciones del mes anterior en su propio
+  /// desglose por categoría, con la misma `_breakdownByCategory` que ya se
+  /// usa para el mes actual, para no tener dos formas distintas de sumar
+  /// por categoría dentro de la misma clase.
   MonthlyComparison _buildComparison({
     required List<CategoryExpense> current,
+    required int currentExpenseCents,
     required List<Transaction> previousTransactions,
   }) {
     final previousSummary = MonthlySummary.fromTransactions(previousTransactions);
-    final previousAmountsByCategory = <Category, int>{};
-    for (final transaction in previousTransactions) {
-      if (!transaction.isExpense) continue;
-      final amount = -transaction.amountCents;
-      previousAmountsByCategory[transaction.categoryId] =
-          (previousAmountsByCategory[transaction.categoryId] ?? 0) + amount;
-    }
-
-    final currentAmountsByCategory = {
-      for (final expense in current) expense.category: expense.amountCents,
-    };
-
-    final categories = {...currentAmountsByCategory.keys, ...previousAmountsByCategory.keys};
-    final perCategoryDeltas = {
-      for (final category in categories)
-        category: _compareCategory(
-          currentAmountsByCategory[category] ?? 0,
-          previousAmountsByCategory[category] ?? 0,
-        ),
-    };
-
-    final currentExpenseCents = current.fold(0, (sum, expense) => sum + expense.amountCents);
-    final expenseDeltaCents = currentExpenseCents - previousSummary.expenseCents;
-
-    return MonthlyComparison(
+    final previousBreakdown = _breakdownByCategory(previousTransactions, previousSummary.expenseCents);
+    return compareCategoryBreakdowns(
+      currentBreakdown: current,
+      currentExpenseCents: currentExpenseCents,
+      previousBreakdown: previousBreakdown,
       previousExpenseCents: previousSummary.expenseCents,
-      expenseDeltaCents: expenseDeltaCents,
-      expenseDeltaPercent: previousSummary.expenseCents == 0
-          ? null
-          : expenseDeltaCents / previousSummary.expenseCents * 100,
-      perCategoryDeltas: perCategoryDeltas,
-    );
-  }
-
-  CategoryComparison _compareCategory(int currentAmountCents, int previousAmountCents) {
-    final deltaCents = currentAmountCents - previousAmountCents;
-    return CategoryComparison(
-      currentAmountCents: currentAmountCents,
-      previousAmountCents: previousAmountCents,
-      deltaCents: deltaCents,
-      deltaPercent: previousAmountCents == 0 ? null : deltaCents / previousAmountCents * 100,
     );
   }
 }

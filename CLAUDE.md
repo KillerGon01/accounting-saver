@@ -37,20 +37,18 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: MVP completo (login con verificación de correo exigida también en `firestore.rules`,
-movimientos, lenguaje natural, chat con function calling, datos demo, resumen mensual con
-gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini (fallback de modelo —incluido un
-404 de modelo retirado—, timeout de 150 s sin reintento, reintento único ante 503, topes de 8
-preguntas/3 comentarios, caché, aislamiento por usuario), App Check de producción en web
-(reCAPTCHA Enterprise), integración continua (`.github/workflows/ci.yml`, dos jobs bloqueantes,
-Flutter 3.47.6 fijado, sin secretos) y Docker para servir la web (`Dockerfile` multi-etapa +
-nginx sin privilegios, puerto 8080; probado de verdad); detalles en docs/design.md,
-docs/testing.md y docs/security.md. Nuevo: `geminiRequestTimeout` subido de 90 s a 150 s (84 s y
-108 s observados de verdad el 10/10/2026 con Gemini 3.8 Flash; peor caso de una sola pregunta con
-dos llamadas, ~5 min); tercer aviso de progreso a los 120 s en el chat y el resumen mensual.
-Pruebas de `firestore.rules` contra el emulador real (6/6) en `firestore-tests/` (Node aparte,
-sin tocar `pubspec.yaml` ni el CI). `thinkingConfig` sigue sin aplicarse (riesgo sin forma de
-probarlo contra Gemini real en este entorno).
+Hecho: MVP completo (login, movimientos, lenguaje natural, chat con function calling, datos
+demo, resumen mensual con gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini
+(fallback de modelo, timeout de 150 s, reintento único ante 503, topes de 8 preguntas/3
+comentarios, caché, aislamiento por usuario), App Check de producción en web, CI
+(`.github/workflows/ci.yml`) y Docker para servir la web; detalles en docs/design.md,
+docs/testing.md y docs/security.md. Nuevo: el chat ya no improvisaba el gasto por categoría ni
+las comparaciones entre meses con `listTransactions` (daba cifras distintas al resumen, p. ej.
+Hogar 937,90 € frente a 938,90 €); `getCategoryBreakdown` y `compareMonths` reutilizan
+`BuildMonthlyReport`/`compareCategoryBreakdowns` (mismo cálculo que el resumen) y devuelven las
+cifras ya redactadas en texto plano para que el modelo las copie, con test de consistencia
+chat-resumen (ver docs/design.md); la fidelidad de esa copia por el modelo solo se ha
+comprobado a mano contra Gemini real, no con tests automáticos.
 Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
 Android, revisión visual en navegador, confirmar `thinkingConfig`, CI opcional para
 `firestore-tests/`.

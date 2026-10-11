@@ -6,4 +6,6 @@ abstract final class ChatFunctions {
   static const getMonthlySummary = 'getMonthlySummary';
   static const listTransactions = 'listTransactions';
   static const recurringExpenses = 'recurringExpenses';
+  static const getCategoryBreakdown = 'getCategoryBreakdown';
+  static const compareMonths = 'compareMonths';
 }

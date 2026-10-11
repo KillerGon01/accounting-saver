@@ -1,7 +1,10 @@
 import '../../domain/chat/chat_functions.dart';
+import '../../domain/common/money_formatting.dart';
+import '../../domain/reports/monthly_report.dart';
 import '../../domain/transactions/category.dart';
 import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_repository.dart';
+import '../reports/build_monthly_report.dart';
 
 /// Ejecuta, validando antes, las funciones que el chat puede pedir sobre los
 /// movimientos de un usuario. Los argumentos vienen del modelo y no son de
@@ -16,7 +19,17 @@ import '../../domain/transactions/transaction_repository.dart';
 /// ingresos de gastos por el signo del importe, sumar— se hace aquí, en
 /// Dart, sobre la lista ya descargada.
 class TransactionChatFunctions {
-  TransactionChatFunctions(this._repository);
+  /// [buildMonthlyReport] es opcional solo para no obligar a cada test que
+  /// no lo necesita a construir uno; en la app siempre se pasa el mismo
+  /// `BuildMonthlyReport` que ya usa el resumen mensual (ver
+  /// `chat_providers.dart`), para que `getCategoryBreakdown` y
+  /// `compareMonths` sean, byte a byte, la misma fuente de verdad que la
+  /// pantalla de resumen (ver docs/design.md: antes el chat improvisaba su
+  /// propio cálculo por categoría a partir de `listTransactions`, lo que
+  /// producía cifras distintas a las del resumen).
+  TransactionChatFunctions(TransactionRepository repository, [BuildMonthlyReport? buildMonthlyReport])
+    : _repository = repository,
+      _buildMonthlyReport = buildMonthlyReport ?? BuildMonthlyReport(repository);
 
   /// Como máximo se devuelven 30 movimientos por resultado; la IA nunca ve
   /// (ni hace falta que vea) listas más largas, y se le avisa si el rango
@@ -40,6 +53,7 @@ class TransactionChatFunctions {
   static const recurringExpensesMonths = 3;
 
   final TransactionRepository _repository;
+  final BuildMonthlyReport _buildMonthlyReport;
 
   Future<Map<String, Object?>> execute({
     required String userId,
@@ -54,6 +68,10 @@ class TransactionChatFunctions {
         return _listTransactions(userId: userId, arguments: arguments);
       case ChatFunctions.recurringExpenses:
         return _recurringExpenses(userId: userId, now: now);
+      case ChatFunctions.getCategoryBreakdown:
+        return _getCategoryBreakdown(userId: userId, arguments: arguments, now: now);
+      case ChatFunctions.compareMonths:
+        return _compareMonths(userId: userId, arguments: arguments, now: now);
       default:
         return {'error': 'Función desconocida: "$name".'};
     }
@@ -64,23 +82,12 @@ class TransactionChatFunctions {
     required Map<String, Object?> arguments,
     required DateTime now,
   }) async {
-    final year = _asInt(arguments['year']);
-    final month = _asInt(arguments['month']);
-
-    if (year == null || month == null) {
-      return {'error': 'Faltan los argumentos "year" y/o "month", o no son números enteros.'};
-    }
-    final minYear = now.year - maxRangeYears;
-    if (year < minYear || year > now.year) {
-      return {
-        'error':
-            'El año $year está fuera de rango: solo se admiten movimientos '
-            'de los últimos $maxRangeYears años (desde $minYear hasta ${now.year}).',
-      };
-    }
-    if (month < 1 || month > 12) {
-      return {'error': 'El mes debe estar entre 1 y 12; se ha recibido $month.'};
-    }
+    final yearRaw = _asInt(arguments['year']);
+    final monthRaw = _asInt(arguments['month']);
+    final error = _yearMonthError(yearRaw, monthRaw, now);
+    if (error != null) return error;
+    final year = yearRaw!;
+    final month = monthRaw!;
 
     final start = DateTime(year, month);
     final end = DateTime(year, month + 1);
@@ -199,7 +206,7 @@ class TransactionChatFunctions {
       final months = entry.value.toList()..sort();
       recurring.add({
         'description': entry.key.description,
-        'amountEuros': _formatEuros(entry.key.amountCentsAbs),
+        'amountEuros': formatEuroAmount(entry.key.amountCentsAbs),
         'months': months,
       });
     }
@@ -214,6 +221,193 @@ class TransactionChatFunctions {
       if (recurring.isEmpty)
         'note': 'No se ha encontrado ningún gasto recurrente entre $desde y $hasta.',
       if (fetch.safetyLimitReached) ..._safetyLimitWarning,
+    };
+  }
+
+  /// Desglose de gasto por categoría de un mes, calculado por
+  /// [BuildMonthlyReport] (la misma fuente de verdad que el resumen
+  /// mensual: ver docs/design.md), no por el modelo. `rankingLines` es el
+  /// desglose ya redactado en texto plano ("1. Hogar: 938,90 € (62,2 %)",
+  /// de mayor a menor gasto) para que el modelo lo copie tal cual en
+  /// rankings; `categories` son los mismos datos en bruto, por si hace
+  /// falta un valor concreto que no está en una línea.
+  Future<Map<String, Object?>> _getCategoryBreakdown({
+    required String userId,
+    required Map<String, Object?> arguments,
+    required DateTime now,
+  }) async {
+    final yearRaw = _asInt(arguments['year']);
+    final monthRaw = _asInt(arguments['month']);
+    final error = _yearMonthError(yearRaw, monthRaw, now);
+    if (error != null) return error;
+    final year = yearRaw!;
+    final month = monthRaw!;
+
+    final report = await _buildMonthlyReport(userId: userId, year: year, month: month, now: now);
+
+    final categories = <Map<String, Object?>>[];
+    final rankingLines = <String>[];
+    for (var i = 0; i < report.categoryBreakdown.length; i++) {
+      final expense = report.categoryBreakdown[i];
+      final percentage = _roundTo1Decimal(expense.percentageOfExpense);
+      categories.add({
+        'categoryId': expense.category.name,
+        'amountCents': expense.amountCents,
+        'percentageOfExpense': percentage,
+      });
+      rankingLines.add(
+        '${i + 1}. ${_categoryLabel(expense.category)}: '
+        '${_formatEurosWithSymbol(expense.amountCents)} (${_formatPercent(percentage)})',
+      );
+    }
+
+    if (report.isCurrentMonth) {
+      rankingLines.insert(0, _currentMonthWarning(report));
+    }
+
+    return {
+      'year': year,
+      'month': month,
+      'totalExpenseCents': report.expenseCents,
+      'categories': categories,
+      'rankingLines': rankingLines,
+      'isCurrentMonth': report.isCurrentMonth,
+      if (report.isCurrentMonth) 'elapsedDays': report.elapsedDays,
+      if (categories.isEmpty) 'note': 'No hay ningún gasto registrado en ese mes.',
+      if (report.truncated) ..._safetyLimitWarning,
+    };
+  }
+
+  /// Compara dos meses cualesquiera (no necesariamente consecutivos): A es
+  /// el mes base ("antes"/"frente a") y B el que se evalúa, con el mismo
+  /// significado que "actual" y "anterior" en el resumen mensual (ver
+  /// [BuildMonthlyReport] y [compareCategoryBreakdowns]). Si A no tiene
+  /// ningún movimiento no se calcula ninguna comparación (igual que hace
+  /// el resumen con el mes anterior), para no inventar un delta del 100 %
+  /// o del -100 % que no refleja la ausencia de datos.
+  Future<Map<String, Object?>> _compareMonths({
+    required String userId,
+    required Map<String, Object?> arguments,
+    required DateTime now,
+  }) async {
+    final yearARaw = _asInt(arguments['yearA']);
+    final monthARaw = _asInt(arguments['monthA']);
+    final errorA = _yearMonthError(yearARaw, monthARaw, now, 'A');
+    if (errorA != null) return errorA;
+
+    final yearBRaw = _asInt(arguments['yearB']);
+    final monthBRaw = _asInt(arguments['monthB']);
+    final errorB = _yearMonthError(yearBRaw, monthBRaw, now, 'B');
+    if (errorB != null) return errorB;
+
+    final reportA = await _buildMonthlyReport(
+      userId: userId,
+      year: yearARaw!,
+      month: monthARaw!,
+      now: now,
+    );
+    final reportB = await _buildMonthlyReport(
+      userId: userId,
+      year: yearBRaw!,
+      month: monthBRaw!,
+      now: now,
+    );
+
+    final hasComparison = reportA.transactionCount > 0;
+    final comparisonJson = hasComparison ? _buildComparisonJson(reportA, reportB) : null;
+
+    return {
+      'monthA': _monthSummaryJson(reportA),
+      'monthB': _monthSummaryJson(reportB),
+      'expenseDeltaCents': comparisonJson?['expenseDeltaCents'],
+      'expenseDeltaPercent': comparisonJson?['expenseDeltaPercent'],
+      'categoryDeltas': comparisonJson?['categoryDeltas'] ?? const [],
+      'comparisonLines': comparisonJson?['comparisonLines'] ?? const [],
+      'categoryComparisonLines': comparisonJson?['categoryComparisonLines'] ?? const [],
+      if (!hasComparison)
+        'note':
+            'El mes A (${reportA.year}-${reportA.month.toString().padLeft(2, '0')}) no tiene '
+            'ningún movimiento: no se calcula ninguna comparación con él.',
+      if (reportA.truncated || reportB.truncated) ..._safetyLimitWarning,
+    };
+  }
+
+  Map<String, Object?> _monthSummaryJson(MonthlyReport report) {
+    return {
+      'year': report.year,
+      'month': report.month,
+      'incomeCents': report.incomeCents,
+      'expenseCents': report.expenseCents,
+      'balanceCents': report.balanceCents,
+      'transactionCount': report.transactionCount,
+      'isCurrentMonth': report.isCurrentMonth,
+      if (report.isCurrentMonth) 'elapsedDays': report.elapsedDays,
+      if (report.transactionCount == 0) 'note': 'Este mes no tiene ningún movimiento.',
+    };
+  }
+
+  /// Delta de gasto total y por categoría entre dos informes ya calculados,
+  /// más las mismas cifras ya redactadas en texto plano ("Gastos: 1.508,59
+  /// € frente a 1.447,21 € (+4,2 %)") para que el modelo las copie tal
+  /// cual. Las categorías se ordenan por gasto de B (el mes evaluado), de
+  /// mayor a menor, igual que `rankingLines` en [_getCategoryBreakdown].
+  Map<String, Object?> _buildComparisonJson(MonthlyReport reportA, MonthlyReport reportB) {
+    final comparison = compareCategoryBreakdowns(
+      currentBreakdown: reportB.categoryBreakdown,
+      currentExpenseCents: reportB.expenseCents,
+      previousBreakdown: reportA.categoryBreakdown,
+      previousExpenseCents: reportA.expenseCents,
+    );
+
+    final categories = comparison.perCategoryDeltas.keys.toList()
+      ..sort(
+        (a, b) => comparison.perCategoryDeltas[b]!.currentAmountCents.compareTo(
+          comparison.perCategoryDeltas[a]!.currentAmountCents,
+        ),
+      );
+
+    final categoryDeltas = <Map<String, Object?>>[];
+    final categoryComparisonLines = <String>[];
+    for (final category in categories) {
+      final delta = comparison.perCategoryDeltas[category]!;
+      final deltaPercent = delta.deltaPercent == null ? null : _roundTo1Decimal(delta.deltaPercent!);
+      categoryDeltas.add({
+        'categoryId': category.name,
+        'currentAmountCents': delta.currentAmountCents,
+        'previousAmountCents': delta.previousAmountCents,
+        'deltaCents': delta.deltaCents,
+        'deltaPercent': deltaPercent,
+      });
+      categoryComparisonLines.add(
+        '${_categoryLabel(category)}: ${_formatEurosWithSymbol(delta.currentAmountCents)} frente a '
+        '${_formatEurosWithSymbol(delta.previousAmountCents)} (${_formatDeltaPercent(deltaPercent)})',
+      );
+    }
+
+    final expenseDeltaPercent = comparison.expenseDeltaPercent == null
+        ? null
+        : _roundTo1Decimal(comparison.expenseDeltaPercent!);
+
+    // Avisos de mes en curso primero (A y, si también lo es, B): antes de
+    // cualquier cifra, para que no se puedan omitir ni suavizar al redactar
+    // la respuesta (ver la instrucción de sistema en gemini_chat_gateway.dart).
+    final comparisonLines = [
+      if (reportA.isCurrentMonth) _currentMonthWarning(reportA),
+      if (reportB.isCurrentMonth) _currentMonthWarning(reportB),
+      'Gastos: ${_formatEurosWithSymbol(reportB.expenseCents)} frente a '
+          '${_formatEurosWithSymbol(reportA.expenseCents)} (${_formatDeltaPercent(expenseDeltaPercent)})',
+      'Ingresos: ${_formatEurosWithSymbol(reportB.incomeCents)} frente a '
+          '${_formatEurosWithSymbol(reportA.incomeCents)}',
+      'Balance: ${_formatEurosWithSymbol(reportB.balanceCents)} frente a '
+          '${_formatEurosWithSymbol(reportA.balanceCents)}',
+    ];
+
+    return {
+      'expenseDeltaCents': comparison.expenseDeltaCents,
+      'expenseDeltaPercent': expenseDeltaPercent,
+      'categoryDeltas': categoryDeltas,
+      'comparisonLines': comparisonLines,
+      'categoryComparisonLines': categoryComparisonLines,
     };
   }
 
@@ -305,13 +499,106 @@ class TransactionChatFunctions {
     return text.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
   }
 
-  /// Formato en euros con coma decimal (sin `double`: todo con enteros de
-  /// céntimos), igual que `formatEditableAmount` en presentación.
-  String _formatEuros(int amountCentsAbs) {
-    final euros = amountCentsAbs ~/ 100;
-    final decimals = (amountCentsAbs % 100).toString().padLeft(2, '0');
-    return '$euros,$decimals';
+  /// Mismas reglas que valida `_getMonthlySummary` desde siempre (año
+  /// dentro de los últimos [maxRangeYears] y mes entre 1 y 12), factorizadas
+  /// para que `getCategoryBreakdown` y, con dos pares de argumentos,
+  /// `compareMonths` no las repitan. [suffix] solo distingue en el mensaje
+  /// de error cuál de los dos meses de `compareMonths` falla (por ejemplo
+  /// "yearA"/"monthA" en vez de "year"/"month").
+  Map<String, Object?>? _yearMonthError(int? year, int? month, DateTime now, [String suffix = '']) {
+    if (year == null || month == null) {
+      return {'error': 'Faltan los argumentos "year$suffix" y/o "month$suffix", o no son números enteros.'};
+    }
+    final minYear = now.year - maxRangeYears;
+    if (year < minYear || year > now.year) {
+      return {
+        'error':
+            'El año $year (year$suffix) está fuera de rango: solo se admiten '
+            'movimientos de los últimos $maxRangeYears años (desde $minYear '
+            'hasta ${now.year}).',
+      };
+    }
+    if (month < 1 || month > 12) {
+      return {'error': 'El mes (month$suffix) debe estar entre 1 y 12; se ha recibido $month.'};
+    }
+    return null;
   }
+
+  /// Nombre en español de cada categoría para las líneas de texto que lee
+  /// el modelo. Duplica a propósito `CategoryLabel`
+  /// (`presentation/transactions/formatters.dart`): la aplicación no puede
+  /// depender de la capa de presentación (ver CLAUDE.md).
+  String _categoryLabel(Category category) => switch (category) {
+    Category.supermercado => 'Supermercado',
+    Category.restaurantes => 'Restaurantes',
+    Category.transporte => 'Transporte',
+    Category.suscripciones => 'Suscripciones',
+    Category.ocio => 'Ocio',
+    Category.salud => 'Salud',
+    Category.hogar => 'Hogar',
+    Category.nomina => 'Nómina',
+    Category.otros => 'Otros',
+  };
+
+  /// Igual que `formatCents` en presentación (signo, separador de miles,
+  /// dos decimales y "€"), duplicado aquí a propósito por la misma razón
+  /// que [_categoryLabel]. Solo para las líneas de texto ya redactadas de
+  /// `getCategoryBreakdown` y `compareMonths`; el resto de campos de este
+  /// archivo (por ejemplo `amountEuros` en `recurringExpenses`) usan
+  /// `formatEuroAmount`, sin separador de miles ni "€", sin cambios.
+  String _formatEurosWithSymbol(int amountCents) {
+    final sign = amountCents < 0 ? '-' : '';
+    final absolute = amountCents.abs();
+    final euros = _groupThousands(absolute ~/ 100);
+    final decimals = (absolute % 100).toString().padLeft(2, '0');
+    return '$sign$euros,$decimals €';
+  }
+
+  String _groupThousands(int value) {
+    final digits = value.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      final remaining = digits.length - i;
+      if (i > 0 && remaining % 3 == 0) buffer.write('.');
+      buffer.write(digits[i]);
+    }
+    return buffer.toString();
+  }
+
+  /// Porcentaje ya redondeado a un decimal, sin signo (para
+  /// `percentageOfExpense`, que nunca es negativo).
+  String _formatPercent(double roundedValue) => '${roundedValue.toStringAsFixed(1).replaceAll('.', ',')} %';
+
+  /// Igual que [_formatPercent], pero con un "+" explícito si es positivo
+  /// (para que "más que el mes anterior" no se confunda con "menos"), y un
+  /// aviso en vez de una cifra cuando no hay base sobre la que calcular un
+  /// porcentaje (el mes o la categoría base no tenían gasto).
+  String _formatDeltaPercent(double? roundedValue) {
+    if (roundedValue == null) return 'sin gasto previo con el que comparar';
+    final sign = roundedValue > 0 ? '+' : '';
+    return '$sign${_formatPercent(roundedValue)}';
+  }
+
+  double _roundTo1Decimal(double value) => double.parse(value.toStringAsFixed(1));
+
+  /// Primera línea obligatoria de `rankingLines`/`comparisonLines` cuando
+  /// el mes (o, en `compareMonths`, alguno de los dos) está en curso: sin
+  /// ella, una caída de gasto en un mes a medias se podría confundir con
+  /// que de verdad se ha gastado menos, cuando solo es que aún no han
+  /// entrado todos los cargos. La instrucción de sistema obliga a copiarla
+  /// tal cual, nunca a omitirla ni a suavizarla.
+  String _currentMonthWarning(MonthlyReport report) {
+    return 'Aviso: ${_monthLabel(report.year, report.month)} está en curso (datos hasta el '
+        'día ${report.elapsedDays}), así que la comparación es parcial y las diferencias '
+        'pueden deberse a cargos que aún no han entrado.';
+  }
+
+  static const _monthNames = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  ];
+
+  String _monthLabel(int year, int month) => '${_monthNames[month - 1]} de $year';
 }
 
 class _RangeFetch {

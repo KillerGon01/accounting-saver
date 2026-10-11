@@ -5,14 +5,22 @@ import '../../application/chat/transaction_chat_functions.dart';
 import '../../domain/chat/chat_gateway.dart';
 import '../../infrastructure/chat/gemini_chat_gateway.dart';
 import '../common/ai_providers.dart';
+import '../reports/report_providers.dart';
 import '../transactions/transaction_providers.dart';
 
 final chatGatewayProvider = Provider<ChatGateway>(
   (ref) => GeminiChatGateway(availability: ref.watch(geminiModelAvailabilityProvider)),
 );
 
+/// Se le pasa el mismo `BuildMonthlyReport` que usa el resumen mensual
+/// (`buildMonthlyReportProvider`), no uno nuevo: así `getCategoryBreakdown`
+/// y `compareMonths` son, byte a byte, la misma fuente de verdad que la
+/// pantalla de resumen (ver docs/design.md).
 final transactionChatFunctionsProvider = Provider<TransactionChatFunctions>(
-  (ref) => TransactionChatFunctions(ref.watch(transactionRepositoryProvider)),
+  (ref) => TransactionChatFunctions(
+    ref.watch(transactionRepositoryProvider),
+    ref.watch(buildMonthlyReportProvider),
+  ),
 );
 
 /// Una instancia por usuario (familia por `userId`), no una sola por app:
