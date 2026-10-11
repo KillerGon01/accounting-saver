@@ -64,7 +64,7 @@ Ejecutar ambos antes de cada PR.
 | `test/presentation/reports/report_formatters_test.dart` | `formatPercentage`: redondea a un decimal con coma (100/3 → "33,3 %"), no añade decimales de más a un valor exacto, redondea hacia arriba cuando corresponde, y acepta valores negativos (para los deltas de la comparación). |
 | `test/presentation/reports/monthly_report_screen_test.dart` | Con `FakeMonthlyReportGateway` (incluido `.pending()`, igual que en el chat): con IA, el botón "Generar comentario con IA" genera un comentario y descuenta el contador de `maxCommentsPerSession` (6), con el mismo indicador de progreso a los 10 s/45 s/120 s que el chat; un mes sin movimientos muestra "No hay movimientos este mes" en vez del botón. Sin IA (`showAiComment: false`, el parámetro de prueba de la pantalla): no muestra el botón ni el contador, pero sí el resto del informe. Un informe truncado muestra el aviso de informe parcial. El mes en curso muestra "Mes en curso, hasta el día N". Y, sin recargar la pantalla, añadir un movimiento con `addTransactionProvider` cambia las cifras mostradas (ingresos, gastos, balance) gracias a `transactionsVersionProvider`. |
 
-Total: 331 tests (`flutter test`). Aparte, `firestore-tests/` (Node, no `flutter test`) prueba `firestore.rules` contra el emulador real — ver docs/security.md.
+Total: 333 tests (`flutter test`). Aparte, `firestore-tests/` (Node, no `flutter test`) prueba `firestore.rules` contra el emulador real — ver docs/security.md.
 
 ## Entrada en lenguaje natural
 
