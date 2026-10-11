@@ -146,9 +146,36 @@ No se ha implementado un proveedor de producción para Android en esta tarea. En
 
 Visto de verdad el 8 de octubre de 2026, al activar App Check contra un proyecto real: cuando el token de App Check no es válido, Gemini (vía Firebase AI Logic) no siempre responde con el 401 genérico de "token inválido" — con un token que el backend rechaza específicamente, responde **403 `PERMISSION_DENIED`** con un mensaje como `"App attestation failed."`. `isAppCheckAttestationError` (`lib/infrastructure/common/app_check_error.dart`) reconoce este caso por texto (`App attestation failed` o `PERMISSION_DENIED` en el mensaje del `FirebaseAIException`, descartando explícitamente `QuotaExceeded`) y los dos gateways (`GeminiChatGateway`, `GeminiLlmGateway`) lo traducen a `LlmGatewayException('app-check-failed', ...)`, que la presentación muestra siempre como "La IA no está disponible ahora mismo" — nunca el JSON crudo del error. No se reintenta (no es un fallo transitorio: `isTransientGeminiError` no lo reconoce) ni marca el modelo como agotado (no es `QuotaExceeded`, así que `withGeminiModelFallback` no lo toca). Probado con fakes en `test/infrastructure/common/app_check_error_test.dart` y en `test/presentation/chat/chat_error_messages_test.dart` / `test/presentation/transactions/llm_error_messages_test.dart` (este último también cubre la entrada en lenguaje natural). Esta misma detección por texto (en vez de por un campo estructurado) es la misma limitación que ya tiene `isTransientGeminiError` para el 503 — ver "Límites conocidos" más abajo.
 
-## Configuración de Firebase en el cliente
+## Claves de cliente de Firebase
 
-La configuración web de Firebase (`firebase_options.dart`) identifica el proyecto y no es un secreto. La protección de datos depende de las reglas anteriores, no de ocultar esa configuración.
+Las claves de `lib/firebase_options.dart` y la clave de sitio de reCAPTCHA (App Check en producción web, ver más arriba) son **identificadores públicos por diseño**: en una aplicación web viajan dentro del propio JavaScript que se sirve al navegador, así que no se pueden ocultar — cualquiera que abra las herramientas de desarrollador las ve. No son el mecanismo de seguridad; son la forma en que el cliente se identifica ante Firebase.
+
+La seguridad de los datos y del uso de la IA la dan, en conjunto:
+
+- **Las reglas de Firestore** (`firestore.rules`): cada usuario solo puede leer, crear, editar y borrar sus propios movimientos, y solo con el correo verificado (`isOwner(userId)` + `isVerified()`, ver "Reglas de Firestore" más arriba).
+- **Firebase Auth**: identifica quién hace cada petición; las reglas de Firestore se evalúan contra ese `request.auth`, no contra la clave de cliente.
+- **App Check, aplicado (*enforced*) en Firebase AI Logic** desde el 11/10/2026 (ver "App Check" más arriba): una petición a Gemini sin un token de App Check válido se rechaza antes de llegar al modelo, aunque quien la haga conozca la clave de cliente. App Check **no** está aplicado en Firestore; ahí la protección son las reglas del punto anterior.
+- **La restricción de la clave de navegador por sitios web, en Google Cloud.** Estado comprobado el 11/10/2026 en *Google Cloud Console → APIs y servicios → Credenciales*, para la clave de API del proyecto `accounting-saver`:
+  - **Restricciones de aplicación:** "Sitios web", con estos orígenes exactos: `https://accounting-saver.web.app/*`, `https://accounting-saver.firebaseapp.com/*`, `http://localhost:5000/*`, `http://localhost:8080/*`. Una petición con esta clave desde cualquier otro origen es rechazada por Google antes de llegar a Firebase.
+  - **Restricciones de API:** "Restringir clave", con la lista por defecto de Firebase (25 APIs): Cloud Datastore, Cloud Firestore, Cloud Logging, Cloud SQL Admin, Cloud Storage for Firebase, FCM Registration, Firebase AI Logic, Firebase App Check, Firebase App Distribution, Firebase App Hosting, Firebase App Testers, Firebase Hosting, Firebase In-App Messaging, Firebase Installations, Firebase Management, Firebase ML, Firebase Phone Number Verification, Firebase Realtime Database Management, Firebase Remote Config, Firebase Remote Config Realtime, Firebase Rules, Firebase SQL Connect, Identity Toolkit, ML Kit y Token Service. Incluye todas las que de verdad usa la app (Identity Toolkit, Cloud Firestore, Firebase AI Logic, Firebase App Check, Firebase Installations, Token Service y Firebase Hosting); no se ha recortado esta lista por defecto, para no arriesgar que falte una API que la app necesite y algo deje de funcionar.
+  - **Por qué `localhost:5000` y `localhost:8080`, no cualquier puerto.** La lista de orígenes de arriba es exacta, no un patrón abierto a cualquier puerto de `localhost`: ejecutar la app en local **tiene que ser** con `flutter run ... --web-port=5000` (ver README, "Instalación y ejecución") o, servida con Docker, en el puerto 8080 (el que ya fija `docker-compose.yml`/`Dockerfile`, ver "Docker" más abajo); cualquier otro puerto de `localhost` no está en la lista y la clave sería rechazada por Google antes de llegar a Firebase.
+- **La clave real de la API de Gemini nunca sale del servidor.** El cliente nunca tiene ni usa una clave de la API de Gemini: llama a Firebase AI Logic con la configuración de cliente de arriba (identificación de proyecto, no autenticación de la llamada a Gemini) y es Firebase, en su infraestructura, quien habla con la API de Gemini con sus propias credenciales de servidor.
+- **Plan Spark: un abuso agotaría cuota gratuita, no generaría cargos.** El proyecto está en el plan Spark de Firebase (sin facturación vinculada, ver CLAUDE.md), así que alguien que abusara de estas claves públicas (dentro de los orígenes y las APIs permitidas) agotaría la cuota gratuita compartida del proyecto —dejando la IA o el resto de servicios sin disponibilidad para todos los usuarios—, pero no podría generar un cargo económico: no hay una cuenta de facturación que cobrar.
+
+**Riesgos conocidos, no resueltos:**
+
+- **La restricción por sitios web se puede falsificar desde un script.** La cabecera `Referer`/origen que Google comprueba la envía el propio cliente; quien llame a la API directamente (no desde un navegador, por ejemplo con `curl` o un script) puede falsificarla. La restricción frena el uso casual desde un sitio no autorizado, no a quien se moleste en imitar el origen.
+- **El registro abierto de cuentas por la API de Auth sigue pendiente de decisión** (ver "Límites conocidos" más abajo): nada en estas restricciones impide crear cuentas en masa por correo y contraseña mientras el proveedor esté habilitado.
+
+## Escaneo de secretos (gitleaks)
+
+Escaneo manual con [gitleaks](https://github.com/gitleaks/gitleaks) sobre todo el historial del repositorio, ejecutado el 11/10/2026, sin ningún hallazgo aparte de las dos claves de cliente de Firebase descritas arriba (`lib/firebase_options.dart`), aceptadas explícitamente en `.gitleaksignore` con un comentario que explica por qué son públicas por diseño. No está integrado en el CI (`.github/workflows/ci.yml` no tiene ningún job de gitleaks); es una comprobación manual.
+
+Para repetirlo con Docker (no requiere instalar gitleaks en la máquina):
+
+```bash
+docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest detect --source /repo -v
+```
 
 ## Datos demo
 
