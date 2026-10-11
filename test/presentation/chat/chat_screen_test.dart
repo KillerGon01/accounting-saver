@@ -174,4 +174,57 @@ void main() {
     expect(find.text('Te quedan 20 preguntas'), findsOneWidget);
     expect(tester.widget<IconButton>(find.byType(IconButton)).onPressed, isNotNull);
   });
+
+  group('pantalla pequeña con el teclado abierto', () {
+    for (final size in [const Size(360, 640), const Size(407, 904)]) {
+      testWidgets(
+        'estado vacío sin desbordamiento en ${size.width.toInt()}x${size.height.toInt()} con teclado',
+        (tester) async {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+          addTearDown(tester.view.resetViewInsets);
+
+          final container = ProviderContainer(
+            overrides: [
+              transactionRepositoryProvider.overrideWithValue(FakeTransactionRepository()),
+              chatGatewayProvider.overrideWithValue(FakeChatGateway.returning('Respuesta del modelo')),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          await _pump(tester, container, 'user-A');
+
+          expect(find.text('Pregúntame sobre tus movimientos'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        },
+      );
+
+      testWidgets(
+        'con mensajes sin desbordamiento en ${size.width.toInt()}x${size.height.toInt()} con teclado',
+        (tester) async {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+          addTearDown(tester.view.resetViewInsets);
+
+          final container = ProviderContainer(
+            overrides: [
+              transactionRepositoryProvider.overrideWithValue(FakeTransactionRepository()),
+              chatGatewayProvider.overrideWithValue(FakeChatGateway.returning('Respuesta del modelo')),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          await _pump(tester, container, 'user-A');
+          await _ask(tester, '¿Cuánto gasté?');
+
+          expect(find.text('Respuesta del modelo'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  });
 }

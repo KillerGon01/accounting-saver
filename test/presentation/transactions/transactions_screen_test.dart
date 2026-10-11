@@ -72,4 +72,61 @@ void main() {
     expect(find.byTooltip('Mes anterior'), findsOneWidget);
     expect(find.byTooltip('Cerrar sesión'), findsOneWidget);
   });
+
+  group('pantalla pequeña con el teclado abierto', () {
+    Future<void> withKeyboard(
+      WidgetTester tester,
+      Size size,
+      Future<void> Function() body,
+    ) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await body();
+    }
+
+    for (final size in [const Size(360, 640), const Size(407, 904)]) {
+      testWidgets(
+        'estado vacío sin desbordamiento en ${size.width.toInt()}x${size.height.toInt()} con teclado',
+        (tester) async {
+          await withKeyboard(tester, size, () async {
+            await _pump(tester, FakeTransactionRepository());
+
+            expect(find.text('No hay movimientos este mes'), findsOneWidget);
+            expect(tester.takeException(), isNull);
+          });
+        },
+      );
+
+      testWidgets(
+        'con movimientos sin desbordamiento en ${size.width.toInt()}x${size.height.toInt()} con teclado',
+        (tester) async {
+          final repository = FakeTransactionRepository();
+          final today = DateTime.now();
+          final day = DateTime(today.year, today.month, today.day, 12);
+          await repository.add(
+            userId: _userId,
+            transaction: Transaction(
+              id: 'cena',
+              amountCents: -2550,
+              date: day,
+              description: 'Cena',
+              categoryId: Category.restaurantes,
+              source: TransactionSource.manual,
+              createdAt: day,
+            ),
+          );
+
+          await withKeyboard(tester, size, () async {
+            await _pump(tester, repository);
+
+            expect(find.text('Cena'), findsOneWidget);
+            expect(tester.takeException(), isNull);
+          });
+        },
+      );
+    }
+  });
 }

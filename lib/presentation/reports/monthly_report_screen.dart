@@ -311,16 +311,16 @@ class _ReportBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: AppSpacing.xs,
                   children: [
                     Text('Comparación con el mes anterior', style: theme.textTheme.labelLarge),
-                    if (report.isCurrentMonth && report.comparison != null) ...[
-                      const SizedBox(width: AppSpacing.xs),
+                    if (report.isCurrentMonth && report.comparison != null)
                       Text(
                         '(parcial, mes en curso)',
                         style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),
-                    ],
                   ],
                 ),
                 const SizedBox(height: AppSpacing.s),

@@ -38,23 +38,19 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 
 ## Estado
 Hecho: MVP completo (login, movimientos, lenguaje natural, chat con function calling, datos
-demo, resumen mensual con gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini
-(fallback de modelo, timeout de 150 s, reintento único ante 503, topes de 20 preguntas/6
-comentarios, caché, aislamiento por usuario), App Check de producción en web, CI
-(`.github/workflows/ci.yml`) y Docker para servir la web; detalles en docs/design.md,
-docs/testing.md y docs/security.md. Nuevo: el chat ya no improvisaba el gasto por categoría ni
-las comparaciones entre meses con `listTransactions` (daba cifras distintas al resumen);
-`getCategoryBreakdown` y `compareMonths` reutilizan `BuildMonthlyReport`/
-`compareCategoryBreakdowns` y devuelven las cifras ya redactadas en texto plano, con un aviso
-obligatorio cuando el mes es el actual (datos parciales). `isModelNotFoundError` se le escapaba
-un 404 real ("...is no longer available to new users...", solo miraba la otra frase): ahora
-detecta las dos; `geminiModelFallbacks` es ahora `[gemini-3.5-flash-lite, gemini-3.8-flash]`
-(fuera los `gemini-2.5-*`, retirados para proyectos nuevos), con cupos (500/15 por min frente a
-20/5 por min) y latencia (~20 s frente a varios minutos) observados de verdad el 11/10/2026 —
-de ahí la subida de los topes. Confirmado que un error sin clasificar de cualquier gateway
-(chat, lenguaje natural, resumen) ya caía en un mensaje genérico antes de este cambio (la
-presentación decide por `error.code`, nunca por `error.message`), con test explícito nuevo por
-cada gateway. Ver docs/design.md para el detalle completo.
+demo, resumen mensual con gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini, App
+Check de producción en web, CI y Docker para la web; detalles en docs/design.md, docs/testing.md
+y docs/security.md. Nuevo: dos desbordamientos de layout en Android con pantallas pequeñas. (1)
+Vertical con el teclado abierto: el estado vacío de movimientos y el de chat (`Center > Column`
+de tamaño fijo bajo un `Expanded`) no cedían cuando el `Scaffold` encogía el `body`
+(`resizeToAvoidBottomInset`); ahora van en `LayoutBuilder + SingleChildScrollView +
+ConstrainedBox(minHeight: ...)`. (2) Horizontal en el resumen mensual: la fila "Comparación con
+el mes anterior" + "(parcial, mes en curso)" no cedía (ahora `Wrap`); y el desplegable de
+categoría del formulario de movimiento desbordaba porque su `Row` (icono + etiqueta) no tenía
+`isExpanded: true` en el `DropdownButtonFormField` (sin él, el `Row` interno de cada item se
+mide con ancho no acotado y ni `Expanded` ni `Flexible` son válidos ahí). Tests nuevos: teclado
+simulado (`viewInsets.bottom`) para los estados vacíos, y `textScaler` 1.3 con texto largo para
+resumen mensual, chat, formulario, login y registro, ambos a 360x640 y 407x904.
 Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
 Android, revisión visual en navegador, confirmar `thinkingConfig`, CI opcional para
 `firestore-tests/`.
