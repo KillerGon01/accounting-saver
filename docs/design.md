@@ -70,6 +70,20 @@ Todo el tema vive en `lib/presentation/theme/app_theme.dart`:
 - Tocar un movimiento abre el formulario de edición; el icono de papelera pide confirmación.
 - Acceso al perfil con un icono de cuenta en la barra superior. El perfil se abre como ruta nueva y, al cerrar sesión o borrar la cuenta, se vuelve a la raíz con `popUntil`.
 
+## Android
+
+**Estado: funciona en modo debug, no en release.** Probado en un móvil físico el 11/10/2026: inicio de sesión con correo y con Google, movimientos, resumen mensual, entrada en lenguaje natural y chat, todo con el token de depuración de App Check registrado por el administrador del proyecto. En una build de **release** no hay ningún proveedor de App Check de producción configurado (Play Integrity exige vincular la app en Play Console), así que la IA no funciona en un APK de release. Detalle técnico completo en `docs/security.md` → "Android".
+
+**`google-services.json` no se versiona.** Está en `.gitignore`; cada desarrollador descarga su propia copia desde *Firebase Console → Configuración del proyecto → tus apps → app Android* y la coloca en `android/app/`.
+
+**Huella SHA-1 de depuración registrada** en Firebase Console, necesaria para que el inicio de sesión con Google funcione en Android.
+
+**Nombre de paquete por renombrar.** El `applicationId` sigue siendo el que pone Flutter por defecto, `com.example.accounting_saver` (`android/app/build.gradle.kts`), pendiente de renombrar antes de publicar.
+
+**Avisos de Gradle sobre el plugin de Kotlin.** Al compilar para Android aparecen avisos de Gradle sobre el plugin de Kotlin en los paquetes `firebase_ai`, `firebase_app_check`, `firebase_auth` y `firebase_core`. Vienen de esos paquetes, no de código de este proyecto; se resolverán cuando publiquen una versión que lo soporte.
+
+**Desbordamientos de layout, corregidos (rama `fix/android-layout`).** Uno vertical (el estado vacío de movimientos y de chat no cedía con el teclado abierto) y uno horizontal (una fila del resumen mensual y el desplegable de categoría del formulario de movimiento no cedían en pantallas estrechas).
+
 ## Perfil y eliminación de cuenta
 
 **Capas.** `AppUser` (dominio) guarda lo que dice Firebase: proveedores, verificación y fechas de creación y último acceso. `UserProfile` (dominio) lo traduce a un proveedor `SignInProvider` que la presentación puede mostrar sin conocer los identificadores de Firebase (`password`, `google.com`). `ActivitySummary` (dominio) es el resumen; `ActivitySummary.fromTransactions` lo calcula en memoria y lo usa el fake, mientras que Firestore lo calcula con agregados.
