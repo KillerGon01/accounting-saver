@@ -48,6 +48,11 @@ recibe ahora `isWeb` (`kIsWeb`): en release, `effectiveEnableAi` solo puede ser 
 en cualquier otra plataforma se oculta igual que con `ENABLE_AI=false`, sin activar App Check.
 Documentado en README ("Limitaciones conocidas"), docs/security.md (sección "Android", con tabla
 de los 7 casos) y docs/design.md ("Android"), con el comando para generar el APK de depuración.
+Nuevo: la clave de API de Android (`google-services.json`) está restringida en Google Cloud por
+nombre de paquete y por la huella SHA-1 de depuración, comprobado el 11/10/2026 en un móvil
+físico; corregida una tabla de App Check en docs/security.md que había quedado desactualizada
+tras el cambio de `isWeb` (seguía diciendo que un release de Android con clave mostraba la IA).
+Recontados los tests: 333 (antes decían 331 en README y docs/testing.md).
 Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
 Android, revisión visual en navegador, confirmar `thinkingConfig`, CI opcional para
 `firestore-tests/`.

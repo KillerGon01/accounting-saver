@@ -67,14 +67,15 @@ Casos cubiertos, los seis ejecutados de verdad contra el emulador el 10/10/2026 
 
 ## App Check (Firebase AI Logic)
 
-Desde noviembre de 2026 Firebase AI Logic exige App Check para llamar a Gemini; sin él, la petición falla con un 401 ("Firebase App Check token is invalid"). Qué proveedor se activa depende de la build, calculado en `lib/app_check_config.dart` (lógica pura, sin Firebase ni Flutter más allá de `kReleaseMode`, probada en `test/app_check_config_test.dart`):
+Desde noviembre de 2026 Firebase AI Logic exige App Check para llamar a Gemini; sin él, la petición falla con un 401 ("Firebase App Check token is invalid"). Qué proveedor se activa depende de la build y de la plataforma, calculado en `lib/app_check_config.dart` (lógica pura, sin Firebase ni Flutter más allá de `kReleaseMode` y `kIsWeb`, probada en `test/app_check_config_test.dart`; tabla completa de los 7 casos en "Android" más abajo):
 
-| Build | `ENABLE_AI` | `RECAPTCHA_SITE_KEY` | Web | Android | ¿Se muestra la IA? |
+| Build | Plataforma | `ENABLE_AI` | `RECAPTCHA_SITE_KEY` | Proveedor | ¿Se muestra la IA? |
 |---|---|---|---|---|---|
-| Cualquiera | `false` | — | ninguno | ninguno | No |
-| Debug/profile | `true` | — | `WebDebugProvider` | `AndroidDebugProvider` | Sí |
-| Release | `true` | vacía | ninguno | ninguno | **No** (se oculta, no se deja fallar) |
-| Release | `true` | con valor | `ReCaptchaEnterpriseProvider` | *(sin configurar, ver abajo)* | Sí |
+| Cualquiera | cualquiera | `false` | — | ninguno | No |
+| Debug/profile | web o Android | `true` | — | `WebDebugProvider` / `AndroidDebugProvider` | Sí |
+| Release | web | `true` | vacía | ninguno | **No** (se oculta, no se deja fallar) |
+| Release | web | `true` | con valor | `ReCaptchaEnterpriseProvider` | Sí |
+| Release | Android | `true` | con o sin valor | ninguno | **No** (se oculta: no hay proveedor de producción para Android, ver "Android" más abajo) |
 
 **Dónde se decide.** `main.dart`, justo después de `Firebase.initializeApp()`, activa App Check solo si `appCheckConfig.effectiveEnableAi` es verdadero — y `effectiveEnableAi` ya tiene en cuenta todo lo anterior, no solo `ENABLE_AI`:
 
@@ -83,18 +84,19 @@ Desde noviembre de 2026 Firebase AI Logic exige App Check para llamar a Gemini; 
 AppCheckConfig chooseAppCheckConfig({
   required bool enableAi,
   required bool isRelease,
+  required bool isWeb,
   required String recaptchaSiteKey,
 }) {
   if (!enableAi) return /* todo a `none`, IA oculta */;
   if (!isRelease) return /* debug en web y Android, IA visible */;
+  if (!isWeb) return /* Android en release: todo a `none`, IA oculta */;
   final hasSiteKey = recaptchaSiteKey.isNotEmpty;
-  return /* web: reCAPTCHA Enterprise si hay clave, si no `none`;
-            Android: siempre el valor por defecto del SDK;
+  return /* web en release: reCAPTCHA Enterprise si hay clave, si no `none`;
             IA visible solo si hay clave */;
 }
 ```
 
-Las pantallas (`TransactionsScreen`) comprueban `effectiveEnableAi`, no `enableAi` a secas, para decidir si muestran el botón del chat y la entrada en lenguaje natural. Así, un release con `ENABLE_AI=true` pero sin `RECAPTCHA_SITE_KEY` **no intenta activar la IA y deja que falle**: la oculta igual que si `ENABLE_AI` fuera `false`, sin ningún error visible para quien usa la app.
+Las pantallas (`TransactionsScreen`) comprueban `effectiveEnableAi`, no `enableAi` a secas, para decidir si muestran el botón del chat y la entrada en lenguaje natural. Así, un release sin `RECAPTCHA_SITE_KEY` (web) o que no sea web (Android) **no intenta activar la IA, la oculta** igual que si `ENABLE_AI` fuera `false`, en vez de dejarla fallar sin ningún error visible para quien usa la app.
 
 ### Depuración (desarrollo local)
 
@@ -169,6 +171,8 @@ El APK de depuración con la IA activada se genera con `flutter build apk --debu
 **`google-services.json` no se versiona.** Está en `.gitignore` (ver "Autenticación" más arriba); cada desarrollador tiene que descargar su propia copia desde *Firebase Console → Configuración del proyecto → tus apps → app Android → google-services.json* y colocarla en `android/app/`.
 
 **Huella SHA-1 de depuración registrada.** La huella SHA-1 del *debug keystore* (la que genera Flutter/Gradle para compilaciones de depuración) está registrada en Firebase Console para la app Android del proyecto; es necesaria para que el inicio de sesión con Google funcione en Android (el inicio de sesión con correo y contraseña no depende de ella).
+
+**Clave de API de Android restringida en Google Cloud.** La clave de API que trae `google-services.json` para la app Android está restringida en *Google Cloud Console → APIs y servicios → Credenciales* por nombre de paquete (`com.example.accounting_saver`) y por la huella SHA-1 de la clave de depuración, con las restricciones de API que traía por defecto (no se han cambiado). No se escriben aquí ni la clave ni la huella. Comprobado el 11/10/2026: con esa restricción aplicada, el inicio de sesión con Google y con correo, los movimientos, el resumen mensual y el chat siguen funcionando en un móvil físico. Si en el futuro se firmara con una clave de release, habría que añadir su SHA-1 tanto a esta restricción en Google Cloud como a Firebase (ver "Huella SHA-1 de depuración registrada" arriba).
 
 **Nombre de paquete por renombrar.** El `applicationId` sigue siendo el que pone Flutter por defecto al crear el proyecto, `com.example.accounting_saver` (`android/app/build.gradle.kts`), pendiente de renombrar antes de publicar.
 
