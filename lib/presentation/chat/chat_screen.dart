@@ -254,28 +254,37 @@ class _EmptyChat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.l),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.chat_bubble_outline, size: 56, color: theme.colorScheme.outline),
-            const SizedBox(height: AppSpacing.m),
-            Text(
-              'Pregúntame sobre tus movimientos',
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.l),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.chat_bubble_outline, size: 56, color: theme.colorScheme.outline),
+                    const SizedBox(height: AppSpacing.m),
+                    Text(
+                      'Pregúntame sobre tus movimientos',
+                      style: theme.textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Por ejemplo: "¿Cuánto gasté en restaurantes en octubre?"',
+                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Por ejemplo: "¿Cuánto gasté en restaurantes en octubre?"',
-              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

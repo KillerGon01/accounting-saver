@@ -386,40 +386,49 @@ class _EmptyMonth extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.l),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 56,
-              color: theme.colorScheme.outline,
-            ),
-            const SizedBox(height: AppSpacing.m),
-            Text(
-              'No hay movimientos este mes',
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Añade uno con el botón Nuevo o carga datos de ejemplo para probar la app.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.l),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.receipt_long_outlined,
+                      size: 56,
+                      color: theme.colorScheme.outline,
+                    ),
+                    const SizedBox(height: AppSpacing.m),
+                    Text(
+                      'No hay movimientos este mes',
+                      style: theme.textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Añade uno con el botón Nuevo o carga datos de ejemplo para probar la app.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.l),
+                    FilledButton.tonalIcon(
+                      onPressed: isLoadingDemo ? null : onLoadDemo,
+                      icon: const Icon(Icons.dataset_outlined),
+                      label: const Text('Cargar datos de ejemplo'),
+                    ),
+                  ],
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppSpacing.l),
-            FilledButton.tonalIcon(
-              onPressed: isLoadingDemo ? null : onLoadDemo,
-              icon: const Icon(Icons.dataset_outlined),
-              label: const Text('Cargar datos de ejemplo'),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
