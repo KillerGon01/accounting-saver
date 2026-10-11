@@ -72,7 +72,9 @@ Todo el tema vive en `lib/presentation/theme/app_theme.dart`:
 
 ## Android
 
-**Estado: funciona en modo debug, no en release.** Probado en un móvil físico el 11/10/2026: inicio de sesión con correo y con Google, movimientos, resumen mensual, entrada en lenguaje natural y chat, todo con el token de depuración de App Check registrado por el administrador del proyecto. En una build de **release** no hay ningún proveedor de App Check de producción configurado (Play Integrity exige vincular la app en Play Console), así que la IA no funciona en un APK de release. Detalle técnico completo en `docs/security.md` → "Android".
+**Estado: funciona en modo debug, no en release.** Probado en un móvil físico el 11/10/2026: inicio de sesión con correo y con Google, movimientos, resumen mensual, entrada en lenguaje natural y chat, todo con el token de depuración de App Check registrado por el administrador del proyecto. En una build de **release** no hay ningún proveedor de App Check de producción configurado (Play Integrity exige vincular la app en Play Console), así que el APK de release se entrega sin IA: `chooseAppCheckConfig` (`lib/app_check_config.dart`) la oculta automáticamente en cualquier release que no sea web, en vez de mostrarla y dejarla fallar. Detalle técnico completo y tabla de casos en `docs/security.md` → "Android".
+
+El APK de depuración con la IA activada se genera con `flutter build apk --debug --dart-define=ENABLE_AI=true`; la IA solo funciona en el móvil donde está registrado el token de depuración de App Check de esa instalación, y ese APK no se distribuye.
 
 **`google-services.json` no se versiona.** Está en `.gitignore`; cada desarrollador descarga su propia copia desde *Firebase Console → Configuración del proyecto → tus apps → app Android* y la coloca en `android/app/`.
 

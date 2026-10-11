@@ -138,9 +138,23 @@ Sin el segundo `--dart-define`, la build compila igual (no rompe nada: ver la ta
 
 **`useLimitedUseAppCheckTokens`.** Sigue sin activarse (igual que con el proveedor de depuración): solo aporta algo junto con la protección contra repetición ("replay protection") de App Check, que no se ha activado.
 
-### Android: pendiente
+### Android: sin proveedor de producción, la IA se oculta en release
 
-No se ha implementado un proveedor de producción para Android en esta tarea. En una build de release con `ENABLE_AI=true`, `main.dart` activa App Check **sin pasar `providerAndroid`**, así que el SDK usa su propio valor por defecto, `AndroidPlayIntegrityProvider()` — pero Play Integrity no está configurado ni probado: falta registrar la huella SHA-256 de la build de release en Firebase Console y vincular la app a un listado de Play Console. Hasta que se haga esa configuración, una build de release para Android con `ENABLE_AI=true` fallaría al llamar a Gemini (la IA se mostraría, porque `effectiveEnableAi` no depende de nada específico de Android, pero las llamadas fallarían con el mismo 403 que se describe más abajo). El proveedor de depuración de Android (`AndroidDebugProvider`) solo se usa en builds que no son de release, nunca en una build de release aunque `RECAPTCHA_SITE_KEY` esté vacía.
+No se ha implementado un proveedor de producción para Android. `chooseAppCheckConfig` (`lib/app_check_config.dart`) recibe también `isWeb` (resuelto una sola vez con `kIsWeb`): en release, `effectiveEnableAi` solo puede ser verdadero en **web** y con `RECAPTCHA_SITE_KEY` no vacía; en cualquier otra plataforma (Android) en release, `effectiveEnableAi` es siempre `false`, aunque haya clave de reCAPTCHA y aunque `ENABLE_AI=true` — igual que si `ENABLE_AI` fuera `false`, y sin activar App Check. Antes de este cambio, un release de Android con `ENABLE_AI=true` y clave mostraba la IA y las llamadas a Gemini fallaban con el 403 que se describe más abajo (`AndroidPlayIntegrityProvider()` por defecto, sin Play Integrity configurado ni probado: falta registrar la huella SHA-256 de la build de release en Firebase Console y vincular la app a un listado de Play Console). El proveedor de depuración de Android (`AndroidDebugProvider`) solo se usa en builds que no son de release, en cualquier plataforma.
+
+**Tabla de casos (`chooseAppCheckConfig`), probada en `test/app_check_config_test.dart`:**
+
+| `ENABLE_AI` | Build | Plataforma | Clave reCAPTCHA | `effectiveEnableAi` | Proveedor web | Proveedor Android |
+|---|---|---|---|---|---|---|
+| `false` | cualquiera | cualquiera | — | `false` | `none` | `none` |
+| `true` | debug/profile | web | no hace falta | `true` | `debug` | `debug` |
+| `true` | debug/profile | Android | no hace falta | `true` | `debug` | `debug` |
+| `true` | release | web | vacía | `false` | `none` | `none` |
+| `true` | release | web | no vacía | `true` | `recaptchaEnterprise` | `none` |
+| `true` | release | Android | vacía | `false` | `none` | `none` |
+| `true` | release | Android | no vacía | **`false`** | `none` | `none` |
+
+Las dos últimas filas son el caso que motivó el cambio: antes, un release de Android con clave de reCAPTCHA (una clave pensada solo para web) daba `effectiveEnableAi: true` por error.
 
 ### Errores de App Check al llamar a Gemini (403, no 401)
 
@@ -148,7 +162,9 @@ Visto de verdad el 8 de octubre de 2026, al activar App Check contra un proyecto
 
 ## Android
 
-**Estado: funciona en modo debug, no en release.** Probado en un móvil físico el 11/10/2026: inicio de sesión con correo y con Google, movimientos, resumen mensual, entrada en lenguaje natural y chat, todo con el token de depuración de App Check registrado por el administrador del proyecto (ver "Depuración (desarrollo local)" más arriba). En una build de **release** no hay ningún proveedor de App Check de producción configurado — Play Integrity exige vincular la app en Play Console, y eso no se ha hecho — así que la IA no funciona en un APK de release (ver "Android: pendiente", dentro de "App Check" más arriba, para el detalle técnico de por qué falla).
+**Estado: funciona en modo debug, no en release.** Probado en un móvil físico el 11/10/2026: inicio de sesión con correo y con Google, movimientos, resumen mensual, entrada en lenguaje natural y chat, todo con el token de depuración de App Check registrado por el administrador del proyecto (ver "Depuración (desarrollo local)" más arriba). En una build de **release** no hay ningún proveedor de App Check de producción configurado — Play Integrity exige vincular la app en Play Console, y eso no se ha hecho — así que el APK de release se entrega sin IA: queda oculta automáticamente (`chooseAppCheckConfig`), sin intentar activar App Check, en vez de mostrarla y dejarla fallar (ver "Android: sin proveedor de producción, la IA se oculta en release", dentro de "App Check" más arriba, con la tabla completa de casos).
+
+El APK de depuración con la IA activada se genera con `flutter build apk --debug --dart-define=ENABLE_AI=true`. La IA solo funciona en el móvil donde está registrado el token de depuración de App Check de esa instalación (ver "Depuración (desarrollo local)" más arriba); ese APK no se distribuye.
 
 **`google-services.json` no se versiona.** Está en `.gitignore` (ver "Autenticación" más arriba); cada desarrollador tiene que descargar su propia copia desde *Firebase Console → Configuración del proyecto → tus apps → app Android → google-services.json* y colocarla en `android/app/`.
 
@@ -246,4 +262,4 @@ Las tres capas lanzan el mismo tipo, `NotUnderstoodException`, con un mensaje pa
 - Tests automatizados de las reglas (ahora se verifican manualmente contra el emulador).
 - Revisión de dependencias antes de la entrega.
 - Exigir correo verificado en las reglas de Firestore.
-- **App Check en producción para Android.** Resuelto para web (reCAPTCHA Enterprise / Fraud Defense, ver "App Check" más arriba). Para Android sigue pendiente: hay que registrar la huella SHA-256 de la build de release en Firebase Console y vincular la app en Play Console para que `AndroidPlayIntegrityProvider` (el valor por defecto del SDK, ya usado por `main.dart` en release) funcione de verdad.
+- **App Check en producción para Android.** Resuelto para web (reCAPTCHA Enterprise / Fraud Defense, ver "App Check" más arriba). Para Android sigue pendiente: mientras no se configure, un release de Android no activa App Check y oculta la IA (`chooseAppCheckConfig`, ver "Android" más arriba), en vez de intentarlo y fallar. Para activarla de verdad haría falta registrar la huella SHA-256 de la build de release en Firebase Console, vincular la app en Play Console para que `AndroidPlayIntegrityProvider` funcione, y que `chooseAppCheckConfig` deje de ocultar la IA en release Android.

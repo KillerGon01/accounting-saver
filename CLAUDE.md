@@ -40,17 +40,14 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 Hecho: MVP completo (login, movimientos, lenguaje natural, chat con function calling, datos
 demo, resumen mensual con gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini, App
 Check de producción en web, CI y Docker para la web; detalles en docs/design.md, docs/testing.md
-y docs/security.md. Nuevo: dos desbordamientos de layout en Android con pantallas pequeñas. (1)
-Vertical con el teclado abierto: el estado vacío de movimientos y el de chat (`Center > Column`
-de tamaño fijo bajo un `Expanded`) no cedían cuando el `Scaffold` encogía el `body`
-(`resizeToAvoidBottomInset`); ahora van en `LayoutBuilder + SingleChildScrollView +
-ConstrainedBox(minHeight: ...)`. (2) Horizontal en el resumen mensual: la fila "Comparación con
-el mes anterior" + "(parcial, mes en curso)" no cedía (ahora `Wrap`); y el desplegable de
-categoría del formulario de movimiento desbordaba porque su `Row` (icono + etiqueta) no tenía
-`isExpanded: true` en el `DropdownButtonFormField` (sin él, el `Row` interno de cada item se
-mide con ancho no acotado y ni `Expanded` ni `Flexible` son válidos ahí). Tests nuevos: teclado
-simulado (`viewInsets.bottom`) para los estados vacíos, y `textScaler` 1.3 con texto largo para
-resumen mensual, chat, formulario, login y registro, ambos a 360x640 y 407x904.
+y docs/security.md. Android, en la rama `fix/android-layout`: corregidos dos desbordamientos de
+layout en pantallas pequeñas (teclado abierto en los estados vacíos, y ancho estrecho en el
+resumen mensual y el desplegable de categoría) y arreglado que un release de Android con clave de
+reCAPTCHA mostrara la IA y fallara con 403 — `chooseAppCheckConfig` (`lib/app_check_config.dart`)
+recibe ahora `isWeb` (`kIsWeb`): en release, `effectiveEnableAi` solo puede ser verdadero en web;
+en cualquier otra plataforma se oculta igual que con `ENABLE_AI=false`, sin activar App Check.
+Documentado en README ("Limitaciones conocidas"), docs/security.md (sección "Android", con tabla
+de los 7 casos) y docs/design.md ("Android"), con el comando para generar el APK de depuración.
 Pendiente: flutter_localizations, decisión sobre registro abierto, App Check de producción en
 Android, revisión visual en navegador, confirmar `thinkingConfig`, CI opcional para
 `firestore-tests/`.

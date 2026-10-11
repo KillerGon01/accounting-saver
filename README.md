@@ -240,7 +240,15 @@ Cuenta de prueba para la corrección, con datos ficticios (cargados con la opci�
 
 ## Limitaciones conocidas y mejoras futuras
 
-- **Android funciona en modo debug, no en release.** Probado en un móvil físico el 11/10/2026: inicio de sesión con correo y con Google, movimientos, resumen mensual, entrada en lenguaje natural y chat, todo con el token de depuración de App Check registrado por el administrador del proyecto. En una build de **release** no hay ningún proveedor de App Check de producción configurado (Play Integrity exige vincular la app en Play Console), así que la IA no funciona en un APK de release. El nombre de paquete sigue siendo el que pone Flutter por defecto (`com.example.accounting_saver`), pendiente de renombrar antes de publicar. Detalle completo en `docs/security.md` → "Android" y `docs/design.md` → "Android".
+- **Android funciona en modo debug, no en release.** Probado en un móvil físico el 11/10/2026: inicio de sesión con correo y con Google, movimientos, resumen mensual, entrada en lenguaje natural y chat, todo con el token de depuración de App Check registrado por el administrador del proyecto. En una build de **release** no hay ningún proveedor de App Check de producción configurado (Play Integrity exige vincular la app en Play Console), así que el APK de release se entrega sin IA: queda oculta automáticamente (`chooseAppCheckConfig` en `lib/app_check_config.dart`), igual que si `ENABLE_AI` fuera `false`, en vez de mostrarla y dejarla fallar. El nombre de paquete sigue siendo el que pone Flutter por defecto (`com.example.accounting_saver`), pendiente de renombrar antes de publicar. Detalle completo en `docs/security.md` → "Android" y `docs/design.md` → "Android".
+
+  El APK de depuración con la IA activada se genera con:
+
+  ```bash
+  flutter build apk --debug --dart-define=ENABLE_AI=true
+  ```
+
+  La IA solo funciona en el móvil donde está registrado el token de depuración de App Check de esa instalación (ver "Seguridad" más abajo); este APK no se distribuye.
 - **Detección de errores de Gemini y de App Check por texto, no por código de estado.** El paquete `firebase_ai` no expone el código HTTP ni el `status` del error como un campo propio para un modelo no encontrado, un 503 transitorio o un 403 de App Check; se reconocen buscando frases concretas en el mensaje de la excepción. Si Google cambia ese texto, la detección deja de funcionar silenciosamente (el fallo pasaría a tratarse como un error genérico, sin reintento, pero sin romper nada más ni filtrar información interna).
 - **Registro abierto.** La aplicación permite crear cuentas por correo y contraseña sin ninguna restricción adicional; pendiente de decidir si se deja así (documentado como límite conocido) o se cierra desde la consola de Firebase.
 - **`thinkingConfig` de Gemini sin confirmar** para los modelos de respaldo del fallback: existe en el paquete, pero no se ha podido probar contra el backend real en este entorno.
