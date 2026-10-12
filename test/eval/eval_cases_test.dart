@@ -1,9 +1,15 @@
+import 'package:accounting_saver/application/chat/transaction_chat_functions.dart';
+import 'package:accounting_saver/application/reports/build_monthly_report.dart';
+import 'package:accounting_saver/domain/chat/chat_functions.dart';
 import 'package:accounting_saver/eval/eval_cases.dart';
+import 'package:accounting_saver/eval/eval_clock.dart';
+import 'package:accounting_saver/eval/eval_fixtures.dart';
+import 'package:accounting_saver/eval/in_memory_transaction_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('buildEvalDataset', () {
-    test('genera unos 30 casos, con id único y los 8 tipos pedidos', () async {
+    test('genera unos 30 casos, con id único y los 9 tipos pedidos', () async {
       final dataset = await buildEvalDataset();
       final cases = dataset.cases;
 
@@ -110,5 +116,94 @@ void main() {
       expect(comparacion01.monthLabelByAmountCents, isNotEmpty);
       expect(comparacion01.monthLabelByAmountCents.values.toSet(), {'octubre', 'noviembre'});
     });
+
+    test(
+      'listado-01 espera el importe de cada gasto de noviembre, calculado con '
+      'TransactionChatFunctions.listTransactions de forma independiente',
+      () async {
+        final cases = (await buildEvalDataset()).cases;
+        final listado01 = cases.firstWhere((c) => c.id == 'listado-01');
+
+        expect(listado01.type, EvalCaseType.listado);
+        expect(listado01.relevantMonths, [(novYear, novMonth)]);
+
+        // Recalculado aquí desde cero (otro repositorio en memoria, no el
+        // de buildEvalDataset), para no dar por buena una cifra solo
+        // porque el propio código de producción la haya repetido dos
+        // veces con un error compartido.
+        final repository = InMemoryTransactionRepository();
+        await seedEvalData(repository, userId: 'u', evalNow: evalNow);
+        final functions = TransactionChatFunctions(
+          repository,
+          BuildMonthlyReport(repository, FixedClock(evalNow)),
+        );
+        final result = await functions.execute(
+          userId: 'u',
+          name: ChatFunctions.listTransactions,
+          arguments: const {'desde': '2026-11-01', 'hasta': '2026-11-30'},
+          now: evalNow,
+        );
+        final expenseAmounts = (result['transactions'] as List)
+            .cast<Map<String, Object?>>()
+            .map((t) => t['amountCents'] as int)
+            .where((amountCents) => amountCents < 0)
+            .map((amountCents) => amountCents.abs())
+            .toList();
+
+        expect(expenseAmounts, isNotEmpty);
+        expect(listado01.expectedAmountsCents.toSet(), expenseAmounts.toSet());
+        // Ningún importe de ingreso debería colarse entre los esperados.
+        final incomeAmounts = (result['transactions'] as List)
+            .cast<Map<String, Object?>>()
+            .map((t) => t['amountCents'] as int)
+            .where((amountCents) => amountCents > 0)
+            .map((amountCents) => amountCents.abs());
+        for (final income in incomeAmounts) {
+          expect(listado01.expectedAmountsCents, isNot(contains(income)));
+        }
+      },
+    );
+
+    test(
+      'listado-02 espera el importe de cada ingreso de octubre, calculado con '
+      'TransactionChatFunctions.listTransactions de forma independiente',
+      () async {
+        final cases = (await buildEvalDataset()).cases;
+        final listado02 = cases.firstWhere((c) => c.id == 'listado-02');
+
+        expect(listado02.type, EvalCaseType.listado);
+        expect(listado02.relevantMonths, [(octYear, octMonth)]);
+
+        final repository = InMemoryTransactionRepository();
+        await seedEvalData(repository, userId: 'u', evalNow: evalNow);
+        final functions = TransactionChatFunctions(
+          repository,
+          BuildMonthlyReport(repository, FixedClock(evalNow)),
+        );
+        final result = await functions.execute(
+          userId: 'u',
+          name: ChatFunctions.listTransactions,
+          arguments: const {'desde': '2026-10-01', 'hasta': '2026-10-31'},
+          now: evalNow,
+        );
+        final incomeAmounts = (result['transactions'] as List)
+            .cast<Map<String, Object?>>()
+            .map((t) => t['amountCents'] as int)
+            .where((amountCents) => amountCents > 0)
+            .map((amountCents) => amountCents.abs())
+            .toList();
+
+        expect(incomeAmounts, isNotEmpty);
+        expect(listado02.expectedAmountsCents.toSet(), incomeAmounts.toSet());
+        final expenseAmounts = (result['transactions'] as List)
+            .cast<Map<String, Object?>>()
+            .map((t) => t['amountCents'] as int)
+            .where((amountCents) => amountCents < 0)
+            .map((amountCents) => amountCents.abs());
+        for (final expense in expenseAmounts) {
+          expect(listado02.expectedAmountsCents, isNot(contains(expense)));
+        }
+      },
+    );
   });
 }

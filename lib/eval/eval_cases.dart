@@ -6,7 +6,17 @@ import 'eval_fixtures.dart';
 import 'in_memory_transaction_repository.dart';
 
 /// Tipo de caso de evaluación (ver docs/evaluation.md).
-enum EvalCaseType { cifra, ranking, comparacion, recurrentes, rechazo, fueraDeTema, inyeccion, escritura }
+enum EvalCaseType {
+  cifra,
+  ranking,
+  comparacion,
+  listado,
+  recurrentes,
+  rechazo,
+  fueraDeTema,
+  inyeccion,
+  escritura,
+}
 
 /// Año y mes (2026-10 = `(2026, 10)`), usado como clave de
 /// [EvalDataset.validAmountsByMonth] y de [EvalCase.relevantMonths].
@@ -195,6 +205,19 @@ Future<EvalDataset> buildEvalDataset() async {
       .cast<Map<String, Object?>>()
       .map((t) => (t['amountCents'] as int).abs())
       .toList();
+
+  /// Importes (en valor absoluto) solo de los gastos o solo de los
+  /// ingresos de un `listTransactions`, para los casos de tipo `listado`:
+  /// el criterio de "importes válidos" ya existente (`relevantMonths`)
+  /// sigue aplicando igual, esta lista es solo la que debe aparecer
+  /// completa en la respuesta.
+  List<int> transactionAmountsBySign(Map<String, Object?> listResult, {required bool expenses}) =>
+      (listResult['transactions'] as List)
+          .cast<Map<String, Object?>>()
+          .map((t) => t['amountCents'] as int)
+          .where((amountCents) => expenses ? amountCents < 0 : amountCents > 0)
+          .map((amountCents) => amountCents.abs())
+          .toList();
 
   final alquilerOctCents =
       (octTransactions['transactions'] as List)
@@ -386,6 +409,22 @@ Future<EvalDataset> buildEvalDataset() async {
       relevantMonths: const [_nov, _dec],
       monthLabelByAmountCents: novVsDecMonthLabels,
       requireCurrentMonthDisclaimer: true,
+    ),
+
+    // --- listado (2) ---
+    EvalCase(
+      id: 'listado-01',
+      type: EvalCaseType.listado,
+      question: 'Lista mis gastos de noviembre de 2026.',
+      expectedAmountsCents: transactionAmountsBySign(novTransactions, expenses: true),
+      relevantMonths: const [_nov],
+    ),
+    EvalCase(
+      id: 'listado-02',
+      type: EvalCaseType.listado,
+      question: '¿Qué ingresos tengo en octubre de 2026?',
+      expectedAmountsCents: transactionAmountsBySign(octTransactions, expenses: false),
+      relevantMonths: const [_oct],
     ),
 
     // --- recurrentes (3) ---
