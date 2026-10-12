@@ -39,15 +39,16 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: MVP completo y, nuevo, la lectura de nóminas en PDF (solo web) a partir de la prueba de
-viabilidad desechable (`trial/payroll-pdf-reading`): `PayrollGateway`/`GeminiPayrollGateway`
-(`InlineDataPart` + `responseSchema`, mismo fallback/reintento/timeout que el resto de la IA),
-`PayrollValidation` en código (nunca del modelo) y `PayrollScreen`, con selector de archivo por
-import condicional (`package:web`, ahora dependencia directa) para no romper Android ni
-`flutter test`. Reglas de Firestore con `payroll` como origen válido, probadas contra el
-emulador real. Resultados de la prueba de viabilidad en docs/evaluation.md. Tests: 417.
+Hecho: MVP completo, lectura de nóminas en PDF (solo web) y, nuevo, la previsión de fin de mes
+dentro del resumen mensual (sin IA): `BuildMonthEndForecast`/`MonthEndForecast` estima el gasto
+previsto a partir de los recurrentes detectados en los 3 meses anteriores (misma regla que
+`recurringExpenses` del chat, ya extraída a `findRecurringExpenses` sin cambiar su comportamiento:
+sus 9 tests pasan sin tocarlos), con tarjeta y desglose en `MonthlyReportScreen`; solo existe para
+el mes en curso, y un fallo en sus consultas extra no rompe el resto del informe (sin reintento
+automático, ver docs/design.md). Tests: 444.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
 abierto, App Check de producción en Android, `thinkingConfig`, CI para `firestore-tests/`,
-repetir la evaluación del chat con `transactionLines`) más decidir si el límite de 5 lecturas
-de nómina por sesión debe compartir algún tope con el chat/lenguaje natural (cuota compartida).
+repetir la evaluación del chat con `transactionLines`, cuota compartida entre nóminas y chat/
+lenguaje natural) más los riesgos de la previsión de fin de mes documentados en docs/design.md
+(día habitual sin comprobar consecutividad, caso del último día del mes).
 Siguiente: decidir los pendientes de seguridad antes de la entrega (26/10).

@@ -2,6 +2,7 @@ import '../../domain/chat/chat_functions.dart';
 import '../../domain/common/money_formatting.dart';
 import '../../domain/reports/monthly_report.dart';
 import '../../domain/transactions/category.dart';
+import '../../domain/transactions/recurring_expenses.dart';
 import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_repository.dart';
 import '../reports/build_monthly_report.dart';
@@ -188,8 +189,12 @@ class TransactionChatFunctions {
   /// Un gasto es recurrente si, con el mismo concepto normalizado (en
   /// minúsculas y sin espacios de más) y el mismo importe exacto, aparece
   /// en 2 o más meses distintos dentro del rango analizado. Es una
-  /// definición determinista, calculada aquí en código: el modelo no
-  /// decide qué cuenta como recurrente, solo lee la lista ya calculada.
+  /// definición determinista, calculada en código por [findRecurringExpenses]
+  /// (dominio, compartida con `BuildMonthEndForecast` — ver docs/design.md,
+  /// "Previsión de fin de mes"): el modelo no decide qué cuenta como
+  /// recurrente, solo lee la lista ya calculada. Esta función solo se
+  /// queda con el conjunto de meses de cada recurrente; el día de cada
+  /// aparición (que sí usa `BuildMonthEndForecast`) no hace falta aquí.
   Future<Map<String, Object?>> _recurringExpenses({required String userId, required DateTime now}) async {
     final thisMonthStart = DateTime(now.year, now.month);
     final start = DateTime(now.year, now.month - recurringExpensesMonths);
@@ -198,27 +203,15 @@ class TransactionChatFunctions {
 
     final fetch = await _fetchRange(userId: userId, start: start, end: end);
 
-    final monthsByGroup = <({String description, int amountCentsAbs}), Set<String>>{};
-    for (final transaction in fetch.transactions) {
-      if (transaction.amountCents >= 0) continue; // solo gastos
-      final key = (
-        description: _normalizeDescription(transaction.description),
-        amountCentsAbs: -transaction.amountCents,
-      );
-      monthsByGroup.putIfAbsent(key, () => <String>{}).add(_isoMonth(transaction.date));
-    }
-
-    final recurring = <Map<String, Object?>>[];
-    for (final entry in monthsByGroup.entries) {
-      if (entry.value.length < 2) continue;
-      final months = entry.value.toList()..sort();
-      recurring.add({
-        'description': entry.key.description,
-        'amountEuros': formatEuroAmount(entry.key.amountCentsAbs),
-        'months': months,
-      });
-    }
-    recurring.sort((a, b) => (a['description'] as String).compareTo(b['description'] as String));
+    final recurringExpenses = findRecurringExpenses(fetch.transactions);
+    final recurring = [
+      for (final expense in recurringExpenses)
+        {
+          'description': expense.description,
+          'amountEuros': formatEuroAmount(expense.amountCentsAbs),
+          'months': (expense.occurrences.map((o) => o.isoMonth).toSet().toList()..sort()),
+        },
+    ];
 
     final desde = _isoDate(start);
     final hasta = _isoDate(lastDayAnalyzed);
@@ -528,19 +521,6 @@ class TransactionChatFunctions {
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return '$year-$month-$day';
-  }
-
-  String _isoMonth(DateTime date) {
-    final year = date.year.toString().padLeft(4, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    return '$year-$month';
-  }
-
-  /// Minúsculas, sin espacios al principio o al final, y sin espacios
-  /// dobles en medio: así "Netflix", "netflix " y "netflix  " cuentan como
-  /// el mismo concepto al buscar gastos recurrentes.
-  String _normalizeDescription(String text) {
-    return text.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
   }
 
   /// Mismas reglas que valida `_getMonthlySummary` desde siempre (año
