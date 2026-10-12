@@ -1,5 +1,9 @@
+import 'package:accounting_saver/application/reports/build_month_end_forecast.dart';
+import 'package:accounting_saver/application/reports/build_monthly_report.dart';
+import 'package:accounting_saver/domain/transactions/activity_summary.dart';
 import 'package:accounting_saver/domain/transactions/category.dart';
 import 'package:accounting_saver/domain/transactions/transaction.dart';
+import 'package:accounting_saver/domain/transactions/transaction_repository.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
 import 'package:accounting_saver/presentation/reports/monthly_report_screen.dart';
 import 'package:accounting_saver/presentation/reports/report_providers.dart';
@@ -9,8 +13,63 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../fakes/fake_clock.dart';
 import '../../fakes/fake_monthly_report_gateway.dart';
 import '../../fakes/fake_transaction_repository.dart';
+
+/// Repositorio que falla solo en la consulta "extra" que hace
+/// `BuildMonthEndForecast` sobre los 3 meses anteriores (un rango de más
+/// de 31 días; ninguna otra consulta de la app pide un rango tan largo de
+/// una vez), para comprobar que un fallo ahí no rompe el resto del
+/// resumen mensual (ver docs/design.md, "Riesgos").
+class _ForecastQueryFailingRepository implements TransactionRepository {
+  _ForecastQueryFailingRepository(this._delegate);
+
+  final TransactionRepository _delegate;
+
+  @override
+  Future<List<Transaction>> findByDateRange({
+    required String userId,
+    required DateTime start,
+    required DateTime end,
+    required int limit,
+  }) {
+    if (end.difference(start).inDays > 31) {
+      throw Exception('fallo simulado en la consulta de los meses anteriores');
+    }
+    return _delegate.findByDateRange(userId: userId, start: start, end: end, limit: limit);
+  }
+
+  @override
+  Stream<List<Transaction>> watchByMonth({required String userId, required int year, required int month}) =>
+      _delegate.watchByMonth(userId: userId, year: year, month: month);
+
+  @override
+  String newId({required String userId}) => _delegate.newId(userId: userId);
+
+  @override
+  Future<void> add({required String userId, required Transaction transaction}) =>
+      _delegate.add(userId: userId, transaction: transaction);
+
+  @override
+  Future<void> addAll({required String userId, required List<Transaction> transactions}) =>
+      _delegate.addAll(userId: userId, transactions: transactions);
+
+  @override
+  Future<bool> hasDemoData({required String userId}) => _delegate.hasDemoData(userId: userId);
+
+  @override
+  Future<void> update({required String userId, required Transaction transaction}) =>
+      _delegate.update(userId: userId, transaction: transaction);
+
+  @override
+  Future<void> delete({required String userId, required String transactionId}) =>
+      _delegate.delete(userId: userId, transactionId: transactionId);
+
+  @override
+  Future<ActivitySummary> getActivitySummary({required String userId}) =>
+      _delegate.getActivitySummary(userId: userId);
+}
 
 const _userId = 'u1';
 
@@ -42,12 +101,13 @@ Transaction _tx({
   required DateTime date,
   Category category = Category.otros,
   String id = 'tx-1',
+  String description = 'movimiento',
 }) {
   return Transaction(
     id: id,
     amountCents: amountCents,
     date: date,
-    description: 'movimiento',
+    description: description,
     categoryId: category,
     source: TransactionSource.manual,
     createdAt: date,
@@ -227,9 +287,194 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text(_eur('-50,00')), findsOneWidget); // balance del mes
-    // "50,00 €" aparece dos veces: en el total de gastos y en la fila de
-    // la categoría del gráfico (el único gasto del mes).
-    expect(find.text(_eur('50,00')), findsNWidgets(2));
+    // "-50,00 €" aparece dos veces: el balance del mes y, al no haber
+    // ningún gasto recurrente pendiente, el mismo importe como "Balance
+    // previsto" en la tarjeta de previsión de fin de mes.
+    expect(find.text(_eur('-50,00')), findsNWidgets(2));
+    // "50,00 €" aparece cuatro veces: en el total de gastos y en la fila
+    // de la categoría del gráfico (el único gasto del mes), y otra vez
+    // más en la tarjeta de previsión ("Gastado hasta hoy" y "Gasto
+    // previsto", iguales entre sí al no haber ningún recurrente
+    // pendiente).
+    expect(find.text(_eur('50,00')), findsNWidgets(4));
+  });
+
+  group('previsión de fin de mes', () {
+    // Día 10 del mes real en curso: la pantalla siempre arranca en el mes
+    // real (`DateTime.now()`, no inyectable — ver `MonthlyReportScreen`),
+    // así que el reloj fijo de las pruebas comparte año y mes con "ahora"
+    // de verdad, y solo fija el día para que el resultado no dependa de
+    // qué día sea cuando se ejecuten los tests.
+    final fixedNow = DateTime(now.year, now.month, 10);
+
+    ProviderContainer containerWith(TransactionRepository repository) {
+      return ProviderContainer(
+        overrides: [
+          transactionRepositoryProvider.overrideWithValue(repository),
+          buildMonthlyReportProvider.overrideWithValue(BuildMonthlyReport(repository, FakeClock(fixedNow))),
+          buildMonthEndForecastProvider.overrideWithValue(
+            BuildMonthEndForecast(repository, FakeClock(fixedNow)),
+          ),
+        ],
+      );
+    }
+
+    testWidgets('con un recurrente pendiente, muestra la tarjeta con su desglose', (tester) async {
+      final repository = FakeTransactionRepository();
+      await repository.addAll(
+        userId: _userId,
+        transactions: [
+          // Netflix, día 20, en 2 de los 3 meses anteriores: recurrente.
+          // Día 20 > día 10 (hoy, según `fixedNow`): pendiente.
+          _tx(
+            amountCents: -1299,
+            date: DateTime(fixedNow.year, fixedNow.month - 2, 20),
+            id: 't1',
+            description: 'Netflix',
+          ),
+          _tx(
+            amountCents: -1299,
+            date: DateTime(fixedNow.year, fixedNow.month - 1, 20),
+            id: 't2',
+            description: 'Netflix',
+          ),
+        ],
+      );
+      final container = containerWith(repository);
+      addTearDown(container.dispose);
+
+      await _pump(tester, container, showAiComment: false);
+
+      expect(find.text('Previsión de fin de mes (estimación)'), findsOneWidget);
+      expect(find.textContaining('Netflix'), findsOneWidget);
+      expect(find.textContaining('día 20'), findsOneWidget);
+      expect(find.text('Gastado hasta hoy'), findsOneWidget);
+      expect(find.text('Gasto previsto'), findsOneWidget);
+      expect(find.text('Balance previsto'), findsOneWidget);
+      // Habiendo un pendiente, no se muestra la línea "ninguno".
+      expect(find.text('Recurrentes pendientes este mes'), findsNothing);
+      expect(find.text('ninguno'), findsNothing);
+      // Gastado hasta hoy (0,00 €, sin movimientos este mes) + Netflix
+      // (12,99 €) = 12,99 € de gasto previsto.
+      expect(find.text(_eur('12,99')), findsWidgets);
+    });
+
+    testWidgets(
+      'sin ningún recurrente pendiente, muestra explícitamente "ninguno" en vez de ninguna línea',
+      (tester) async {
+        final repository = FakeTransactionRepository();
+        final container = containerWith(repository);
+        addTearDown(container.dispose);
+
+        await _pump(tester, container, showAiComment: false);
+
+        expect(find.text('Previsión de fin de mes (estimación)'), findsOneWidget);
+        expect(find.textContaining('Netflix'), findsNothing);
+        expect(find.textContaining('(día'), findsNothing);
+        expect(find.text('Recurrentes pendientes este mes'), findsOneWidget);
+        expect(find.text('ninguno'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'con un recurrente esperado y no registrado, aparece en una lista aparte sin sumarse',
+      (tester) async {
+        final repository = FakeTransactionRepository();
+        await repository.addAll(
+          userId: _userId,
+          transactions: [
+            // Netflix, día 5, en los 2 meses anteriores: recurrente. Día 5
+            // < día 10 (hoy, según `fixedNow`) y sin registrar este mes:
+            // esperado y no registrado, no pendiente.
+            _tx(
+              amountCents: -1299,
+              date: DateTime(fixedNow.year, fixedNow.month - 2, 5),
+              id: 't1',
+              description: 'Netflix',
+            ),
+            _tx(
+              amountCents: -1299,
+              date: DateTime(fixedNow.year, fixedNow.month - 1, 5),
+              id: 't2',
+              description: 'Netflix',
+            ),
+          ],
+        );
+        final container = containerWith(repository);
+        addTearDown(container.dispose);
+
+        await _pump(tester, container, showAiComment: false);
+
+        expect(find.text('Esperados y no registrados todavía (no incluidos en la previsión):'), findsOneWidget);
+        expect(find.textContaining('Netflix (día 5)'), findsOneWidget);
+        // No pendiente, y no sumado al gasto previsto (sigue siendo 0,00 €,
+        // igual que lo acumulado, sin ningún movimiento este mes).
+        expect(find.text('Recurrentes pendientes este mes'), findsOneWidget);
+        expect(find.text('ninguno'), findsOneWidget);
+        expect(find.text(_eur('0,00')), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      '"Ingresos registrados" y "Gastado hasta hoy" de la tarjeta coinciden con el balance del mismo resumen',
+      (tester) async {
+        final repository = FakeTransactionRepository();
+        await repository.addAll(
+          userId: _userId,
+          transactions: [
+            _tx(amountCents: 150000, date: DateTime(fixedNow.year, fixedNow.month, 1), id: 'ingreso'),
+            _tx(
+              amountCents: -3000,
+              date: DateTime(fixedNow.year, fixedNow.month, 2),
+              id: 'gasto',
+              category: Category.supermercado,
+            ),
+          ],
+        );
+        final container = containerWith(repository);
+        addTearDown(container.dispose);
+
+        await _pump(tester, container, showAiComment: false);
+
+        // El balance del mes ya muestra estas mismas cifras (Ingresos:
+        // 1.500,00 €, Gastos: 30,00 €) en la tarjeta de arriba; la de
+        // previsión debe repetirlas, no recalcularlas de otra forma.
+        expect(find.text(_eur('1.500,00')), findsWidgets); // Ingresos y "Ingresos registrados"
+        expect(find.text(_eur('30,00')), findsWidgets); // Gastos y "Gastado hasta hoy"
+        expect(find.text('Ingresos registrados: ${_eur('1.500,00')}.'), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.ancestor(of: find.text('Gastado hasta hoy'), matching: find.byType(Row)),
+            matching: find.text(_eur('30,00')),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'si falla el cálculo de la previsión, el resto del resumen sigue funcionando y la tarjeta no aparece',
+      (tester) async {
+        final repository = _ForecastQueryFailingRepository(FakeTransactionRepository());
+        final container = ProviderContainer(
+          overrides: [
+            transactionRepositoryProvider.overrideWithValue(repository),
+            buildMonthlyReportProvider.overrideWithValue(BuildMonthlyReport(repository, FakeClock(fixedNow))),
+            buildMonthEndForecastProvider.overrideWithValue(
+              BuildMonthEndForecast(repository, FakeClock(fixedNow)),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await _pump(tester, container, showAiComment: false);
+
+        // El resto del informe sigue mostrándose con normalidad...
+        expect(find.text('Balance del mes'), findsOneWidget);
+        expect(find.text('Gasto por categoría'), findsOneWidget);
+        // ...pero la tarjeta de previsión no aparece.
+        expect(find.text('Previsión de fin de mes (estimación)'), findsNothing);
+      },
+    );
   });
 }

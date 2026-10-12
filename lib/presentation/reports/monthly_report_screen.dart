@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app_check_config.dart';
+import '../../domain/reports/month_end_forecast.dart';
 import '../../domain/reports/monthly_report.dart';
 import '../common/firestore_error_messages.dart';
 import '../theme/app_theme.dart';
@@ -144,6 +145,12 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       month: _selectedMonth.month,
     );
     final reportAsync = ref.watch(monthlyReportProvider(params));
+    // `.value` (nullable, no lanza), nunca `.when`/`.requireValue`: si
+    // falla el cálculo de la previsión (las consultas extra de los 3
+    // meses anteriores), el resto del resumen mensual sigue funcionando
+    // con normalidad y la tarjeta de previsión simplemente no aparece
+    // (ver docs/design.md, "Riesgos").
+    final forecast = ref.watch(monthEndForecastProvider(params)).value;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Resumen del mes')),
@@ -180,6 +187,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
                 child: reportAsync.when(
                   data: (report) => _ReportBody(
                     report: report,
+                    forecast: forecast,
                     showAiComment: widget.showAiComment,
                     comment: _comment,
                     isGenerating: _isGenerating,
@@ -212,6 +220,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
 class _ReportBody extends StatelessWidget {
   const _ReportBody({
     required this.report,
+    required this.forecast,
     required this.showAiComment,
     required this.comment,
     required this.isGenerating,
@@ -221,6 +230,11 @@ class _ReportBody extends StatelessWidget {
   });
 
   final MonthlyReport report;
+
+  /// `null` si el mes mostrado no es el mes en curso, o si falló el
+  /// cálculo (ver `MonthlyReportScreen.build`): en los dos casos, sin
+  /// tarjeta de previsión.
+  final MonthEndForecast? forecast;
   final bool showAiComment;
   final String? comment;
   final bool isGenerating;
@@ -383,7 +397,148 @@ class _ReportBody extends StatelessWidget {
             ),
           ),
         ],
+        if (forecast != null) ...[
+          const SizedBox(height: AppSpacing.m),
+          _MonthEndForecastCard(forecast: forecast!),
+        ],
       ],
+    );
+  }
+}
+
+/// Tarjeta "Previsión de fin de mes": gasto acumulado hasta hoy, cada
+/// recurrente pendiente con su importe y día, el gasto previsto (suma de
+/// los dos) y el balance previsto. Solo se muestra cuando
+/// `MonthlyReportScreen` recibe un [forecast] no nulo (mes en curso, y el
+/// cálculo no ha fallado — ver `report_providers.dart`).
+class _MonthEndForecastCard extends StatelessWidget {
+  const _MonthEndForecastCard({required this.forecast});
+
+  final MonthEndForecast forecast;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.m),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Previsión de fin de mes (estimación)', style: theme.textTheme.labelLarge),
+            if (forecast.truncated) ...[
+              const SizedBox(height: AppSpacing.xs),
+              _InfoBanner(
+                icon: Icons.warning_amber_outlined,
+                text: 'Previsión parcial: se han leído los primeros 2.000 movimientos de alguno de los meses analizados.',
+              ),
+            ],
+            const SizedBox(height: AppSpacing.s),
+            _ForecastLine(
+              label: 'Gastado hasta hoy',
+              value: formatCents(forecast.accumulatedExpenseCents),
+            ),
+            if (forecast.pendingRecurringExpenses.isEmpty)
+              _ForecastLine(label: 'Recurrentes pendientes este mes', value: 'ninguno', indent: true)
+            else
+              for (final pending in forecast.pendingRecurringExpenses)
+                _ForecastLine(
+                  label: '${_capitalize(pending.description)} (día ${pending.usualDay})',
+                  value: formatCents(pending.amountCentsAbs),
+                  indent: true,
+                ),
+            const Divider(height: AppSpacing.m),
+            _ForecastLine(
+              label: 'Gasto previsto',
+              value: formatCents(forecast.forecastExpenseCents),
+              emphasize: true,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            _ForecastLine(
+              label: 'Balance previsto',
+              value: formatCents(forecast.forecastBalanceCents),
+              emphasize: true,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Los ingresos que aún no hayan entrado no se incluyen.',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Ingresos registrados: ${formatCents(forecast.registeredIncomeCents)}.',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            if (forecast.overdueUnregisteredExpenses.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.s),
+              Text(
+                'Esperados y no registrados todavía (no incluidos en la previsión):',
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+              for (final overdue in forecast.overdueUnregisteredExpenses)
+                Padding(
+                  padding: const EdgeInsets.only(left: AppSpacing.s, top: 2),
+                  child: Text(
+                    '${_capitalize(overdue.description)} (día ${overdue.usualDay}): '
+                    '${formatCents(overdue.amountCentsAbs)}',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+            ],
+            const SizedBox(height: AppSpacing.s),
+            Text(
+              'Estimación basada solo en gastos recurrentes detectados en meses '
+              'anteriores: no prevé ingresos futuros ni gasto variable.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _capitalize(String text) {
+    if (text.isEmpty) return text;
+    return '${text[0].toUpperCase()}${text.substring(1)}';
+  }
+}
+
+/// Una fila "etiqueta: importe" de la tarjeta de previsión. [indent]
+/// marca una línea del desglose (un recurrente pendiente) con una
+/// sangría, para distinguirla visualmente de los totales sin depender
+/// solo de un color.
+class _ForecastLine extends StatelessWidget {
+  const _ForecastLine({
+    required this.label,
+    required this.value,
+    this.indent = false,
+    this.emphasize = false,
+  });
+
+  final String label;
+  final String value;
+  final bool indent;
+  final bool emphasize;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = emphasize
+        ? theme.textTheme.titleSmall
+        : theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+
+    return Padding(
+      padding: EdgeInsets.only(left: indent ? AppSpacing.m : 0, top: 2, bottom: 2),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: style)),
+          Text(value, style: style),
+        ],
+      ),
     );
   }
 }
