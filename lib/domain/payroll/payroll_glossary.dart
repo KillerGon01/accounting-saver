@@ -31,10 +31,11 @@ const _glossary = <String, String>{
       'circunstancias.',
 };
 
-/// Quita acentos y pasa a minúsculas, para que la búsqueda en el glosario
-/// no dependa de cómo haya copiado el modelo las tildes o las mayúsculas.
+/// Quita acentos, pasa a minúsculas y colapsa espacios de más, para que la
+/// búsqueda en el glosario no dependa de cómo haya copiado el modelo las
+/// tildes, las mayúsculas o los espacios.
 String normalizePayrollConcept(String concept) {
-  var normalized = concept.trim().toLowerCase();
+  var normalized = concept.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   // Tras `toLowerCase()` solo pueden quedar minúsculas, acentuadas o no.
   const withAccents = 'áéíóúñ';
   const withoutAccents = 'aeioun';
@@ -44,8 +45,25 @@ String normalizePayrollConcept(String concept) {
   return normalized;
 }
 
+/// `true` si [text] (ya normalizado) contiene [key] como palabra o sigla
+/// completa: con un límite de palabra (`\b`) en los dos extremos, para que
+/// "mei" encuentre "... (mei)" o "mei ..." pero no "premeido" (donde "mei"
+/// es una subcadena sin límite de palabra a ningún lado).
+bool _containsWholeWord(String text, String key) {
+  return RegExp('\\b${RegExp.escape(key)}\\b').hasMatch(text);
+}
+
 /// Descripción en lenguaje sencillo para [concept], o
-/// [payrollGlossaryUnknownDescription] si no está en el glosario.
+/// [payrollGlossaryUnknownDescription] si ninguna clave del glosario
+/// aparece como palabra o sigla completa dentro de [concept] normalizado
+/// (ver [normalizePayrollConcept] y [_containsWholeWord]): el modelo suele
+/// devolver el nombre completo con la sigla entre paréntesis (por ejemplo
+/// "IRPF (retención a cuenta)"), que ya no es una igualdad exacta con
+/// ninguna clave, pero sí la contiene como palabra completa.
 String payrollGlossaryDescription(String concept) {
-  return _glossary[normalizePayrollConcept(concept)] ?? payrollGlossaryUnknownDescription;
+  final normalized = normalizePayrollConcept(concept);
+  for (final entry in _glossary.entries) {
+    if (_containsWholeWord(normalized, entry.key)) return entry.value;
+  }
+  return payrollGlossaryUnknownDescription;
 }
