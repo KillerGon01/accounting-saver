@@ -19,8 +19,15 @@ import '../common/gemini_transient_retry.dart';
 /// nivel gratuito y, a través de [GeminiModelAvailability], la misma
 /// memoria de qué modelo está agotado.
 class GeminiChatGateway implements ChatGateway {
-  GeminiChatGateway({this._clock = const SystemClock(), GeminiModelAvailability? availability})
-    : _availability = availability ?? GeminiModelAvailability();
+  // [clock] es público (a diferencia del campo que guarda, `_clock`) para
+  // que se pueda fijar desde fuera de este archivo: lo usa
+  // `lib/eval/eval_runner.dart` para que la evaluación de calidad del
+  // chat (ver docs/evaluation.md) sea reproducible con una fecha fija, en
+  // vez del reloj real del dispositivo.
+  GeminiChatGateway({Clock clock = const SystemClock(), GeminiModelAvailability? availability})
+    // ignore: prefer_initializing_formals (el nombre público es `clock`, no `_clock`)
+    : _clock = clock,
+      _availability = availability ?? GeminiModelAvailability();
 
   /// Límite de idas y vueltas con llamadas a función en un mismo turno, para
   /// no encadenar peticiones sin fin si el modelo no deja de pedir

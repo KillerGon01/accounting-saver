@@ -199,7 +199,7 @@ Los dos jobs ejecutan sin `continue-on-error` (confirmado en el YAML), así que 
 
 ## Pruebas
 
-333 tests (`flutter test`), cubriendo dominio, aplicación y presentación con fakes (sin mocks): parseo e importe de movimientos, casos de uso de alta/edición/borrado, datos de ejemplo, autenticación y verificación de correo, perfil y borrado de cuenta, entrada en lenguaje natural (validación del esquema, contraste determinista de que el texto mencione un número, casos de error), chat (validación de argumentos de cada función, desglose por categoría y comparación de meses consistentes con el resumen mensual, aislamiento por usuario), fallback y reintento de Gemini (cuota agotada, modelo no encontrado, timeouts, 503 transitorio), mensajes de error traducidos a español sin filtrar texto interno, y el resumen mensual con su gráfico y su comentario de IA.
+384 tests (`flutter test`), cubriendo dominio, aplicación y presentación con fakes (sin mocks): parseo e importe de movimientos, casos de uso de alta/edición/borrado, datos de ejemplo, autenticación y verificación de correo, perfil y borrado de cuenta, entrada en lenguaje natural (validación del esquema, contraste determinista de que el texto mencione un número, casos de error), chat (validación de argumentos de cada función, desglose por categoría y comparación de meses consistentes con el resumen mensual, aislamiento por usuario), fallback y reintento de Gemini (cuota agotada, modelo no encontrado, timeouts, 503 transitorio), mensajes de error traducidos a español sin filtrar texto interno, el resumen mensual con su gráfico y su comentario de IA, y la lógica (generación de casos y criterio de acierto) de la evaluación del chat contra Gemini real (`test/eval/`, ver docs/evaluation.md).
 
 ```bash
 flutter analyze
@@ -207,6 +207,10 @@ flutter test
 ```
 
 Detalle completo, archivo por archivo, en `docs/testing.md`. Aparte, `firestore-tests/` (Node, no `flutter test`) prueba `firestore.rules` contra el emulador real — ver `docs/security.md`.
+
+### Evaluación de calidad del chat contra Gemini real
+
+`lib/eval_main.dart` es una **herramienta de evaluación local, para documentar el TFM — no es parte de la app**: no se publica, no se incluye en el Dockerfile ni en ningún build de producción, y no la ejecuta ni `flutter test` ni el CI (los dos solo conocen `lib/main.dart`). Hace ~30 preguntas al gateway de Gemini y al ejecutor de funciones del chat reales (sin pasar por la pantalla de chat) contra una cuenta de evaluación dedicada (nunca la de "Credenciales de prueba"), con importes esperados calculados en código, nunca a mano. Metodología, criterio de acierto y cómo ejecutarla en `docs/evaluation.md`.
 
 ## Estructura del repositorio
 
@@ -216,9 +220,11 @@ lib/
   application/       Casos de uso (auth, chat, reports, transactions)
   infrastructure/    Firestore, Firebase Auth, Gemini (auth, chat, reports, transactions, user_data, common)
   presentation/      Pantallas y providers de Riverpod (auth, chat, profile, reports, theme, transactions, common)
-test/                Tests unitarios y de widgets, con fakes en test/fakes/
+  eval/              Evaluación de calidad del chat contra Gemini real (ver docs/evaluation.md)
+  eval_main.dart     Punto de entrada de esa evaluación; local, no se despliega (ver arriba)
+test/                Tests unitarios y de widgets, con fakes en test/fakes/ (incluye test/eval/)
 firestore-tests/     Tests de firestore.rules contra el emulador (Node, independiente del proyecto Flutter)
-docs/                analysis.md, design.md, testing.md, security.md
+docs/                analysis.md, design.md, testing.md, security.md, evaluation.md
 docker/              Configuración de nginx para la imagen de Docker
 .github/workflows/   Integración continua (ci.yml)
 firestore.rules       Reglas de seguridad de Firestore
