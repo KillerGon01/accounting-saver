@@ -102,6 +102,9 @@ test('campos inválidos o importe fuera de rango se rechazan aunque esté verifi
     transactions.doc('categoria-invalida').set(validTransaction({ categoryId: 'no-existe' })),
   );
   await assertFails(transactions.doc('origen-invalido').set(validTransaction({ source: 'otro' })));
+  await assertSucceeds(
+    transactions.doc('origen-payroll').set(validTransaction({ source: 'payroll' })),
+  );
   await assertFails(
     transactions.doc('descripcion-vacia').set(validTransaction({ description: '' })),
   );

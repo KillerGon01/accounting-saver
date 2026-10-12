@@ -35,6 +35,7 @@ Un asistente financiero personal que permite registrar movimientos (de forma man
 - **Entrada en lenguaje natural**: describes un movimiento en una frase ("comí por 12 euros ayer") y la IA propone importe, fecha, concepto y categoría; la propuesta se muestra en el formulario de alta para confirmar o editar antes de guardar — nunca se guarda nada sin esa confirmación.
 - **Chat financiero de solo lectura**: preguntas sobre tus propios movimientos ("¿cuánto gasté en octubre?", "¿en qué categoría gasto más?", "¿he gastado más que el mes pasado?", "¿qué gastos recurrentes tengo?") resueltas con *function calling* sobre Firestore.
 - **Resumen mensual**: informe calculado en código (ingresos, gastos, balance, gasto por categoría con gráfico de barras, comparación con el mes anterior) y, aparte, un comentario opcional de la IA sobre ese mismo informe.
+- **Lectura de nóminas en PDF** (solo web): adjuntas el PDF de una nómina y la IA extrae periodo, bruto, deducciones (con su % sobre el bruto y una descripción en el glosario) y líquido; la coherencia de las cifras se comprueba siempre en código, nunca con un cálculo del modelo, y solo se propone un ingreso (por el mismo formulario de siempre) si cuadran. Aviso de privacidad obligatorio antes de elegir archivo: solo documentos ficticios, nunca una nómina real.
 - **Perfil y borrado de cuenta**: datos de la cuenta, resumen de actividad (movimientos totales, por origen, ingresos/gastos acumulados) y eliminación completa de la cuenta y sus datos, con confirmación escribiendo el correo.
 - **Datos de ejemplo**: carga un conjunto de movimientos ficticios de los últimos 3 meses para probar la app sin introducir datos a mano.
 
@@ -69,6 +70,7 @@ Tres usos de Gemini, cada uno detrás de su propio puerto de dominio con su impl
 | `LlmGateway` | `GeminiLlmGateway` | Entrada en lenguaje natural → `RawParsedTransaction` |
 | `ChatGateway` | `GeminiChatGateway` | Chat con *function calling* |
 | `MonthlyReportGateway` | `GeminiMonthlyReportGateway` | Comentario del resumen mensual |
+| `PayrollGateway` | `GeminiPayrollGateway` | Lectura de nóminas en PDF → `ExtractedPayroll` (solo web) |
 
 Garantías, todas verificables en el código y en los tests:
 
@@ -112,6 +114,7 @@ Detalle completo (incluida la investigación del 404 "modelo retirado" y por qu�
   docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest detect --source /repo -v
   ```
 - **Coste cero.** Plan Spark de Firebase (sin Cloud Functions, sin facturación) y Gemini en su nivel gratuito a través de Firebase AI Logic.
+- **Nóminas en PDF: solo documentos ficticios.** El nivel gratuito de Gemini permite a Google usar el contenido enviado para mejorar sus productos (igual que el resto de usos de la IA en esta app); la pantalla de lectura de nóminas lo advierte explícitamente y exige confirmación antes de elegir archivo. El PDF y su contenido no se guardan en Firestore ni se registran en ningún log: solo viven en memoria del navegador mientras dura la lectura.
 
 Detalle completo (reautenticación y borrado de cuenta, detección de errores de Gemini y de App Check por texto, límites conocidos, pendientes) en `docs/security.md`.
 

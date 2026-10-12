@@ -101,6 +101,7 @@ class FirestoreTransactionRepository implements TransactionRepository {
     final demo = await _countBySource(collection, TransactionSource.demo);
     final manual = await _countBySource(collection, TransactionSource.manual);
     final naturalLanguage = await _countBySource(collection, TransactionSource.naturalLanguage);
+    final payroll = await _countBySource(collection, TransactionSource.payroll);
     final income = await _sumAmounts(collection, positive: true);
     final expense = await _sumAmounts(collection, positive: false);
 
@@ -111,6 +112,7 @@ class FirestoreTransactionRepository implements TransactionRepository {
       demoCount: demo,
       manualCount: manual,
       naturalLanguageCount: naturalLanguage,
+      payrollCount: payroll,
       incomeCents: income,
       expenseCents: -expense,
     );

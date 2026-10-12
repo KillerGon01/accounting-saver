@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,6 +10,7 @@ import '../../app_check_config.dart';
 import '../auth/auth_providers.dart';
 import '../chat/chat_screen.dart';
 import '../common/firestore_error_messages.dart';
+import '../payroll/payroll_screen.dart';
 import '../profile/profile_screen.dart';
 import '../reports/monthly_report_screen.dart';
 import '../theme/app_theme.dart';
@@ -126,6 +128,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
+  void _openPayroll() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => PayrollScreen(userId: widget.userId)),
+    );
+  }
+
   void _openMonthlyReport() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => MonthlyReportScreen(userId: widget.userId)),
@@ -174,6 +182,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               tooltip: 'Chat',
               onPressed: _openChat,
               icon: const Icon(Icons.chat_bubble_outline),
+            ),
+          if (effectiveEnableAi && kIsWeb)
+            IconButton(
+              tooltip: 'Leer nómina',
+              onPressed: _openPayroll,
+              icon: const Icon(Icons.picture_as_pdf_outlined),
             ),
           IconButton(
             tooltip: 'Perfil',

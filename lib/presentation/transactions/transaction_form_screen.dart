@@ -18,6 +18,7 @@ class TransactionFormScreen extends ConsumerStatefulWidget {
     required this.userId,
     this.transaction,
     this.initialDraft,
+    this.initialSource,
   });
 
   final String userId;
@@ -28,6 +29,12 @@ class TransactionFormScreen extends ConsumerStatefulWidget {
   /// Propuesta de la IA para un movimiento nuevo, pendiente de confirmar.
   /// Se ignora si [transaction] no es `null`.
   final ParsedTransaction? initialDraft;
+
+  /// Origen a usar al guardar [initialDraft], si se indica (por ejemplo,
+  /// [TransactionSource.payroll] desde la pantalla de lectura de nóminas).
+  /// Si es `null`, se mantiene el comportamiento de siempre: `manual` sin
+  /// [initialDraft], `naturalLanguage` con él (ver `_save`).
+  final TransactionSource? initialSource;
 
   @override
   ConsumerState<TransactionFormScreen> createState() => _TransactionFormScreenState();
@@ -95,6 +102,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
       description: _descriptionController.text.trim(),
       categoryId: _category!,
       source: widget.transaction?.source ??
+          widget.initialSource ??
           (widget.initialDraft != null ? TransactionSource.naturalLanguage : TransactionSource.manual),
       createdAt: widget.transaction?.createdAt ?? DateTime.now(),
     );

@@ -1,1 +1,1 @@
-enum TransactionSource { manual, naturalLanguage, demo }
+enum TransactionSource { manual, naturalLanguage, demo, payroll }
