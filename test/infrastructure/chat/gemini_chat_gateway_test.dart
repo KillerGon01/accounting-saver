@@ -68,5 +68,75 @@ void main() {
       expect(instruction, contains('nunca preguntes al usuario por el año o el mes'));
       expect(instruction, contains('llama siempre a la función adecuada'));
     });
+
+    test(
+      'distingue CANTIDAD de LISTADO: "qué ingresos/gastos tengo" no es lo mismo que '
+      '"cuánto he gastado/ingresado", aunque las dos usen la misma palabra',
+      () {
+        final instruction = buildChatSystemInstruction(FakeClock(DateTime(2026, 10, 8)));
+
+        expect(instruction, contains('CANTIDAD'));
+        expect(instruction, contains('LISTADO'));
+        expect(instruction, contains('qué ingresos tengo'));
+        expect(
+          instruction,
+          contains('Las palabras "ingresos" o\n"gastos" no deciden esto por sí solas'),
+        );
+        expect(instruction, contains('Para una cantidad usa getMonthlySummary'));
+        expect(instruction, contains('para un listado usa listTransactions'));
+      },
+    );
+
+    test(
+      'avisa de que listTransactions no filtra por tipo: el modelo debe elegir él '
+      'qué líneas de transactionLines mostrar',
+      () {
+        final instruction = buildChatSystemInstruction(FakeClock(DateTime(2026, 10, 8)));
+
+        expect(instruction, contains('esa\nfunción no filtra por tipo de movimiento'));
+      },
+    );
+  });
+
+  group('chatFunctionDeclarations', () {
+    FunctionDeclaration declarationFor(String name) =>
+        chatFunctionDeclarations().firstWhere((d) => d.name == name);
+
+    test('getMonthlySummary se describe para preguntas de cantidad, no de listado', () {
+      final description = declarationFor('getMonthlySummary').description;
+
+      expect(description, contains('CANTIDAD'));
+      expect(description, contains('No la uses si el usuario pide ver los movimientos uno por'));
+      expect(description, contains('qué ingresos tengo'));
+      expect(description, contains('listTransactions'));
+    });
+
+    test(
+      'listTransactions se describe para preguntas de listado, incluidas '
+      '"qué ingresos/gastos tengo", y avisa de que no filtra por tipo',
+      () {
+        final description = declarationFor('listTransactions').description;
+
+        expect(description, contains('LISTADO'));
+        expect(description, contains('qué '
+            'ingresos tengo en octubre'));
+        expect(description, contains('No filtra por ingreso/gasto (no existe ese'));
+        expect(description, contains('"(ingreso)"'));
+        expect(description, contains('"(gasto)"'));
+      },
+    );
+
+    test('declara las cinco funciones del chat, cada una una sola vez', () {
+      final names = chatFunctionDeclarations().map((d) => d.name).toList();
+
+      expect(names.toSet().length, names.length);
+      expect(names.toSet(), {
+        'getMonthlySummary',
+        'getCategoryBreakdown',
+        'compareMonths',
+        'listTransactions',
+        'recurringExpenses',
+      });
+    });
   });
 }

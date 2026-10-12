@@ -38,24 +38,15 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 
 ## Estado
 Hecho: MVP completo (login, movimientos, lenguaje natural, chat con function calling, datos
-demo, resumen mensual con gráficos) tras `ENABLE_AI`, con protección de cuota de Gemini, App
-Check de producción en web, Android corregido en debug (release sin IA, documentado en
-docs/security.md y docs/design.md, "Android"), CI y Docker para la web; detalles en docs/design.md,
-docs/testing.md y docs/security.md. Nuevo: evaluación reproducible del chat contra Gemini real
-para el TFM (`lib/eval_main.dart` + `lib/eval/`, ver docs/evaluation.md) — ~30 casos con importes
-esperados calculados en código (nunca a mano) contra una cuenta de evaluación dedicada (nunca la
-de "Credenciales de prueba"), llamando directamente a `GeminiChatGateway`/
-`TransactionChatFunctions`. Tres ejecuciones reales, gemini-3.5-flash-lite: 1ª (11/10) 18/26, tope
-de 80 peticiones; 2ª (11/10) 25/30, completa; 3ª (12/10) **28/30**, completa — de los 2 fallos, 1
-es un falso fallo del criterio (`comparacion-02`: el emparejamiento importe/mes encuentra el mes
-de una frase anterior dentro de su ventana de 40 caracteres, pendiente de ajustar) y 1 es real del
-modelo (`inyeccion-01`: "85,00 €" de alquiler en vez de "850,00 €" al listar 21 movimientos).
-Confirmado en la 3ª: rechazo 4/4, recurrentes 3/3, fuera de tema 3/3, escritura 4/4, los 59
-movimientos no cambiaron en ningún caso de escritura/inyección, la marca testigo no apareció y el
-401 de la 2ª no se repitió. Detalle de las 3 ejecuciones y del criterio en docs/evaluation.md.
-Tests: 384 (`test/eval/` prueba generación de casos y criterio con fakes, incluida la repetición
-automática con un gateway falso).
-Pendiente: ajustar `_checkMonthAttribution` para que la ventana no cruce de frase (el falso fallo
-de `comparacion-02`); flutter_localizations, decisión sobre registro abierto, App Check de
-producción en Android, confirmar `thinkingConfig`, CI opcional para `firestore-tests/`.
-Siguiente: esa revisión visual y decidir los pendientes de seguridad antes de la entrega (26/10).
+demo, resumen mensual) y evaluación reproducible del chat contra Gemini real para el TFM
+(`lib/eval_main.dart` + `lib/eval/`, docs/evaluation.md; 3ª ejecución 12/10 **28/30**); detalles
+en docs/design.md, docs/testing.md y docs/security.md. Nuevo: el fallo real de esa 3ª ejecución
+(`inyeccion-01`: "85,00 €" de alquiler en vez de "850,00 €" al listar 21 movimientos con
+`listTransactions`) se corrige añadiendo `transactionLines` (líneas ya redactadas, simétrico con
+`rankingLines`/`comparisonLines`, con aviso de recorte a 30 incluido) que el modelo copia tal
+cual en vez de redactar él mismo fecha/concepto/importe; ver docs/design.md. Tests: 402.
+Pendiente: ajustar `_checkMonthAttribution` (falso fallo `comparacion-02`, ver docs/evaluation.md);
+flutter_localizations, decisión sobre registro abierto, App Check de producción en Android,
+confirmar `thinkingConfig`, CI opcional para `firestore-tests/`; repetir la evaluación con
+`transactionLines` para confirmar que corrige `inyeccion-01` (lo hace quien mide, no aquí).
+Siguiente: esa repetición y decidir los pendientes de seguridad antes de la entrega (26/10).

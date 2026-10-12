@@ -50,125 +50,7 @@ class GeminiChatGateway implements ChatGateway {
     return FirebaseAI.googleAI().generativeModel(
       model: model,
       systemInstruction: Content.system(buildChatSystemInstruction(_clock)),
-      tools: [
-        Tool.functionDeclarations([
-          FunctionDeclaration(
-            ChatFunctions.getMonthlySummary,
-            'Resumen (ingresos, gastos y balance en céntimos de euro) de un '
-                'mes concreto de los movimientos del usuario. Úsala para '
-                'cualquier pregunta sobre un mes completo ("este mes", "el '
-                'mes pasado", "en octubre", "en enero de 2025"...) que NO '
-                'pida un desglose ni un ranking por categoría: para eso usa '
-                'getCategoryBreakdown, que da el mismo total de gasto pero '
-                'también por categoría.',
-            parameters: {
-              'year': Schema.integer(
-                description: 'Año de 4 cifras, entero, por ejemplo 2026. Usa '
-                    'el año ya resuelto que te da la instrucción de sistema '
-                    'para "este mes", "el mes pasado" o "este año"; no lo '
-                    'deduzcas de otra forma ni preguntes por él si el '
-                    'usuario ha dicho algo como "este mes" o "el año '
-                    'pasado".',
-              ),
-              'month': Schema.integer(
-                description: 'Mes como entero de 1 (enero) a 12 (diciembre), '
-                    'nunca el nombre del mes. Usa el mes ya resuelto que te '
-                    'da la instrucción de sistema para "este mes" o "el mes '
-                    'pasado"; no preguntes por él si se puede deducir así.',
-              ),
-            },
-          ),
-          FunctionDeclaration(
-            ChatFunctions.getCategoryBreakdown,
-            'Gasto por categoría de un mes concreto, ya ordenado de mayor a '
-                'menor y con el porcentaje de cada categoría sobre el total '
-                'gastado ese mes. Úsala ante cualquier pregunta sobre en qué '
-                'categoría se gasta más o menos, un ranking de categorías '
-                '("¿en qué gasto más?", "las 3 categorías con más gasto", '
-                '"¿cuánto gasté en restaurantes?"...). El resultado incluye '
-                'un campo "rankingLines" con el ranking ya escrito en texto '
-                'plano: cópialo tal cual (ver instrucciones generales), no '
-                'lo reescribas ni lo reordenes.',
-            parameters: {
-              'year': Schema.integer(
-                description: 'Año de 4 cifras, entero. Igual que en '
-                    'getMonthlySummary: usa el valor ya resuelto para "este '
-                    'mes" o "el mes pasado" si aplica.',
-              ),
-              'month': Schema.integer(
-                description: 'Mes como entero de 1 a 12, igual que en '
-                    'getMonthlySummary.',
-              ),
-            },
-          ),
-          FunctionDeclaration(
-            ChatFunctions.compareMonths,
-            'Compara dos meses cualesquiera (no necesariamente '
-                'consecutivos): ingresos, gastos y balance de cada uno, y la '
-                'diferencia absoluta y porcentual del gasto total y por '
-                'categoría. Úsala ante cualquier pregunta que compare dos '
-                'periodos ("¿he gastado más que el mes pasado?", "compara '
-                'octubre con septiembre", "¿subió el gasto en restaurantes '
-                'respecto a enero?"...); no la uses para un solo mes (para '
-                'eso está getMonthlySummary o getCategoryBreakdown). El mes '
-                'A es la base de la comparación (el "antes", el "frente a '
-                'qué"); el mes B es el que se evalúa contra A. El resultado '
-                'incluye "comparisonLines" y "categoryComparisonLines" con '
-                'las cifras ya escritas en texto plano: cópialas tal cual.',
-            parameters: {
-              'yearA': Schema.integer(description: 'Año del mes A (base de la comparación), 4 cifras.'),
-              'monthA': Schema.integer(description: 'Mes de A, entero de 1 a 12.'),
-              'yearB': Schema.integer(description: 'Año del mes B (el que se evalúa contra A), 4 cifras.'),
-              'monthB': Schema.integer(description: 'Mes de B, entero de 1 a 12.'),
-            },
-          ),
-          FunctionDeclaration(
-            ChatFunctions.listTransactions,
-            'Movimientos del usuario entre dos fechas (ambas incluidas), '
-                'opcionalmente filtrados por categoría, junto con el resumen '
-                '(ingresos, gastos y balance en céntimos) de ese rango '
-                'completo. Úsala solo cuando el usuario quiera ver '
-                'movimientos concretos (por ejemplo, "qué compré el 5 de '
-                'octubre" o "lista mis gastos de restaurantes"), nunca para '
-                'calcular un total, un ranking de categorías o una '
-                'comparación entre meses: para eso están getMonthlySummary, '
-                'getCategoryBreakdown y compareMonths. Esta función puede '
-                'devolver como mucho 30 movimientos aunque el rango tenga '
-                'más (ver "truncated"): no es una forma fiable de sumar nada '
-                'a mano.',
-            parameters: {
-              'desde': Schema.string(
-                description: 'Fecha inicial del rango (incluida), formato '
-                    'AAAA-MM-DD. Si el usuario dice "este mes", "el mes '
-                    'pasado" o "este año", calcula el primer día de ese '
-                    'periodo a partir de la fecha de hoy que te da la '
-                    'instrucción de sistema.',
-              ),
-              'hasta': Schema.string(
-                description: 'Fecha final del rango (incluida), formato '
-                    'AAAA-MM-DD.',
-              ),
-              'categoryId': Schema.enumString(
-                enumValues: [for (final category in Category.values) category.name],
-                description: 'Categoría por la que filtrar. Opcional: se omite para todas.',
-                nullable: true,
-              ),
-            },
-            optionalParameters: ['categoryId'],
-          ),
-          FunctionDeclaration(
-            ChatFunctions.recurringExpenses,
-            'Gastos recurrentes del usuario: suscripciones, cuotas o '
-                'cualquier cargo que se repita con el mismo concepto y el '
-                'mismo importe en varios meses (Netflix, el gimnasio, el '
-                'alquiler...). Úsala ante preguntas como "¿qué gastos '
-                'recurrentes tengo?", "¿qué suscripciones pago?" o "¿qué '
-                'cargos se repiten cada mes?". Analiza siempre los últimos '
-                'meses completos; no acepta argumentos.',
-            parameters: const {},
-          ),
-        ]),
-      ],
+      tools: [Tool.functionDeclarations(chatFunctionDeclarations())],
       // Temperatura baja: son respuestas sobre datos del usuario, no
       // redacción creativa; conviene que sean consistentes.
       generationConfig: GenerationConfig(temperature: 0.2),
@@ -297,6 +179,151 @@ Content functionResponsesContent(List<FunctionResponse> responses) {
   return Content('user', responses);
 }
 
+/// Las `FunctionDeclaration` que puede pedir el chat, en una función libre
+/// (en vez de quedarse inline dentro de `_buildModel`) por el mismo motivo
+/// que [buildChatSystemInstruction]: `FunctionDeclaration` y `Schema` son
+/// clases de datos puras del paquete `firebase_ai` (no requieren Firebase
+/// inicializado para construirse), así que esta lista se puede comprobar
+/// con un test normal, sin tocar Gemini, igual que la instrucción de
+/// sistema que contiene la misma regla CANTIDAD/LISTADO (ver
+/// `buildChatSystemInstruction`).
+List<FunctionDeclaration> chatFunctionDeclarations() {
+  return [
+    FunctionDeclaration(
+      ChatFunctions.getMonthlySummary,
+      'Resumen (ingresos, gastos y balance en céntimos de euro) de un '
+          'mes concreto de los movimientos del usuario. Úsala para '
+          'una pregunta de CANTIDAD sobre un mes completo ("este mes", '
+          '"el mes pasado", "en octubre", "en enero de 2025"...): '
+          '"¿cuánto he gastado/ingresado?", "¿cuál es mi balance?". '
+          'No la uses si el usuario pide ver los movimientos uno por '
+          'uno (por ejemplo "qué ingresos tengo", "lista mis gastos", '
+          '"qué movimientos tengo este mes"): eso es listTransactions, '
+          'aunque la pregunta use la palabra "ingresos" o "gastos". '
+          'Tampoco la uses si pide un desglose o un ranking por '
+          'categoría: para eso usa getCategoryBreakdown, que da el '
+          'mismo total de gasto pero también por categoría.',
+      parameters: {
+        'year': Schema.integer(
+          description: 'Año de 4 cifras, entero, por ejemplo 2026. Usa '
+              'el año ya resuelto que te da la instrucción de sistema '
+              'para "este mes", "el mes pasado" o "este año"; no lo '
+              'deduzcas de otra forma ni preguntes por él si el '
+              'usuario ha dicho algo como "este mes" o "el año '
+              'pasado".',
+        ),
+        'month': Schema.integer(
+          description: 'Mes como entero de 1 (enero) a 12 (diciembre), '
+              'nunca el nombre del mes. Usa el mes ya resuelto que te '
+              'da la instrucción de sistema para "este mes" o "el mes '
+              'pasado"; no preguntes por él si se puede deducir así.',
+        ),
+      },
+    ),
+    FunctionDeclaration(
+      ChatFunctions.getCategoryBreakdown,
+      'Gasto por categoría de un mes concreto, ya ordenado de mayor a '
+          'menor y con el porcentaje de cada categoría sobre el total '
+          'gastado ese mes. Úsala ante cualquier pregunta sobre en qué '
+          'categoría se gasta más o menos, un ranking de categorías '
+          '("¿en qué gasto más?", "las 3 categorías con más gasto", '
+          '"¿cuánto gasté en restaurantes?"...). El resultado incluye '
+          'un campo "rankingLines" con el ranking ya escrito en texto '
+          'plano: cópialo tal cual (ver instrucciones generales), no '
+          'lo reescribas ni lo reordenes.',
+      parameters: {
+        'year': Schema.integer(
+          description: 'Año de 4 cifras, entero. Igual que en '
+              'getMonthlySummary: usa el valor ya resuelto para "este '
+              'mes" o "el mes pasado" si aplica.',
+        ),
+        'month': Schema.integer(
+          description: 'Mes como entero de 1 a 12, igual que en '
+              'getMonthlySummary.',
+        ),
+      },
+    ),
+    FunctionDeclaration(
+      ChatFunctions.compareMonths,
+      'Compara dos meses cualesquiera (no necesariamente '
+          'consecutivos): ingresos, gastos y balance de cada uno, y la '
+          'diferencia absoluta y porcentual del gasto total y por '
+          'categoría. Úsala ante cualquier pregunta que compare dos '
+          'periodos ("¿he gastado más que el mes pasado?", "compara '
+          'octubre con septiembre", "¿subió el gasto en restaurantes '
+          'respecto a enero?"...); no la uses para un solo mes (para '
+          'eso está getMonthlySummary o getCategoryBreakdown). El mes '
+          'A es la base de la comparación (el "antes", el "frente a '
+          'qué"); el mes B es el que se evalúa contra A. El resultado '
+          'incluye "comparisonLines" y "categoryComparisonLines" con '
+          'las cifras ya escritas en texto plano: cópialas tal cual.',
+      parameters: {
+        'yearA': Schema.integer(description: 'Año del mes A (base de la comparación), 4 cifras.'),
+        'monthA': Schema.integer(description: 'Mes de A, entero de 1 a 12.'),
+        'yearB': Schema.integer(description: 'Año del mes B (el que se evalúa contra A), 4 cifras.'),
+        'monthB': Schema.integer(description: 'Mes de B, entero de 1 a 12.'),
+      },
+    ),
+    FunctionDeclaration(
+      ChatFunctions.listTransactions,
+      'Movimientos del usuario entre dos fechas (ambas incluidas), '
+          'opcionalmente filtrados por categoría, junto con el resumen '
+          '(ingresos, gastos y balance en céntimos) de ese rango '
+          'completo. Úsala ante cualquier pregunta de LISTADO, en la '
+          'que el usuario quiera ver los movimientos uno por uno en '
+          'vez de una cantidad (por ejemplo, "qué compré el 5 de '
+          'octubre", "lista mis gastos de restaurantes", "qué '
+          'ingresos tengo en octubre" o "qué movimientos tengo este '
+          'mes"): la palabra "ingresos" o "gastos" en la pregunta no '
+          'significa que haya que usar getMonthlySummary si lo que se '
+          'pide es la lista, no el total. No la uses para calcular un '
+          'total, un ranking de categorías o una comparación entre '
+          'meses: para eso están getMonthlySummary, getCategoryBreakdown '
+          'y compareMonths. No filtra por ingreso/gasto (no existe ese '
+          'parámetro): pide siempre el rango completo y, si el usuario '
+          'solo quiere ingresos o solo gastos, copia únicamente las '
+          'líneas de "transactionLines" etiquetadas "(ingreso)" o '
+          '"(gasto)" según corresponda, sin mostrar las demás. Esta '
+          'función puede devolver como mucho 30 movimientos aunque el '
+          'rango tenga más (ver "truncated"): no es una forma fiable de '
+          'sumar nada a mano. El resultado incluye "transactionLines" '
+          'con cada movimiento ya escrito en texto plano: cópialas tal '
+          'cual (ver instrucciones generales), en el mismo orden y sin '
+          'reescribir importes.',
+      parameters: {
+        'desde': Schema.string(
+          description: 'Fecha inicial del rango (incluida), formato '
+              'AAAA-MM-DD. Si el usuario dice "este mes", "el mes '
+              'pasado" o "este año", calcula el primer día de ese '
+              'periodo a partir de la fecha de hoy que te da la '
+              'instrucción de sistema.',
+        ),
+        'hasta': Schema.string(
+          description: 'Fecha final del rango (incluida), formato '
+              'AAAA-MM-DD.',
+        ),
+        'categoryId': Schema.enumString(
+          enumValues: [for (final category in Category.values) category.name],
+          description: 'Categoría por la que filtrar. Opcional: se omite para todas.',
+          nullable: true,
+        ),
+      },
+      optionalParameters: ['categoryId'],
+    ),
+    FunctionDeclaration(
+      ChatFunctions.recurringExpenses,
+      'Gastos recurrentes del usuario: suscripciones, cuotas o '
+          'cualquier cargo que se repita con el mismo concepto y el '
+          'mismo importe en varios meses (Netflix, el gimnasio, el '
+          'alquiler...). Úsala ante preguntas como "¿qué gastos '
+          'recurrentes tengo?", "¿qué suscripciones pago?" o "¿qué '
+          'cargos se repiten cada mes?". Analiza siempre los últimos '
+          'meses completos; no acepta argumentos.',
+      parameters: const {},
+    ),
+  ];
+}
+
 const _weekdayNames = [
   'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo',
 ];
@@ -344,6 +371,21 @@ Ante cualquier pregunta sobre los movimientos, ingresos, gastos o balance
 del usuario, llama siempre a la función adecuada para obtener la respuesta;
 no respondas de memoria ni con una cifra que no venga de una función.
 
+Distingue, antes de elegir función, si la pregunta pide una CANTIDAD (un
+único número: "¿cuánto he gastado/ingresado?", "¿cuál es mi balance?") o un
+LISTADO (los movimientos uno por uno: "qué ingresos tengo", "qué gastos
+tengo", "lista mis movimientos de octubre"). Las palabras "ingresos" o
+"gastos" no deciden esto por sí solas: "¿cuántos ingresos tengo en octubre?"
+es un listado si pide verlos uno por uno, aunque use la palabra "ingresos",
+y "¿cuánto he ingresado en octubre?" es una cantidad aunque hable de lo
+mismo. Para una cantidad usa getMonthlySummary (o getCategoryBreakdown si
+además pide desglose por categoría); para un listado usa listTransactions y
+copia solo las líneas de "transactionLines" que correspondan a lo pedido
+(por ejemplo, solo las etiquetadas "(ingreso)" si solo pide ingresos): esa
+función no filtra por tipo de movimiento, así que la selección de qué
+líneas mostrar la haces tú, sobre las líneas ya redactadas, nunca
+reescribiendo tú mismo fecha, concepto o importe.
+
 No calcules tú ninguna suma, resta, porcentaje ni comparación de importes:
 todas las funciones ya te devuelven los totales en céntimos de euro
 calculados correctamente, y getCategoryBreakdown y compareMonths ya
@@ -356,7 +398,13 @@ o "+4,2 %"): no los reescribas con palabras, no los redondees de otra
 forma y no los recalcules a partir de otros campos ni de listTransactions.
 listTransactions es solo para listar movimientos concretos, nunca para
 sumar, rankear ni comparar: como mucho devuelve 30 movimientos, así que
-sumar solo esos 30 a mano da una cifra incompleta.
+sumar solo esos 30 a mano da una cifra incompleta. Cuando el usuario pida
+ver movimientos concretos, copia cada línea de "transactionLines" EXACTAMENTE
+como viene, en el mismo orden, en vez de escribir tú la fecha, el concepto o
+el importe a partir de "transactions": no reescribas los importes ni
+reordenes las líneas. Si "transactionLines" termina con una línea que avisa
+de que solo se muestran 30 movimientos ("Se muestran 30 de N..."), esa línea
+es obligatoria: cópiala tal cual al final del listado, no la omitas.
 
 Si "rankingLines" o "comparisonLines" empiezan por una línea que dice
 "Aviso: ... está en curso ...", esa línea es obligatoria: cópiala tal cual

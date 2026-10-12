@@ -161,12 +161,20 @@ class TransactionChatFunctions {
     final totals = _sumIncomeAndExpense(filtered);
     final listTruncated = filtered.length > maxResults;
     final transactions = listTruncated ? filtered.sublist(0, maxResults) : filtered;
+    final spansMultipleYears = desde.year != hasta.year;
+
+    final transactionLines = [
+      for (final t in transactions) _transactionLine(t, includeYear: spansMultipleYears),
+      if (listTruncated)
+        'Se muestran $maxResults de ${filtered.length} movimientos; hay más en ese periodo.',
+    ];
 
     return {
       'incomeCents': totals.incomeCents,
       'expenseCents': totals.expenseCents,
       'balanceCents': totals.incomeCents - totals.expenseCents,
       'transactions': [for (final t in transactions) _transactionToJson(t)],
+      'transactionLines': transactionLines,
       'truncated': listTruncated,
       if (listTruncated)
         'note':
@@ -463,6 +471,42 @@ class TransactionChatFunctions {
       'categoryId': transaction.categoryId.name,
     };
   }
+
+  /// Línea ya redactada de un movimiento ("1 oct: Alquiler 850,00 € (gasto)"),
+  /// para que el modelo la copie tal cual en vez de escribir el importe él
+  /// mismo a partir de `_transactionToJson` (ver docs/design.md: así es como
+  /// se le colaba el error de copiar mal un importe al listar muchos
+  /// movimientos). [includeYear] se activa cuando el rango pedido abarca más
+  /// de un año natural, para no confundir movimientos del mismo día y mes en
+  /// años distintos.
+  String _transactionLine(Transaction transaction, {required bool includeYear}) {
+    final day = transaction.date.day;
+    final month = _monthAbbreviations[transaction.date.month - 1];
+    final date = includeYear ? '$day $month ${transaction.date.year}' : '$day $month';
+    final description = _sanitizeDescriptionForLine(transaction.description);
+    final amount = _formatEurosWithSymbol(transaction.amountCents.abs());
+    final kind = transaction.amountCents > 0 ? 'ingreso' : 'gasto';
+    return '$date: $description $amount ($kind)';
+  }
+
+  /// `description` es texto del usuario, no de fiar: antes de meterlo en una
+  /// línea que el modelo va a copiar tal cual, se colapsan saltos de línea y
+  /// espacios repetidos a uno solo (para que no se pueda simular más de una
+  /// línea dentro de la propia descripción) y se recorta a
+  /// [_descriptionLineMaxLength] caracteres. Esto solo afecta a la línea de
+  /// texto: el dato estructurado en `_transactionToJson` no se toca.
+  String _sanitizeDescriptionForLine(String description) {
+    final collapsed = description.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (collapsed.length <= _descriptionLineMaxLength) return collapsed;
+    return '${collapsed.substring(0, _descriptionLineMaxLength)}…';
+  }
+
+  static const _descriptionLineMaxLength = 60;
+
+  static const _monthAbbreviations = [
+    'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+    'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+  ];
 
   int? _asInt(Object? value) {
     if (value is int) return value;
