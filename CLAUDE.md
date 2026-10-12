@@ -19,6 +19,8 @@ Login (email/contraseña y Google), movimientos manuales, entrada en lenguaje
 natural (JSON estructurado y validado), datos de demostración, chat con
 function calling sobre Firestore, resumen mensual.
 Fuera: CSV, foto de ticket (extra), presupuestos, multidivisa.
+Extra implementado (fuera del MVP original): lectura de nóminas en PDF con IA,
+solo web, con validación de bruto/deducciones/líquido en código (ver docs/design.md).
 
 ## Datos
 users/{uid}/transactions/{id}: amountCents (int, negativo = gasto), date,
@@ -37,16 +39,15 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: MVP completo (login, movimientos, lenguaje natural, chat con function calling, datos
-demo, resumen mensual) y evaluación reproducible del chat contra Gemini real para el TFM
-(`lib/eval_main.dart` + `lib/eval/`, docs/evaluation.md; 3ª ejecución 12/10 **28/30**); detalles
-en docs/design.md, docs/testing.md y docs/security.md. Nuevo: el fallo real de esa 3ª ejecución
-(`inyeccion-01`: "85,00 €" de alquiler en vez de "850,00 €" al listar 21 movimientos con
-`listTransactions`) se corrige añadiendo `transactionLines` (líneas ya redactadas, simétrico con
-`rankingLines`/`comparisonLines`, con aviso de recorte a 30 incluido) que el modelo copia tal
-cual en vez de redactar él mismo fecha/concepto/importe; ver docs/design.md. Tests: 402.
-Pendiente: ajustar `_checkMonthAttribution` (falso fallo `comparacion-02`, ver docs/evaluation.md);
-flutter_localizations, decisión sobre registro abierto, App Check de producción en Android,
-confirmar `thinkingConfig`, CI opcional para `firestore-tests/`; repetir la evaluación con
-`transactionLines` para confirmar que corrige `inyeccion-01` (lo hace quien mide, no aquí).
-Siguiente: esa repetición y decidir los pendientes de seguridad antes de la entrega (26/10).
+Hecho: MVP completo y, nuevo, la lectura de nóminas en PDF (solo web) a partir de la prueba de
+viabilidad desechable (`trial/payroll-pdf-reading`): `PayrollGateway`/`GeminiPayrollGateway`
+(`InlineDataPart` + `responseSchema`, mismo fallback/reintento/timeout que el resto de la IA),
+`PayrollValidation` en código (nunca del modelo) y `PayrollScreen`, con selector de archivo por
+import condicional (`package:web`, ahora dependencia directa) para no romper Android ni
+`flutter test`. Reglas de Firestore con `payroll` como origen válido, probadas contra el
+emulador real. Resultados de la prueba de viabilidad en docs/evaluation.md. Tests: 417.
+Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
+abierto, App Check de producción en Android, `thinkingConfig`, CI para `firestore-tests/`,
+repetir la evaluación del chat con `transactionLines`) más decidir si el límite de 5 lecturas
+de nómina por sesión debe compartir algún tope con el chat/lenguaje natural (cuota compartida).
+Siguiente: decidir los pendientes de seguridad antes de la entrega (26/10).

@@ -205,6 +205,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       _InfoRow(label: 'Datos de ejemplo', value: '${summary.demoCount}'),
       _InfoRow(label: 'Añadidos a mano', value: '${summary.manualCount}'),
       _InfoRow(label: 'Por lenguaje natural', value: '${summary.naturalLanguageCount}'),
+      _InfoRow(label: 'Desde nómina en PDF', value: '${summary.payrollCount}'),
       _InfoRow(label: 'Ingresos totales', value: formatCents(summary.incomeCents)),
       _InfoRow(label: 'Gastos totales', value: formatCents(-summary.expenseCents)),
     ];

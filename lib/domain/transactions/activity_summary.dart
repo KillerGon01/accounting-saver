@@ -11,6 +11,7 @@ class ActivitySummary {
     required this.demoCount,
     required this.manualCount,
     required this.naturalLanguageCount,
+    required this.payrollCount,
     required this.incomeCents,
     required this.expenseCents,
   });
@@ -19,6 +20,7 @@ class ActivitySummary {
     var demo = 0;
     var manual = 0;
     var naturalLanguage = 0;
+    var payroll = 0;
     var income = 0;
     var expense = 0;
     DateTime? first;
@@ -32,6 +34,8 @@ class ActivitySummary {
           manual++;
         case TransactionSource.naturalLanguage:
           naturalLanguage++;
+        case TransactionSource.payroll:
+          payroll++;
       }
       if (transaction.amountCents > 0) {
         income += transaction.amountCents;
@@ -49,6 +53,7 @@ class ActivitySummary {
       demoCount: demo,
       manualCount: manual,
       naturalLanguageCount: naturalLanguage,
+      payrollCount: payroll,
       incomeCents: income,
       expenseCents: expense,
     );
@@ -60,6 +65,7 @@ class ActivitySummary {
   final int demoCount;
   final int manualCount;
   final int naturalLanguageCount;
+  final int payrollCount;
   final int incomeCents;
   final int expenseCents;
 }
