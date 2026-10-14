@@ -1,5 +1,6 @@
 import 'package:accounting_saver/application/reports/build_month_end_forecast.dart';
 import 'package:accounting_saver/application/reports/build_monthly_report.dart';
+import 'package:accounting_saver/application/reports/build_unusual_expenses.dart';
 import 'package:accounting_saver/domain/transactions/activity_summary.dart';
 import 'package:accounting_saver/domain/transactions/category.dart';
 import 'package:accounting_saver/domain/transactions/transaction.dart';
@@ -474,6 +475,115 @@ void main() {
         expect(find.text('Gasto por categoría'), findsOneWidget);
         // ...pero la tarjeta de previsión no aparece.
         expect(find.text('Previsión de fin de mes (estimación)'), findsNothing);
+      },
+    );
+  });
+
+  group('gastos inusuales', () {
+    // Mismo motivo que en "previsión de fin de mes": el día es fijo, el
+    // mes/año coincide con el real para que `_selectedMonth` (que arranca
+    // en `DateTime.now()`, no inyectable) siga siendo "el mes en curso".
+    final fixedNow = DateTime(now.year, now.month, 10);
+
+    ProviderContainer containerWith(TransactionRepository repository) {
+      return ProviderContainer(
+        overrides: [
+          transactionRepositoryProvider.overrideWithValue(repository),
+          buildMonthlyReportProvider.overrideWithValue(BuildMonthlyReport(repository, FakeClock(fixedNow))),
+          buildMonthEndForecastProvider.overrideWithValue(
+            BuildMonthEndForecast(repository, FakeClock(fixedNow)),
+          ),
+          buildUnusualExpensesProvider.overrideWithValue(
+            BuildUnusualExpenses(repository, FakeClock(fixedNow)),
+          ),
+        ],
+      );
+    }
+
+    Transaction historyTx({required int amountCents, required DateTime date, String description = 'ocio'}) {
+      return Transaction(
+        id: 'hist-${date.month}-${date.day}-$amountCents-$description',
+        amountCents: amountCents,
+        date: date,
+        description: description,
+        categoryId: Category.ocio,
+        source: TransactionSource.manual,
+        createdAt: date,
+      );
+    }
+
+    testWidgets('con un gasto inusual, muestra la tarjeta con el importe y la mediana', (tester) async {
+      final repository = FakeTransactionRepository();
+      await repository.addAll(
+        userId: _userId,
+        transactions: [
+          // Histórico de "ocio" (3 meses anteriores): mediana 1.000.
+          historyTx(amountCents: -800, date: DateTime(fixedNow.year, fixedNow.month - 3, 10)),
+          historyTx(amountCents: -900, date: DateTime(fixedNow.year, fixedNow.month - 2, 10)),
+          historyTx(amountCents: -1100, date: DateTime(fixedNow.year, fixedNow.month - 1, 10)),
+          historyTx(amountCents: -1200, date: DateTime(fixedNow.year, fixedNow.month - 1, 20)),
+          // Gasto de este mes, muy por encima del doble de la mediana (2.000).
+          _tx(
+            id: 'concierto',
+            amountCents: -5000,
+            date: DateTime(fixedNow.year, fixedNow.month, 5),
+            description: 'Concierto',
+            category: Category.ocio,
+          ),
+        ],
+      );
+      final container = containerWith(repository);
+      addTearDown(container.dispose);
+
+      await _pump(tester, container, showAiComment: false);
+
+      await tester.scrollUntilVisible(find.text('Gastos inusuales (estimación)'), 300);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Gastos inusuales (estimación)'), findsOneWidget);
+      expect(find.textContaining('Concierto'), findsOneWidget);
+      // Aparece dos veces: en "Gastos" del balance del mes y en la fila
+      // del gasto inusual.
+      expect(find.text(_eur('-50,00')), findsNWidgets(2));
+      expect(find.textContaining(_eur('10,00')), findsOneWidget); // mediana de la categoría
+    });
+
+    testWidgets(
+      'sin ningún gasto inusual, muestra el mensaje explicando el criterio',
+      (tester) async {
+        final repository = FakeTransactionRepository();
+        final container = containerWith(repository);
+        addTearDown(container.dispose);
+
+        await _pump(tester, container, showAiComment: false);
+        await tester.scrollUntilVisible(find.text('Gastos inusuales (estimación)'), 300);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Gastos inusuales (estimación)'), findsOneWidget);
+        expect(find.textContaining('No se han detectado gastos inusuales'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'si falla el cálculo, el resto del resumen sigue funcionando y la tarjeta no aparece',
+      (tester) async {
+        final repository = _ForecastQueryFailingRepository(FakeTransactionRepository());
+        final container = ProviderContainer(
+          overrides: [
+            transactionRepositoryProvider.overrideWithValue(repository),
+            buildMonthlyReportProvider.overrideWithValue(BuildMonthlyReport(repository, FakeClock(fixedNow))),
+            buildUnusualExpensesProvider.overrideWithValue(
+              BuildUnusualExpenses(repository, FakeClock(fixedNow)),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await _pump(tester, container, showAiComment: false);
+
+        expect(find.text('Balance del mes'), findsOneWidget);
+        expect(find.text('Gasto por categoría'), findsOneWidget);
+        expect(find.text('Gastos inusuales (estimación)'), findsNothing);
       },
     );
   });

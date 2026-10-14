@@ -41,15 +41,17 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: MVP completo, lectura de nóminas en PDF, previsión de fin de mes y, nuevo, búsqueda y
-filtros de movimientos sobre la lista del mes ya cargada (sin IA, sin consultas nuevas a
-Firestore): `TransactionFilter`/`filterTransactions` (dominio puro: texto sin tildes/mayúsculas,
-categoría, tipo gasto/ingreso, importe mínimo/máximo sin signo) y una única hoja modal en el
-`AppBar` (`showTransactionFilterSheet`), para no tocar el presupuesto de alto ya ajustado para el
-teclado abierto en pantallas pequeñas (ver docs/design.md). Tests: 499.
+Hecho: MVP completo, lectura de nóminas en PDF, previsión de fin de mes, búsqueda y filtros de
+movimientos y, nuevo, detección de gastos inusuales en el resumen mensual (sin IA):
+`detectUnusualExpenses`/`BuildUnusualExpenses` marcan un gasto del mes en curso como inusual si
+supera el doble de la mediana de su categoría en los 3 meses anteriores (mínimo 4 gastos de
+histórico), excluyendo recurrentes con la misma regla que `findRecurringExpenses`; mismo patrón de
+fallo silencioso que la previsión de fin de mes, con la que no comparte lectura (el resumen del
+mes en curso pasa de 4 a 6 consultas por carga, ver docs/design.md). Tests: 499.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
 abierto, App Check de producción en Android, `thinkingConfig`, CI para `firestore-tests/`,
 repetir la evaluación del chat con `transactionLines`, cuota compartida entre nóminas y chat/
-lenguaje natural) más los riesgos de la previsión de fin de mes documentados en docs/design.md
-(día habitual sin comprobar consecutividad, caso del último día del mes).
+lenguaje natural) más los riesgos de la previsión de fin de mes y los límites de la detección de
+gastos inusuales documentados en docs/design.md (sin estacionalidad, pocos datos, solo compara
+dentro de la misma categoría).
 Siguiente: decidir los pendientes de seguridad antes de la entrega (26/10).

@@ -2,10 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/reports/build_month_end_forecast.dart';
 import '../../application/reports/build_monthly_report.dart';
+import '../../application/reports/build_unusual_expenses.dart';
 import '../../application/reports/explain_monthly_report.dart';
 import '../../domain/reports/month_end_forecast.dart';
 import '../../domain/reports/monthly_report.dart';
 import '../../domain/reports/monthly_report_gateway.dart';
+import '../../domain/reports/unusual_expenses.dart';
 import '../../infrastructure/reports/gemini_monthly_report_gateway.dart';
 import '../common/ai_providers.dart';
 import '../transactions/transaction_providers.dart';
@@ -20,6 +22,10 @@ final buildMonthlyReportProvider = Provider<BuildMonthlyReport>(
 
 final buildMonthEndForecastProvider = Provider<BuildMonthEndForecast>(
   (ref) => BuildMonthEndForecast(ref.watch(transactionRepositoryProvider)),
+);
+
+final buildUnusualExpensesProvider = Provider<BuildUnusualExpenses>(
+  (ref) => BuildUnusualExpenses(ref.watch(transactionRepositoryProvider)),
 );
 
 /// Una instancia por usuario (familia por `userId`), igual que
@@ -67,6 +73,21 @@ final monthEndForecastProvider = FutureProvider.family<MonthEndForecast?, Monthl
   (ref, params) {
     ref.watch(transactionsVersionProvider);
     return ref.watch(buildMonthEndForecastProvider)(userId: params.userId, year: params.year, month: params.month);
+  },
+  retry: (retryCount, error) => null,
+);
+
+/// Mismo patrón que [monthEndForecastProvider]: `null` para un mes que no
+/// es el mes en curso o si falla el cálculo (consultas extra sobre los
+/// mismos 3 meses anteriores, ver `BuildUnusualExpenses`); la pantalla lee
+/// este provider con `AsyncValue.value` (nullable, no lanza), así que un
+/// error aquí nunca impide que se muestre el resto del resumen mensual —
+/// solo hace que la tarjeta de gastos inusuales no aparezca. Mismo
+/// `retry: (_, _) => null` y el mismo motivo (ver el comentario de arriba).
+final unusualExpensesProvider = FutureProvider.family<UnusualExpensesResult?, MonthlyTransactionsParams>(
+  (ref, params) {
+    ref.watch(transactionsVersionProvider);
+    return ref.watch(buildUnusualExpensesProvider)(userId: params.userId, year: params.year, month: params.month);
   },
   retry: (retryCount, error) => null,
 );
