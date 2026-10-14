@@ -30,7 +30,9 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 - Commits: "[ADDED|CHANGED|REMOVED] Resumen corto" (texto en inglés).
 - google-services.json está en .gitignore.
 - Sin secretos en el repo. Reglas de Firestore: cada usuario solo lee lo suyo.
-- Pendiente: Dockerizar la web (nginx), CI con GitHub Actions y Husky.
+- Hecho: Dockerizar la web (nginx) y CI con GitHub Actions. Mejora futura, no pendiente
+  inminente: Husky (hooks de git locales); el CI ya cubre el mismo control (`flutter analyze`,
+  `flutter test`) en cada PR, aunque no evita el commit en el equipo de quien lo hace.
 - Una rama por funcionalidad (feature/...), PR hacia main. No commitear directamente en main.
 - Al terminar cada tarea, actualiza la sección "Estado" de este archivo:
   qué se ha hecho y cuál es el siguiente paso. Mantenla en 4-5 líneas.
