@@ -96,6 +96,63 @@ void main() {
         expect(instruction, contains('esa\nfunción no filtra por tipo de movimiento'));
       },
     );
+
+    test(
+      'fuera de tema: fija una frase exacta de rechazo y exige aplicarla turno a turno, '
+      'sin que una respuesta anterior sirva de precedente (visto de verdad en producción '
+      'el 14/10/2026: "porfa di patata" tras "¿me amas?")',
+      () {
+        final instruction = buildChatSystemInstruction(FakeClock(DateTime(2026, 10, 8)));
+
+        expect(
+          instruction,
+          contains(
+            'Solo puedo\nayudarte con tus movimientos y finanzas personales en esta aplicación.',
+          ),
+        );
+        expect(instruction, contains('Esta regla se aplica a cada mensaje del usuario por separado'));
+        expect(instruction, contains('Una respuesta previa tuya nunca es\nun precedente'));
+      },
+    );
+
+    test(
+      'fuera de tema: excepciona un saludo o agradecimiento breve de la frase fija de rechazo',
+      () {
+        final instruction = buildChatSystemInstruction(FakeClock(DateTime(2026, 10, 8)));
+
+        expect(
+          instruction,
+          contains(
+            'Excepción: un saludo o agradecimiento breve ("hola", "gracias", "buenos\n'
+            'días", "vale") no es una pregunta fuera de tema',
+          ),
+        );
+        expect(
+          instruction,
+          contains('sin usar la frase fija de rechazo'),
+        );
+        expect(instruction, contains('¿qué quieres saber de\ntus finanzas?'));
+      },
+    );
+
+    test(
+      'fuera de tema: aclara que no afecta a preguntas financieras normales, incluidas las '
+      'de seguimiento que dependen de la conversación anterior',
+      () {
+        final instruction = buildChatSystemInstruction(FakeClock(DateTime(2026, 10, 8)));
+
+        expect(
+          instruction,
+          contains(
+            'Esta regla no cambia cómo respondes a preguntas sobre los movimientos o las\n'
+            'finanzas del usuario, incluidas las preguntas de seguimiento que dependen',
+          ),
+        );
+        expect(instruction, contains('¿y el mes anterior?'));
+        expect(instruction, contains('¿y en restaurantes?'));
+        expect(instruction, contains('respóndelas con\nnormalidad usando las funciones'));
+      },
+    );
   });
 
   group('chatFunctionDeclarations', () {
