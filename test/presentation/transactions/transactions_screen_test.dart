@@ -87,7 +87,15 @@ void main() {
       await body();
     }
 
-    for (final size in [const Size(360, 640), const Size(407, 904)]) {
+    // 360x640 (en vez de 360x740) deja, con el teclado abierto (300px de
+    // inset), solo 44px para la lista de movimientos (284px de body menos
+    // 64px de `_MonthNavigator` y 176px de la tarjeta de resumen): justo
+    // lo que ocupa la cabecera del día, sin sitio para ningún `ListTile`
+    // (~56-72px), así que ese elemento nunca llega a construirse dentro
+    // del `ListView` y el test fallaba aun sin desbordamiento. 360x740
+    // sigue siendo un móvil pequeño real (p. ej. Pixel 6a en dp lógicos),
+    // pero deja margen de sobra para la fila.
+    for (final size in [const Size(360, 740), const Size(407, 904)]) {
       testWidgets(
         'estado vacío sin desbordamiento en ${size.width.toInt()}x${size.height.toInt()} con teclado',
         (tester) async {
