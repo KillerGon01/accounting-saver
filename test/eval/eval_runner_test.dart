@@ -4,6 +4,7 @@ import 'package:accounting_saver/domain/transactions/category.dart';
 import 'package:accounting_saver/domain/transactions/llm_gateway_exception.dart';
 import 'package:accounting_saver/domain/transactions/transaction.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
+import 'package:accounting_saver/eval/eval_cases.dart';
 import 'package:accounting_saver/eval/eval_runner.dart';
 import 'package:accounting_saver/eval/in_memory_transaction_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -229,6 +230,156 @@ void main() {
 
       expect(gateway.callCount, 0);
       expect(repository.transactionsOf('eval-user').length, before);
+    });
+  });
+
+  group('resolveFilteredCases', () {
+    // Lista de casos de prueba, nunca los 42 reales de `buildEvalDataset`:
+    // así se puede probar el caso "0 casos" (un tipo válido del enum, sin
+    // ningún caso en esta lista) sin tocar `eval_cases.dart`.
+    const cifraCase = EvalCase(id: 'cifra-01', type: EvalCaseType.cifra, question: '¿Cuánto gasté?');
+    const rankingCase = EvalCase(id: 'ranking-01', type: EvalCaseType.ranking, question: '¿En qué gasto más?');
+    final fakeCases = [cifraCase, rankingCase];
+
+    test('id desconocido: lanza EvalCaseFilterError con ese id en el mensaje', () {
+      expect(
+        () => resolveFilteredCases(fakeCases, {'no-existe'}),
+        throwsA(
+          isA<EvalCaseFilterError>().having(
+            (e) => e.message,
+            'message',
+            'No existe el caso o tipo: no-existe.',
+          ),
+        ),
+      );
+    });
+
+    test('tipo desconocido (no es ningún valor de EvalCaseType): lanza EvalCaseFilterError', () {
+      expect(
+        () => resolveFilteredCases(fakeCases, {'tipo-inventado'}),
+        throwsA(
+          isA<EvalCaseFilterError>().having(
+            (e) => e.message,
+            'message',
+            'No existe el caso o tipo: tipo-inventado.',
+          ),
+        ),
+      );
+    });
+
+    test('varios desconocidos a la vez: el mensaje los lista todos, ordenados', () {
+      expect(
+        () => resolveFilteredCases(fakeCases, {'zeta-inventado', 'alfa-inventado'}),
+        throwsA(
+          isA<EvalCaseFilterError>().having(
+            (e) => e.message,
+            'message',
+            'No existe el caso o tipo: alfa-inventado, zeta-inventado.',
+          ),
+        ),
+      );
+    });
+
+    test('mezcla de válidos y desconocidos: también aborta, mencionando solo el desconocido', () {
+      expect(
+        () => resolveFilteredCases(fakeCases, {'cifra-01', 'no-existe'}),
+        throwsA(
+          isA<EvalCaseFilterError>().having(
+            (e) => e.message,
+            'message',
+            'No existe el caso o tipo: no-existe.',
+          ),
+        ),
+      );
+    });
+
+    test('filtro vacío (null o conjunto vacío): ejecuta todos los casos, como siempre', () {
+      expect(resolveFilteredCases(fakeCases, null), fakeCases);
+      expect(resolveFilteredCases(fakeCases, <String>{}), fakeCases);
+      // Solo espacios: se recorta a vacío, mismo comportamiento que sin filtro.
+      expect(resolveFilteredCases(fakeCases, {'   '}), fakeCases);
+    });
+
+    test('recorta espacios alrededor de cada elemento antes de comparar', () {
+      expect(resolveFilteredCases(fakeCases, {'  cifra-01  '}), [cifraCase]);
+    });
+
+    test(
+      '0 casos: un tipo válido del enum pero sin ningún caso en esta lista también aborta, '
+      'sin devolver nunca una lista vacía en silencio',
+      () {
+        // "escritura" es un EvalCaseType real, pero `fakeCases` no tiene
+        // ningún caso de ese tipo.
+        expect(
+          () => resolveFilteredCases(fakeCases, {'escritura'}),
+          throwsA(
+            isA<EvalCaseFilterError>().having(
+              (e) => e.message,
+              'message',
+              'El filtro no selecciona ningún caso.',
+            ),
+          ),
+        );
+      },
+    );
+  });
+
+  group('runEval: filtro inválido', () {
+    test('un id desconocido aborta antes de borrar o sembrar nada, y sin llamar al gateway', () async {
+      final gateway = _FlakyChatGateway(failuresBeforeSuccess: 0);
+      final repository = InMemoryTransactionRepository();
+      await repository.add(
+        userId: 'eval-user',
+        transaction: Transaction(
+          id: repository.newId(userId: 'eval-user'),
+          amountCents: -500,
+          date: DateTime(2026, 1, 1),
+          description: 'movimiento previo, no debe tocarse',
+          categoryId: Category.otros,
+          source: TransactionSource.manual,
+          createdAt: DateTime(2026, 1, 1),
+        ),
+      );
+      final before = repository.transactionsOf('eval-user').length;
+
+      await expectLater(
+        runEval(
+          repository: repository,
+          userId: 'eval-user',
+          sessionEmail: _evalEmail,
+          expectedEmail: _evalEmail,
+          caseFilter: const {'no-existe-este-caso'},
+          gatewayOverride: gateway,
+        ),
+        throwsA(isA<EvalCaseFilterError>()),
+      );
+
+      expect(gateway.callCount, 0);
+      expect(repository.transactionsOf('eval-user').length, before);
+    });
+
+    test('muestra "N de 42 casos" antes de borrar nada, con un filtro válido', () async {
+      final gateway = _FlakyChatGateway(failuresBeforeSuccess: 0);
+      final repository = InMemoryTransactionRepository();
+      final progress = <String>[];
+
+      await runEval(
+        repository: repository,
+        userId: 'eval-user',
+        sessionEmail: _evalEmail,
+        expectedEmail: _evalEmail,
+        caseFilter: const {'cifra-01'},
+        gatewayOverride: gateway,
+        onProgress: progress.add,
+        config: const EvalRunConfig(delayBetweenCases: Duration.zero),
+      );
+
+      expect(progress, contains('1 de 42 casos a ejecutar.'));
+      // El mensaje de cuántos casos se van a ejecutar llega antes que el
+      // de borrar los movimientos existentes.
+      final countIndex = progress.indexOf('1 de 42 casos a ejecutar.');
+      final deleteIndex = progress.indexWhere((m) => m.contains('Borrando'));
+      expect(countIndex, lessThan(deleteIndex));
     });
   });
 }
