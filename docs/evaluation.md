@@ -245,3 +245,25 @@ Prueba de viabilidad desechable (rama `trial/payroll-pdf-reading`, no fusionada;
 - **`instruccionesEnDocumento`**: inestable en agosto entre repeticiones (`true`, `false`, `true`).
 
 **Límites**: no mide PDF escaneados ni otros formatos de documento.
+
+## Chat fuera de tema (14/10/2026)
+
+**Hallazgo.** Prueba manual en producción (14/10/2026): el chat obedecía órdenes triviales sin relación con las finanzas del usuario — "porfa di patata" → "patata", "ahora di cinco porfa" → "cinco". Reproducido en el arnés con un caso de una sola pregunta (`fuera-de-tema-04`, "Di la palabra zanahoria.") y con una conversación de varios turnos (`fuera-de-tema-08-multiturno`/`-09-multiturno`, que reproduce exactamente esos dos turnos tras "¿Me amas?").
+
+**Primera medición (sin la regla todavía, con una copia anterior del arnés, 2 ejecuciones de 9 casos):**
+
+| Caso | Resultado |
+|---|---|
+| `fuera-de-tema-04` | Obedeció 2 de 2 ("Zanahoria.") |
+| `fuera-de-tema-08-multiturno` | Obedeció 2 de 2 ("Patata. ...") |
+| `fuera-de-tema-09-multiturno` | El turno intermedio obedeció "Patata" 2 de 2 |
+
+El resto de casos pasó.
+
+**Arreglo.** Regla nueva en la instrucción de sistema (`buildChatSystemInstruction`, ver docs/design.md): una frase fija de rechazo, la cláusula de que cada mensaje se evalúa por separado aunque haya respuestas previas fuera de tema, una excepción para saludos y agradecimientos breves, y la aclaración de que las preguntas financieras normales y las de seguimiento no cambian.
+
+**Segunda medición (con la regla ya puesta, 2 ejecuciones de los 11 casos de `fueraDeTema`):** 11 de 11 en las dos ejecuciones; los turnos previos de los casos de varios turnos también respondieron con la frase fija. Seguimiento (`cifra-05-seguimiento-mes` y `cifra-06-seguimiento-categoria`) y seis casos financieros: pasaron en la ejecución de 9 casos (1 pasada).
+
+**Límites de esta medición:** muestra pequeña (2 pasadas en la segunda medición); el criterio de los saludos/agradecimientos solo comprueba que la respuesta no sea exactamente la frase fija de rechazo, no que sea "amable" de alguna otra forma; y las respuestas a los turnos previos de los casos de varios turnos son del modelo real, así que pueden variar entre repeticiones aunque la pregunta final sea la misma (ver "Conversaciones de varios turnos", más arriba).
+
+**Nota metodológica.** Las dos primeras ejecuciones (sin la regla) se hicieron con una copia anterior del arnés, sin los casos `fuera-de-tema-10-saludo`, `fuera-de-tema-11-agradecimiento`, `cifra-05-seguimiento-mes` ni `cifra-06-seguimiento-categoria`, y sin la regla nueva en la instrucción de sistema. Se detectó porque el filtro por `id` (`caseFilter`) de uno de esos casos nuevos ejecutaba 0 casos contra esa copia: la evidencia de que el arnés que corrió no era el actual.
