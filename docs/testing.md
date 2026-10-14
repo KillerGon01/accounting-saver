@@ -109,7 +109,6 @@ El límite es 1.000.000 € en valor absoluto (`maxAbsoluteAmountCents`, 100.000
 
 - Tests de `FirestoreTransactionRepository` con emulador o `fake_cloud_firestore`. Incluye `getActivitySummary` con sus agregados (`count` y `sum`) y `findByDateRange`, que hoy solo se verifican leyendo el código (en particular, que `findByDateRange` no dispare ningún `FAILED_PRECONDITION` por índice compuesto, que es justo lo que se eliminó).
 - Tests de `FirestoreUserDataRepository` (borrado en lotes de 400 contra el emulador) y de `FirebaseAuthRepository` (reautenticación y `delete`). Sin emulador no se pueden probar.
-- Tests automatizados de las reglas de Firestore. Las reglas se han comprobado a mano contra el emulador local, pero no hay test en el repositorio.
 - Widget tests del estado de carga y del estado de error del listado.
 - Widget tests del formulario (validación) y del diálogo de borrado.
 - Tests de `GeminiLlmGateway` y del campo "Añadir con lenguaje natural": requieren un proyecto con Firebase AI Logic habilitado.
