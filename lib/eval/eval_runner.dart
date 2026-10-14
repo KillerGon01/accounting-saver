@@ -43,6 +43,20 @@ class WrongEvalAccountError implements Exception {
       'EVAL_ACCOUNT_EMAIL ($expectedEmail). No se borra ni se escribe nada.';
 }
 
+/// Se lanza si el `caseFilter` de `runEval` no tiene sentido: alguno de
+/// sus elementos no es ni el `id` ni el `type.name` de ningún caso, o el
+/// filtro, aun siendo válido, no selecciona ningún caso. Se comprueba
+/// antes de borrar o sembrar nada en la cuenta de evaluación, para no
+/// tocarla por un filtro mal escrito.
+class EvalCaseFilterError implements Exception {
+  const EvalCaseFilterError(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class EvalRunConfig {
   const EvalRunConfig({
     this.delayBetweenCases = const Duration(seconds: 10),
@@ -70,6 +84,52 @@ class EvalRunConfig {
 
 typedef EvalProgressCallback = void Function(String message);
 
+/// Aplica un filtro de casos (ver `runEval`, parámetro `caseFilter`) a
+/// [allCases]: normaliza cada elemento (recorte de espacios, descartando
+/// los que quedan vacíos) y, si el resultado no es vacío, exige que todos
+/// sean el `id` o el `type.name` de algún caso de [allCases] o de
+/// [EvalCaseType.values] — si alguno no lo es, lanza [EvalCaseFilterError]
+/// con todos los desconocidos a la vez, ordenados. Si el filtro (ya
+/// normalizado) es `null` o vacío, devuelve [allCases] tal cual (mismo
+/// comportamiento de siempre: sin filtro, se ejecutan todos).
+///
+/// Si, aun con todos los elementos reconocidos, el filtro no selecciona
+/// ningún caso de [allCases] (posible si un `type.name` es válido —existe
+/// en el enum— pero no tiene ningún caso en esta lista concreta), también
+/// lanza [EvalCaseFilterError]: nunca se devuelve una lista vacía en
+/// silencio.
+///
+/// Función separada de `runEval` para poder probarla con una lista de
+/// casos de prueba (ver `test/eval/eval_runner_test.dart`), sin depender
+/// de los casos reales de `buildEvalDataset`.
+List<EvalCase> resolveFilteredCases(List<EvalCase> allCases, Set<String>? caseFilter) {
+  final normalizedFilter = caseFilter
+      ?.map((element) => element.trim())
+      .where((element) => element.isNotEmpty)
+      .toSet();
+
+  if (normalizedFilter == null || normalizedFilter.isEmpty) {
+    return allCases;
+  }
+
+  final knownIdsAndTypes = {
+    for (final evalCase in allCases) evalCase.id,
+    for (final type in EvalCaseType.values) type.name,
+  };
+  final unknown = normalizedFilter.where((element) => !knownIdsAndTypes.contains(element)).toList()..sort();
+  if (unknown.isNotEmpty) {
+    throw EvalCaseFilterError('No existe el caso o tipo: ${unknown.join(', ')}.');
+  }
+
+  final cases = allCases
+      .where((c) => normalizedFilter.contains(c.id) || normalizedFilter.contains(c.type.name))
+      .toList();
+  if (cases.isEmpty) {
+    throw const EvalCaseFilterError('El filtro no selecciona ningún caso.');
+  }
+  return cases;
+}
+
 /// Ejecuta la evaluación completa contra el backend real de Gemini (ver
 /// docs/evaluation.md): borra los movimientos existentes de [userId],
 /// los sustituye por los datos de evaluación deterministas
@@ -81,8 +141,13 @@ typedef EvalProgressCallback = void Function(String message);
 ///
 /// [caseFilter], si no es `null` ni vacío, limita la ejecución a los
 /// casos cuyo `id` o cuyo `type.name` (por ejemplo `"escritura"`) estén
-/// en el conjunto — útil para repetir solo un subconjunto sin gastar
-/// cuota en los casos que ya han pasado. `null` o vacío ejecuta todos.
+/// en el conjunto (cada elemento se recorta de espacios antes de
+/// comparar) — útil para repetir solo un subconjunto sin gastar cuota en
+/// los casos que ya han pasado. `null` o vacío (tras recortar espacios)
+/// ejecuta todos. Si algún elemento no es ni un `id` ni un `type.name` de
+/// ningún caso, o si el filtro no selecciona ningún caso, [runEval] lanza
+/// [EvalCaseFilterError] **antes** de borrar o sembrar nada en la cuenta
+/// y sin llamar a Gemini — nunca un informe vacío en silencio.
 ///
 /// Antes de tocar nada comprueba que [sessionEmail] (el correo de la
 /// sesión ya iniciada) coincide con [expectedEmail]
@@ -120,7 +185,18 @@ Future<String> runEval({
     return transactions.length;
   }
 
-  log('Cuenta verificada ($sessionEmail). Borrando sus movimientos existentes...');
+  log('Cuenta verificada ($sessionEmail).');
+
+  // El dataset (y, con él, la lista de ids/tipos válidos) se calcula
+  // antes de tocar la cuenta: así un filtro mal escrito se detecta sin
+  // haber borrado ni sembrado nada todavía.
+  log('Calculando los valores esperados de cada caso...');
+  final dataset = await buildEvalDataset();
+  final allCases = dataset.cases;
+  final cases = resolveFilteredCases(allCases, caseFilter);
+  log('${cases.length} de ${allCases.length} casos a ejecutar.');
+
+  log('Borrando los movimientos existentes de la cuenta...');
   final existing = await repository.findByDateRange(
     userId: userId,
     start: DateTime(2000),
@@ -133,14 +209,6 @@ Future<String> runEval({
 
   log('Cargando los datos de evaluación (fecha fija ${evalNow.toIso8601String()})...');
   await seedEvalData(repository, userId: userId, evalNow: evalNow);
-
-  log('Calculando los valores esperados de cada caso...');
-  final dataset = await buildEvalDataset();
-  final allCases = dataset.cases;
-  final cases = (caseFilter == null || caseFilter.isEmpty)
-      ? allCases
-      : allCases.where((c) => caseFilter.contains(c.id) || caseFilter.contains(c.type.name)).toList();
-  log('${cases.length} de ${allCases.length} casos a ejecutar.');
 
   final clock = FixedClock(evalNow);
   final availability = GeminiModelAvailability(clock: clock);
