@@ -202,7 +202,7 @@ Los dos jobs ejecutan sin `continue-on-error` (confirmado en el YAML), así que 
 
 ## Pruebas
 
-400 tests (`flutter test`), cubriendo dominio, aplicación y presentación con fakes (sin mocks): parseo e importe de movimientos, casos de uso de alta/edición/borrado, datos de ejemplo, autenticación y verificación de correo, perfil y borrado de cuenta, entrada en lenguaje natural (validación del esquema, contraste determinista de que el texto mencione un número, casos de error), chat (validación de argumentos de cada función, desglose por categoría y comparación de meses consistentes con el resumen mensual, aislamiento por usuario), fallback y reintento de Gemini (cuota agotada, modelo no encontrado, timeouts, 503 transitorio), mensajes de error traducidos a español sin filtrar texto interno, el resumen mensual con su gráfico y su comentario de IA, y la lógica (generación de casos y criterio de acierto) de la evaluación del chat contra Gemini real (`test/eval/`, ver docs/evaluation.md).
+475 tests (`flutter test`), cubriendo dominio, aplicación y presentación con fakes (sin mocks): parseo e importe de movimientos, casos de uso de alta/edición/borrado, datos de ejemplo, autenticación y verificación de correo, perfil y borrado de cuenta, entrada en lenguaje natural (validación del esquema, contraste determinista de que el texto mencione un número, casos de error), chat (validación de argumentos de cada función, desglose por categoría y comparación de meses consistentes con el resumen mensual, aislamiento por usuario), fallback y reintento de Gemini (cuota agotada, modelo no encontrado, timeouts, 503 transitorio), mensajes de error traducidos a español sin filtrar texto interno, el resumen mensual con su gráfico y su comentario de IA, y la lógica (generación de casos y criterio de acierto) de la evaluación del chat contra Gemini real (`test/eval/`, ver docs/evaluation.md).
 
 ```bash
 flutter analyze
@@ -213,7 +213,7 @@ Detalle completo, archivo por archivo, en `docs/testing.md`. Aparte, `firestore-
 
 ### Evaluación de calidad del chat contra Gemini real
 
-`lib/eval_main.dart` es una **herramienta de evaluación local, para documentar el TFM — no es parte de la app**: no se publica, no se incluye en el Dockerfile ni en ningún build de producción, y no la ejecuta ni `flutter test` ni el CI (los dos solo conocen `lib/main.dart`). Hace ~32 preguntas al gateway de Gemini y al ejecutor de funciones del chat reales (sin pasar por la pantalla de chat) contra una cuenta de evaluación dedicada (nunca la de "Credenciales de prueba"), con importes esperados calculados en código, nunca a mano. Metodología, criterio de acierto y cómo ejecutarla en `docs/evaluation.md`.
+`lib/eval_main.dart` es una **herramienta de evaluación local, para documentar el TFM — no es parte de la app**: no se publica, no se incluye en el Dockerfile ni en ningún build de producción, y no la ejecuta ni `flutter test` ni el CI (los dos solo conocen `lib/main.dart`). Hace ~42 preguntas al gateway de Gemini y al ejecutor de funciones del chat reales (sin pasar por la pantalla de chat) contra una cuenta de evaluación dedicada (nunca la de "Credenciales de prueba"), con importes esperados calculados en código, nunca a mano. Metodología, criterio de acierto y cómo ejecutarla en `docs/evaluation.md`.
 
 ## Estructura del repositorio
 

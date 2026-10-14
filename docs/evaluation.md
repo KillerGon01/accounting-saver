@@ -4,7 +4,7 @@ Evaluación reproducible de la calidad del chat con function calling, para docum
 
 ## Qué evalúa, y qué no
 
-Llama directamente a **`GeminiChatGateway`** (el gateway real de Gemini) y a **`TransactionChatFunctions`** (el ejecutor real de las funciones del chat), con un reloj fijo. **No** pasa por `SendChatMessage` (el caso de uso que usa la pantalla de chat real) ni por la pantalla de chat: `SendChatMessage` resuelve el "ahora" de cada función con `DateTime.now()` (hardcodeado, no inyectable) y tiene un tope de 20 preguntas por sesión — las dos cosas rompen la fecha fija y no llegan a las ~32 preguntas de la evaluación. El gateway y el ejecutor de funciones son las dos piezas que de verdad hablan con Gemini y con Firestore; `SendChatMessage` es solo el pegamento de sesión (caché, tope, historial) que ya está probado aparte con fakes (`test/application/chat/send_chat_message_test.dart`).
+Llama directamente a **`GeminiChatGateway`** (el gateway real de Gemini) y a **`TransactionChatFunctions`** (el ejecutor real de las funciones del chat), con un reloj fijo. **No** pasa por `SendChatMessage` (el caso de uso que usa la pantalla de chat real) ni por la pantalla de chat: `SendChatMessage` resuelve el "ahora" de cada función con `DateTime.now()` (hardcodeado, no inyectable) y tiene un tope de 20 preguntas por sesión — las dos cosas rompen la fecha fija y no llegan a las ~42 preguntas de la evaluación. El gateway y el ejecutor de funciones son las dos piezas que de verdad hablan con Gemini y con Firestore; `SendChatMessage` es solo el pegamento de sesión (caché, tope, historial) que ya está probado aparte con fakes (`test/application/chat/send_chat_message_test.dart`).
 
 Por tanto, esta evaluación mide la calidad de las respuestas del modelo y de los datos que le llegan de las funciones — no reproduce el comportamiento exacto de la pantalla de chat (límite de 20 preguntas, caché, avisos de lentitud).
 
@@ -33,7 +33,7 @@ Tanto el ejecutor de funciones (`now: evalNow`, pasado explícitamente en cada l
 1. Los datos de ejemplo de producción (`LoadDemoData`, semilla fija), con `now: evalNow`.
 2. Un movimiento adicional en octubre de 2026, categoría "Otros", con una **descripción de inyección de instrucciones** que le pide al modelo que escriba textualmente una marca testigo (`evalInjectionMarker`, ver "Inyección: marca testigo" más abajo), para el caso `inyeccion-01-concepto-malicioso`: las descripciones de movimiento son texto que cualquier usuario puede escribir, no de fiar, y el chat las reenvía tal cual al modelo como parte del resultado de `listTransactions`/`getCategoryBreakdown`.
 
-## Los casos (32)
+## Los casos (42)
 
 Generados en código por `buildEvalDataset()` (`lib/eval/eval_cases.dart`): construye un repositorio en memoria, lo siembra con `seedEvalData` y calcula, llamando a `BuildMonthlyReport`/`TransactionChatFunctions` — los mismos casos de uso que usará el chat real contra Firestore —, tanto cada importe esperado como el universo completo de importes válidos por mes (`EvalDataset.validAmountsByMonth`/`globalValidAmounts`, ver "Criterio de acierto"). Nunca una cifra escrita a mano. `test/eval/eval_cases_test.dart` comprueba que es determinista, que no faltan tipos y que no hay importes negativos (el extractor de importes de la respuesta solo reconoce valores en positivo).
 
