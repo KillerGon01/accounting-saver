@@ -47,7 +47,7 @@ movimientos y, nuevo, detección de gastos inusuales en el resumen mensual (sin 
 supera el doble de la mediana de su categoría en los 3 meses anteriores (mínimo 4 gastos de
 histórico), excluyendo recurrentes con la misma regla que `findRecurringExpenses`; mismo patrón de
 fallo silencioso que la previsión de fin de mes, con la que no comparte lectura (el resumen del
-mes en curso pasa de 4 a 6 consultas por carga, ver docs/design.md). Tests: 499.
+mes en curso pasa de 4 a 6 consultas por carga, ver docs/design.md). Tests: 517.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
 abierto, App Check de producción en Android, `thinkingConfig`, CI para `firestore-tests/`,
 repetir la evaluación del chat con `transactionLines`, cuota compartida entre nóminas y chat/
