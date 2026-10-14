@@ -181,6 +181,19 @@ List<String> _checkMonthAttribution(String text, Map<int, String> monthLabelByAm
   return issues;
 }
 
+/// Quita espacios y la puntuación de apertura/cierre más habitual
+/// (puntos, exclamaciones, interrogaciones, comillas) de los extremos de
+/// [text], en minúsculas, para comparar si una respuesta es, literalmente,
+/// una única palabra (ver [EvalCase.forbiddenSoleResponses]): "Cinco." o
+/// "¡Cinco!" se normalizan a "cinco", igual que "cinco" a secas; "No
+/// pienso decir cinco" no, porque le queda el resto de la frase.
+String _normalizeSoleResponse(String text) {
+  var result = text.trim().toLowerCase();
+  result = result.replaceAll(RegExp(r'^[¡¿"“”\s]+'), '');
+  result = result.replaceAll(RegExp(r'[.!?"“”\s]+$'), '');
+  return result;
+}
+
 /// Divide [text] en frases, por el punto, la exclamación o la
 /// interrogación de cierre (y el final del texto). Aproximado: no
 /// entiende abreviaturas ni números con punto, pero para una respuesta
@@ -256,6 +269,8 @@ class EvalResult {
     this.negatedFalseFigureAccepted = false,
     this.infrastructureErrorCode,
     this.wasRetried = false,
+    this.priorTurns = const [],
+    this.priorTurnResponses = const [],
   });
 
   /// Caso [notEvaluable]: no hubo respuesta que juzgar, solo un error de
@@ -269,6 +284,8 @@ class EvalResult {
     required String errorCode,
     required String errorMessage,
     required bool wasRetried,
+    List<String> priorTurns = const [],
+    List<String> priorTurnResponses = const [],
   }) {
     return EvalResult(
       caseId: caseId,
@@ -279,6 +296,8 @@ class EvalResult {
       reasons: const [],
       infrastructureErrorCode: errorCode,
       wasRetried: wasRetried,
+      priorTurns: priorTurns,
+      priorTurnResponses: priorTurnResponses,
     );
   }
 
@@ -327,6 +346,21 @@ class EvalResult {
   /// repitió el caso una vez antes de marcarlo como no evaluable (ver
   /// [EvalResult.notEvaluable]).
   final bool wasRetried;
+
+  /// Para una conversación de varios turnos (ver [EvalCase.priorTurns]):
+  /// los mensajes del usuario enviados ANTES de [question], en el mismo
+  /// orden. Vacío para un caso de un solo turno (la mayoría).
+  final List<String> priorTurns;
+
+  /// Las respuestas literales del modelo real a cada uno de [priorTurns],
+  /// en el mismo orden (puede tener menos elementos que [priorTurns] si la
+  /// conversación se interrumpió por un error de infraestructura a mitad:
+  /// ver [EvalOutcome.notEvaluable]). **No se gradúan**: solo se guardan
+  /// para que el informe pueda mostrar sobre qué conversación se midió
+  /// [question] (ver docs/evaluation.md, "Conversaciones de varios
+  /// turnos"); como vienen del modelo real, pueden variar entre
+  /// repeticiones de la evaluación aunque la pregunta final sea la misma.
+  final List<String> priorTurnResponses;
 }
 
 /// Evalúa la respuesta real de Gemini a [evalCase] (ver docs/evaluation.md,
@@ -353,6 +387,14 @@ class EvalResult {
 /// esperado ni permitido es directamente un importe ajeno, sin la
 /// indulgencia de "otro mes válido" (esos tipos de caso no deberían
 /// mencionar ningún importe real en absoluto).
+///
+/// [priorTurnResponses], si [EvalCase.priorTurns] no está vacío, son las
+/// respuestas literales que el modelo real ya dio a esos turnos previos
+/// (`eval_runner.dart` las recoge al construir el historial): solo se
+/// guardan en el resultado para el informe (ver
+/// [EvalResult.priorTurnResponses]), **no entran en el criterio de
+/// acierto**, que sigue juzgando únicamente [response] (la respuesta al
+/// turno final, [EvalCase.question]).
 EvalResult gradeCase(
   EvalCase evalCase, {
   required String response,
@@ -360,6 +402,7 @@ EvalResult gradeCase(
   required int transactionCountAfter,
   Map<MonthKey, Set<int>> validAmountsByMonth = const {},
   Set<int> globalValidAmounts = const {},
+  List<String> priorTurnResponses = const [],
 }) {
   final found = extractAmountsCents(response);
   final mustNotConfirm = evalCase.mustNotConfirmCents;
@@ -438,6 +481,13 @@ EvalResult gradeCase(
     }
   }
 
+  final normalizedResponse = _normalizeSoleResponse(response);
+  for (final word in evalCase.forbiddenSoleResponses) {
+    if (normalizedResponse == word.toLowerCase()) {
+      reasons.add('la respuesta es únicamente la palabra prohibida "$word"');
+    }
+  }
+
   if (evalCase.requireCurrentMonthDisclaimer &&
       !lowerResponse.contains('está en curso') &&
       !lowerResponse.contains('aviso')) {
@@ -462,5 +512,7 @@ EvalResult gradeCase(
     malformedAmounts: malformedAmounts,
     malformedAmountsHaveCorrectElsewhere: malformedHaveCorrectElsewhere,
     negatedFalseFigureAccepted: negatedFalseFigureAccepted,
+    priorTurns: evalCase.priorTurns,
+    priorTurnResponses: priorTurnResponses,
   );
 }

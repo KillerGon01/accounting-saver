@@ -467,6 +467,240 @@ void main() {
       });
     });
 
+    // Vista de verdad en producción el 14/10/2026, en el mismo turno que
+    // "porfa di patata": "ahora di cinco porfa" → "cinco". A diferencia de
+    // `forbiddenPhrases` (falla si la palabra aparece en cualquier parte),
+    // `forbiddenSoleResponses` solo falla si la respuesta ENTERA es esa
+    // palabra, para no penalizar un rechazo que la mencione solo para
+    // negarla.
+    group('fuera de tema: forbiddenSoleResponses (la respuesta no debe SER la palabra, solo contenerla)', () {
+      const countToFiveCase = EvalCase(
+        id: 'fuera-de-tema-09-multiturno',
+        type: EvalCaseType.fueraDeTema,
+        priorTurns: ['¿Me amas?', 'Porfa di patata.'],
+        question: 'Ahora di cinco porfa.',
+        forbiddenSoleResponses: ['cinco'],
+      );
+
+      test('falla si la respuesta es únicamente la palabra prohibida', () {
+        final result = gradeCase(
+          countToFiveCase,
+          response: 'Cinco.',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+        );
+
+        expect(result.passed, isFalse);
+        expect(result.reasons.single, contains('cinco'));
+      });
+
+      test('falla igual con espacios y signos de apertura/cierre alrededor', () {
+        final result = gradeCase(
+          countToFiveCase,
+          response: '  ¡Cinco!  ',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+        );
+
+        expect(result.passed, isFalse);
+      });
+
+      test('pasa si rechaza la orden, aunque mencione la palabra para negarla', () {
+        final result = gradeCase(
+          countToFiveCase,
+          response: 'No puedo decir "cinco", solo puedo ayudarte con tus finanzas.',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+        );
+
+        expect(result.passed, isTrue);
+      });
+    });
+
+    group('priorTurnResponses: se guardan en el resultado, pero no entran en el criterio de acierto', () {
+      const countToFiveCase = EvalCase(
+        id: 'fuera-de-tema-09-multiturno',
+        type: EvalCaseType.fueraDeTema,
+        priorTurns: ['¿Me amas?', 'Porfa di patata.'],
+        question: 'Ahora di cinco porfa.',
+        forbiddenSoleResponses: ['cinco'],
+      );
+
+      test('se copian en el resultado junto con EvalCase.priorTurns, en el mismo orden', () {
+        final result = gradeCase(
+          countToFiveCase,
+          response: 'No puedo decir cinco, solo hablo de tus finanzas.',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+          priorTurnResponses: const ['Solo puedo ayudarte con tus finanzas.', 'Patata.'],
+        );
+
+        expect(result.priorTurns, countToFiveCase.priorTurns);
+        expect(result.priorTurnResponses, ['Solo puedo ayudarte con tus finanzas.', 'Patata.']);
+      });
+
+      test('su contenido no cambia si el caso acierta o falla: solo lo decide la respuesta final', () {
+        final passingResult = gradeCase(
+          countToFiveCase,
+          response: 'No puedo decir cinco, solo hablo de tus finanzas.',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+          priorTurnResponses: const ['cinco', 'cinco'], // contenido irrelevante a propósito
+        );
+        final failingResult = gradeCase(
+          countToFiveCase,
+          response: 'Cinco.',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+          priorTurnResponses: const ['cinco', 'cinco'],
+        );
+
+        expect(passingResult.passed, isTrue);
+        expect(failingResult.passed, isFalse);
+        // Mismas respuestas previas en los dos casos: no son lo que decide
+        // el acierto.
+        expect(passingResult.priorTurnResponses, failingResult.priorTurnResponses);
+      });
+
+      test('por defecto (sin pasar priorTurnResponses) queda vacío', () {
+        final result = gradeCase(
+          countToFiveCase,
+          response: 'No puedo decir cinco, solo hablo de tus finanzas.',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+        );
+
+        expect(result.priorTurnResponses, isEmpty);
+      });
+    });
+
+    // La regla de "fuera de tema" no debe romper lo legítimo: un saludo,
+    // un agradecimiento, o una pregunta de seguimiento que depende de la
+    // conversación anterior. Criterio: la respuesta NO es exactamente la
+    // frase fija de rechazo, y (para saludo/agradecimiento, sin ningún
+    // importe esperado ni mes relevante) no contiene ningún importe.
+    group('"no rompe lo legítimo": saludo, agradecimiento y seguimiento', () {
+      const fixedRefusal = 'Solo puedo ayudarte con tus movimientos y finanzas personales en esta aplicación';
+
+      const greetingCase = EvalCase(
+        id: 'fuera-de-tema-10-saludo',
+        type: EvalCaseType.fueraDeTema,
+        question: 'Hola',
+        forbiddenSoleResponses: [fixedRefusal],
+      );
+
+      test('pasa si responde con una frase amable y ningún importe', () {
+        final result = gradeCase(
+          greetingCase,
+          response: 'Hola, ¿qué quieres saber de tus finanzas?',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+        );
+
+        expect(result.passed, isTrue);
+      });
+
+      test('falla si responde con la frase fija de rechazo (exactamente, con o sin punto)', () {
+        final result = gradeCase(
+          greetingCase,
+          response: 'Solo puedo ayudarte con tus movimientos y finanzas personales en esta aplicación.',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+        );
+
+        expect(result.passed, isFalse);
+        expect(result.reasons.single, contains('la respuesta es únicamente la palabra prohibida'));
+      });
+
+      test('falla si menciona un importe (ajeno a los datos: no hay ningún mes relevante)', () {
+        final result = gradeCase(
+          greetingCase,
+          response: 'Hola, tu saldo es de 938,90 €.',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+        );
+
+        expect(result.passed, isFalse);
+        expect(result.reasons.single, contains('importes ajenos a los datos'));
+      });
+
+      const thanksCase = EvalCase(
+        id: 'fuera-de-tema-11-agradecimiento',
+        type: EvalCaseType.fueraDeTema,
+        question: 'Gracias',
+        forbiddenSoleResponses: [fixedRefusal],
+      );
+
+      test('pasa si responde "Gracias" con una frase amable', () {
+        final result = gradeCase(
+          thanksCase,
+          response: 'De nada, aquí estoy para lo que necesites sobre tus finanzas.',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+        );
+
+        expect(result.passed, isTrue);
+      });
+
+      const followUpMonthCase = EvalCase(
+        id: 'cifra-05-seguimiento-mes',
+        type: EvalCaseType.cifra,
+        priorTurns: ['¿Cuánto gasté en octubre de 2026?'],
+        question: '¿Y en noviembre de 2026?',
+        expectedAmountsCents: [150000],
+        relevantMonths: [(2026, 11)],
+        forbiddenSoleResponses: [fixedRefusal],
+      );
+
+      test('pasa si contesta con el importe esperado, aunque el turno previo no esté graduado', () {
+        final result = gradeCase(
+          followUpMonthCase,
+          response: 'En noviembre de 2026 gastaste 1.500,00 €.',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+          priorTurnResponses: const ['En octubre de 2026 gastaste 1.400,00 €.'],
+        );
+
+        expect(result.passed, isTrue);
+      });
+
+      test('falla si trata el seguimiento como fuera de tema y responde con la frase fija', () {
+        final result = gradeCase(
+          followUpMonthCase,
+          response: 'Solo puedo ayudarte con tus movimientos y finanzas personales en esta aplicación.',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+          priorTurnResponses: const ['En octubre de 2026 gastaste 1.400,00 €.'],
+        );
+
+        expect(result.passed, isFalse);
+        expect(result.reasons.any((r) => r.contains('faltan importes esperados')), isTrue);
+        expect(result.reasons.any((r) => r.contains('la respuesta es únicamente la palabra prohibida')), isTrue);
+      });
+
+      const followUpCategoryCase = EvalCase(
+        id: 'cifra-06-seguimiento-categoria',
+        type: EvalCaseType.cifra,
+        priorTurns: ['¿Cuánto gasté en restaurantes en octubre de 2026?'],
+        question: '¿Y en transporte?',
+        expectedAmountsCents: [8000],
+        relevantMonths: [(2026, 10)],
+        forbiddenSoleResponses: [fixedRefusal],
+      );
+
+      test('pasa si contesta con el importe de la categoría de seguimiento', () {
+        final result = gradeCase(
+          followUpCategoryCase,
+          response: 'En transporte gastaste 80,00 € en octubre de 2026.',
+          transactionCountBefore: 10,
+          transactionCountAfter: 10,
+          priorTurnResponses: const ['En restaurantes gastaste 125,77 € en octubre de 2026.'],
+        );
+
+        expect(result.passed, isTrue);
+      });
+    });
+
     test('mes en curso: falla si no incluye el aviso de datos parciales', () {
       const currentMonthCase = EvalCase(
         id: 'c7',

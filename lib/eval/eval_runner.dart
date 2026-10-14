@@ -1,4 +1,5 @@
 import '../domain/chat/chat_gateway.dart';
+import '../domain/chat/chat_message.dart';
 import '../domain/transactions/llm_gateway_exception.dart';
 import '../domain/transactions/transaction_repository.dart';
 import '../application/chat/transaction_chat_functions.dart';
@@ -153,7 +154,10 @@ Future<String> runEval({
 
   for (; nextIndex < cases.length; nextIndex++) {
     final evalCase = cases[nextIndex];
-    if (requestsUsed + config.estimatedRequestsPerCase > config.requestBudget) {
+    // Una conversación de varios turnos (ver `EvalCase.priorTurns`) gasta
+    // una petición estimada por turno, no solo por el turno final.
+    final turnsInCase = evalCase.priorTurns.length + 1;
+    if (requestsUsed + config.estimatedRequestsPerCase * turnsInCase > config.requestBudget) {
       aborted = true;
       break;
     }
@@ -164,21 +168,52 @@ Future<String> runEval({
     LlmGatewayException? lastError;
     var wasRetried = false;
     var countBefore = await transactionCount();
+    // Respuestas literales del modelo real a `evalCase.priorTurns`, en el
+    // mismo orden (ver `EvalResult.priorTurnResponses`): no se gradúan,
+    // solo se guardan para el informe. Se reinicia en cada intento (un
+    // reintento tras un error de infraestructura vuelve a reproducir la
+    // conversación desde el turno 1, así que no tiene sentido conservar
+    // las del intento anterior).
+    var priorResponses = <String>[];
+
+    ChatFunctionExecutor buildExecutor() {
+      return (name, arguments) => functions.execute(userId: userId, name: name, arguments: arguments, now: evalNow);
+    }
 
     for (var attempt = 0; attempt < 2; attempt++) {
+      final collectedResponses = <String>[];
       try {
+        // Reproduce los turnos previos con el historial real que vería
+        // `ChatScreen` (igual que `SendChatMessage`), para llegar al turno
+        // final en el mismo contexto que en producción. Sus respuestas no
+        // se juzgan: solo pasan a formar parte del historial.
+        final history = <ChatMessage>[];
+        for (final priorMessage in evalCase.priorTurns) {
+          final priorReply = await gateway.sendMessage(
+            history: history,
+            message: priorMessage,
+            executeFunction: buildExecutor(),
+          );
+          collectedResponses.add(priorReply);
+          history.add(ChatMessage(role: ChatRole.user, text: priorMessage, sentAt: evalNow));
+          history.add(ChatMessage(role: ChatRole.assistant, text: priorReply, sentAt: evalNow));
+        }
+
         response = await gateway.sendMessage(
-          history: const [],
+          history: history,
           message: evalCase.question,
-          executeFunction: (name, arguments) {
-            return functions.execute(userId: userId, name: name, arguments: arguments, now: evalNow);
-          },
+          executeFunction: buildExecutor(),
         );
+        priorResponses = collectedResponses;
         lastError = null;
         break;
       } on LlmGatewayException catch (error) {
+        // Puede haber menos respuestas que `priorTurns` si el error
+        // interrumpió la conversación a mitad de los turnos previos (ver
+        // `EvalResult.priorTurnResponses`).
+        priorResponses = collectedResponses;
         lastError = error;
-        requestsUsed += config.estimatedRequestsPerCase;
+        requestsUsed += config.estimatedRequestsPerCase * turnsInCase;
         if (attempt == 0) {
           wasRetried = true;
           log('  → error de infraestructura (${_describeError(error)}); repitiendo una vez...');
@@ -197,6 +232,8 @@ Future<String> runEval({
           errorCode: _describeError(lastError),
           errorMessage: lastError.message ?? lastError.toString(),
           wasRetried: wasRetried,
+          priorTurns: evalCase.priorTurns,
+          priorTurnResponses: priorResponses,
         ),
       );
       log('  → NO EVALUABLE (${_describeError(lastError)})');
@@ -204,7 +241,7 @@ Future<String> runEval({
       continue;
     }
 
-    requestsUsed += config.estimatedRequestsPerCase;
+    requestsUsed += config.estimatedRequestsPerCase * turnsInCase;
     final countAfter = await transactionCount();
     final result = gradeCase(
       evalCase,
@@ -213,6 +250,7 @@ Future<String> runEval({
       transactionCountAfter: countAfter,
       validAmountsByMonth: dataset.validAmountsByMonth,
       globalValidAmounts: dataset.globalValidAmounts,
+      priorTurnResponses: priorResponses,
     );
     results.add(result);
     log('  → ${result.passed ? 'OK' : 'FALLO: ${result.reasons.join('; ')}'}');

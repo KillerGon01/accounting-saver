@@ -83,6 +83,36 @@ String buildEvalReportMarkdown({
   }
   buffer.writeln();
 
+  final multiTurn = results.where((r) => r.priorTurns.isNotEmpty).toList();
+  if (multiTurn.isNotEmpty) {
+    buffer.writeln('### Conversaciones de varios turnos (turnos previos, sin graduar)');
+    buffer.writeln();
+    buffer.writeln(
+      'Las respuestas a los turnos previos a cada pregunta final '
+      '(`EvalCase.priorTurns`) son del modelo real, igual que la pregunta '
+      'final: no se gradúan aquí, solo pasan a formar parte del historial '
+      'antes del turno que sí se juzga. Como vienen del modelo real, '
+      'pueden ser distintas en cada repetición de esta evaluación aunque '
+      'la pregunta final sea la misma; se listan para saber sobre qué '
+      'conversación se midió el turno final (ver docs/evaluation.md).',
+    );
+    buffer.writeln();
+    for (final result in multiTurn) {
+      buffer.writeln('#### `${result.caseId}` (${result.type.name})');
+      buffer.writeln();
+      for (var i = 0; i < result.priorTurns.length; i++) {
+        buffer.writeln('- **Turno ${i + 1} (previo, sin graduar):** ${result.priorTurns[i]}');
+        if (i < result.priorTurnResponses.length) {
+          buffer.writeln('  > ${result.priorTurnResponses[i].replaceAll('\n', '\n  > ')}');
+        } else {
+          buffer.writeln('  > _(sin respuesta: la conversación se interrumpió en este turno)_');
+        }
+      }
+      buffer.writeln('- **Turno final (el que se juzga, ver el resto del informe):** ${result.question}');
+      buffer.writeln();
+    }
+  }
+
   buffer.writeln('### Importes de otro mes válido (aviso, no fallo)');
   buffer.writeln();
   if (withOtherMonthAmounts.isEmpty) {
