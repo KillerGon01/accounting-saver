@@ -60,5 +60,45 @@ service cloud.firestore {
       allow create, update: if isOwner(userId) && isVerified()
         && isValidTransaction(request.resource.data);
     }
+
+    function isValidGoalName(text) {
+      return text is string
+        && text.size() >= 1
+        && text.size() <= 60;
+    }
+
+    // A diferencia de `isValidAmount` (que admite negativos, para un
+    // gasto), los importes de una meta nunca son negativos: `targetCents`
+    // además tiene que ser mayor que 0 (una meta sin objetivo no tiene
+    // sentido), comprobado aparte en `isValidSavingsGoal`.
+    function isValidGoalAmount(amount) {
+      return amount is int
+        && amount >= 0
+        && amount <= 100000000;
+    }
+
+    function isValidSavingsGoal(data) {
+      return data.keys().hasOnly([
+          'name', 'targetCents', 'savedCents', 'deadline', 'createdAt'
+        ])
+        && data.keys().hasAll([
+          'name', 'targetCents', 'savedCents', 'deadline', 'createdAt'
+        ])
+        && isValidGoalName(data.name)
+        && isValidGoalAmount(data.targetCents) && data.targetCents > 0
+        && isValidGoalAmount(data.savedCents)
+        && data.deadline is timestamp
+        && data.createdAt is timestamp;
+    }
+
+    // El máximo de 10 metas por usuario (`CreateSavingsGoal.maxGoalsPerUser`)
+    // se valida en la aplicación, no aquí: estas reglas no limitan cuántos
+    // documentos puede crear un usuario verificado, igual que ya pasa con
+    // `transactions` (ver "Límites conocidos" en docs/security.md).
+    match /users/{userId}/goals/{goalId} {
+      allow read, delete: if isOwner(userId) && isVerified();
+      allow create, update: if isOwner(userId) && isVerified()
+        && isValidSavingsGoal(request.resource.data);
+    }
   }
 }
