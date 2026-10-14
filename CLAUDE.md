@@ -41,13 +41,12 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: MVP completo, lectura de nóminas en PDF (solo web) y, nuevo, la previsión de fin de mes
-dentro del resumen mensual (sin IA): `BuildMonthEndForecast`/`MonthEndForecast` estima el gasto
-previsto a partir de los recurrentes detectados en los 3 meses anteriores (misma regla que
-`recurringExpenses` del chat, ya extraída a `findRecurringExpenses` sin cambiar su comportamiento:
-sus 9 tests pasan sin tocarlos), con tarjeta y desglose en `MonthlyReportScreen`; solo existe para
-el mes en curso, y un fallo en sus consultas extra no rompe el resto del informe (sin reintento
-automático, ver docs/design.md). Tests: 444.
+Hecho: MVP completo, lectura de nóminas en PDF, previsión de fin de mes y, nuevo, búsqueda y
+filtros de movimientos sobre la lista del mes ya cargada (sin IA, sin consultas nuevas a
+Firestore): `TransactionFilter`/`filterTransactions` (dominio puro: texto sin tildes/mayúsculas,
+categoría, tipo gasto/ingreso, importe mínimo/máximo sin signo) y una única hoja modal en el
+`AppBar` (`showTransactionFilterSheet`), para no tocar el presupuesto de alto ya ajustado para el
+teclado abierto en pantallas pequeñas (ver docs/design.md). Tests: 499.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
 abierto, App Check de producción en Android, `thinkingConfig`, CI para `firestore-tests/`,
 repetir la evaluación del chat con `transactionLines`, cuota compartida entre nóminas y chat/

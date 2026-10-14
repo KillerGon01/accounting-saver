@@ -6,6 +6,7 @@ import '../../application/transactions/load_demo_data.dart';
 import '../../domain/transactions/monthly_summary.dart';
 import '../../domain/transactions/parsed_transaction.dart';
 import '../../domain/transactions/transaction.dart';
+import '../../domain/transactions/transaction_filter.dart';
 import '../../app_check_config.dart';
 import '../auth/auth_providers.dart';
 import '../chat/chat_screen.dart';
@@ -18,6 +19,7 @@ import 'category_style.dart';
 import 'day_groups.dart';
 import 'formatters.dart';
 import 'natural_language_input.dart';
+import 'transaction_filter_sheet.dart';
 import 'transaction_form_screen.dart';
 import 'transaction_providers.dart';
 
@@ -34,6 +36,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   late DateTime _selectedMonth;
   bool _isLoadingDemo = false;
 
+  /// Búsqueda y filtros sobre la lista del mes ya cargada (nunca una
+  /// consulta nueva a Firestore, ver `TransactionFilter`). Vive en el
+  /// estado de la pantalla, sin persistir: se reinicia al cambiar de mes
+  /// (`_changeMonth`) y, al cambiar de usuario, porque `AuthGate` desmonta
+  /// esta pantalla entera (una instancia nueva de este estado nace con el
+  /// filtro vacío de siempre).
+  TransactionFilter _filter = TransactionFilter();
+
   @override
   void initState() {
     super.initState();
@@ -44,7 +54,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   void _changeMonth(int offset) {
     setState(() {
       _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + offset);
+      _filter = TransactionFilter();
     });
+  }
+
+  void _clearFilters() => setState(() => _filter = TransactionFilter());
+
+  Future<void> _openFilterSheet() async {
+    final result = await showTransactionFilterSheet(context, current: _filter);
+    if (result != null && mounted) {
+      setState(() => _filter = result);
+    }
   }
 
   void _showMessage(String message) {
@@ -154,6 +174,45 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
   }
 
+  /// El resumen (`_SummaryCard`) sigue viendo siempre [transactions] sin
+  /// filtrar (el resumen es del mes completo); solo la lista de abajo usa
+  /// la versión filtrada, calculada aquí mismo con `filterTransactions`
+  /// (ninguna consulta nueva, solo recorta en memoria la lista del mes
+  /// que ya se había pedido a Firestore).
+  Widget _buildMonthBody(List<Transaction> transactions) {
+    final filtered = filterTransactions(transactions, _filter);
+
+    return Expanded(
+      child: Column(
+        children: [
+          _SummaryCard(
+            summary: MonthlySummary.fromTransactions(transactions),
+          ),
+          if (_filter.isActive)
+            _FilterStatusBar(
+              matchCount: filtered.length,
+              totalCount: transactions.length,
+              onClear: _clearFilters,
+            ),
+          Expanded(
+            child: transactions.isEmpty
+                ? _EmptyMonth(
+                    isLoadingDemo: _isLoadingDemo,
+                    onLoadDemo: _loadDemoData,
+                  )
+                : filtered.isEmpty
+                    ? _FilteredEmptyState(onClearFilters: _clearFilters)
+                    : _TransactionList(
+                        transactions: filtered,
+                        onEdit: _openForm,
+                        onDelete: _confirmAndDelete,
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final params = MonthlyTransactionsParams(
@@ -167,6 +226,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       appBar: AppBar(
         title: const Text('Movimientos'),
         actions: [
+          IconButton(
+            tooltip: _filter.isActive ? 'Buscar y filtrar (filtros activos)' : 'Buscar y filtrar',
+            onPressed: _openFilterSheet,
+            icon: _filter.isActive
+                ? Badge(
+                    label: Text('${_filter.activeCriteriaCount}'),
+                    child: const Icon(Icons.filter_alt),
+                  )
+                : const Icon(Icons.filter_alt_outlined),
+          ),
           IconButton(
             tooltip: 'Cargar datos de ejemplo',
             onPressed: _isLoadingDemo ? null : _loadDemoData,
@@ -236,27 +305,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     ),
                   ),
                 ),
-                data: (transactions) => Expanded(
-                  child: Column(
-                    children: [
-                      _SummaryCard(
-                        summary: MonthlySummary.fromTransactions(transactions),
-                      ),
-                      Expanded(
-                        child: transactions.isEmpty
-                            ? _EmptyMonth(
-                                isLoadingDemo: _isLoadingDemo,
-                                onLoadDemo: _loadDemoData,
-                              )
-                            : _TransactionList(
-                                transactions: transactions,
-                                onEdit: _openForm,
-                                onDelete: _confirmAndDelete,
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
+                data: _buildMonthBody,
               ),
             ],
           ),
@@ -387,6 +436,95 @@ class _SummaryItem extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Fila con "N de M movimientos" y un botón para quitar los filtros,
+/// solo visible cuando hay algún criterio puesto (`TransactionFilter.isActive`).
+/// El texto es el aviso principal (no depende solo de la insignia del
+/// icono, de color, para saber que hay un filtro activo).
+class _FilterStatusBar extends StatelessWidget {
+  const _FilterStatusBar({
+    required this.matchCount,
+    required this.totalCount,
+    required this.onClear,
+  });
+
+  final int matchCount;
+  final int totalCount;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.m, 0, AppSpacing.s, AppSpacing.s),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '$matchCount de $totalCount movimientos',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onClear,
+            child: const Text('Quitar filtros'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Estado vacío cuando el mes tiene movimientos pero ninguno coincide con
+/// la búsqueda o los filtros activos — distinto de `_EmptyMonth` (que es
+/// cuando el mes no tiene ningún movimiento, con o sin filtro).
+class _FilteredEmptyState extends StatelessWidget {
+  const _FilteredEmptyState({required this.onClearFilters});
+
+  final VoidCallback onClearFilters;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.l),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.search_off,
+                      size: 56,
+                      color: theme.colorScheme.outline,
+                    ),
+                    const SizedBox(height: AppSpacing.m),
+                    Text(
+                      'Ningún movimiento coincide con la búsqueda o los filtros',
+                      style: theme.textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.l),
+                    OutlinedButton(
+                      onPressed: onClearFilters,
+                      child: const Text('Quitar filtros'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

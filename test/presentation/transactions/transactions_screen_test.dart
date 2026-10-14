@@ -137,4 +137,126 @@ void main() {
       );
     }
   });
+
+  group('búsqueda y filtros', () {
+    Future<void> addTwoTransactions(FakeTransactionRepository repository) async {
+      final today = DateTime.now();
+      final day = DateTime(today.year, today.month, today.day, 12);
+      await repository.add(
+        userId: _userId,
+        transaction: Transaction(
+          id: 'cafe',
+          amountCents: -250,
+          date: day,
+          description: 'Café con Marta',
+          categoryId: Category.restaurantes,
+          source: TransactionSource.manual,
+          createdAt: day,
+        ),
+      );
+      await repository.add(
+        userId: _userId,
+        transaction: Transaction(
+          id: 'gasolina',
+          amountCents: -4000,
+          date: day,
+          description: 'Gasolina',
+          categoryId: Category.transporte,
+          source: TransactionSource.manual,
+          createdAt: day,
+        ),
+      );
+    }
+
+    testWidgets('sin filtros no muestra ningún indicador ni insignia en el icono', (tester) async {
+      final repository = FakeTransactionRepository();
+      await addTwoTransactions(repository);
+      await _pump(tester, repository);
+
+      expect(find.text('Café con Marta'), findsOneWidget);
+      expect(find.text('Gasolina'), findsOneWidget);
+      expect(find.textContaining('movimientos', findRichText: true), findsNothing);
+      expect(find.byTooltip('Buscar y filtrar'), findsOneWidget);
+      expect(find.byTooltip('Buscar y filtrar (filtros activos)'), findsNothing);
+    });
+
+    testWidgets(
+      'al buscar por texto (ignorando tildes y mayúsculas), filtra la lista y muestra '
+      '"N de M movimientos" con una insignia en el icono',
+      (tester) async {
+        final repository = FakeTransactionRepository();
+        await addTwoTransactions(repository);
+        await _pump(tester, repository);
+
+        await tester.tap(find.byTooltip('Buscar y filtrar'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.widgetWithText(TextFormField, 'Buscar por concepto'), 'CAFÉ');
+        await tester.tap(find.widgetWithText(FilledButton, 'Aplicar'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Café con Marta'), findsOneWidget);
+        expect(find.text('Gasolina'), findsNothing);
+        expect(find.text('1 de 2 movimientos'), findsOneWidget);
+        expect(find.byTooltip('Buscar y filtrar (filtros activos)'), findsOneWidget);
+        expect(find.byTooltip('Buscar y filtrar'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'sin ningún movimiento que coincida, muestra el estado vacío filtrado y "Quitar '
+      'filtros" lo deshace',
+      (tester) async {
+        final repository = FakeTransactionRepository();
+        await addTwoTransactions(repository);
+        await _pump(tester, repository);
+
+        await tester.tap(find.byTooltip('Buscar y filtrar'));
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Buscar por concepto'),
+          'no existe',
+        );
+        await tester.tap(find.widgetWithText(FilledButton, 'Aplicar'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Ningún movimiento coincide con la búsqueda o los filtros'),
+          findsOneWidget,
+        );
+        expect(find.text('Café con Marta'), findsNothing);
+        expect(find.text('Gasolina'), findsNothing);
+        // El botón del estado vacío (no el de la barra de "N de M") es
+        // suficiente para comprobar que quita el filtro.
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Quitar filtros'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Café con Marta'), findsOneWidget);
+        expect(find.text('Gasolina'), findsOneWidget);
+        expect(find.byTooltip('Buscar y filtrar'), findsOneWidget);
+      },
+    );
+
+    testWidgets('cambiar de mes reinicia los filtros', (tester) async {
+      final repository = FakeTransactionRepository();
+      await addTwoTransactions(repository);
+      await _pump(tester, repository);
+
+      await tester.tap(find.byTooltip('Buscar y filtrar'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextFormField, 'Buscar por concepto'), 'café');
+      await tester.tap(find.widgetWithText(FilledButton, 'Aplicar'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 de 2 movimientos'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Mes anterior'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Mes siguiente'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 de 2 movimientos'), findsNothing);
+      expect(find.byTooltip('Buscar y filtrar'), findsOneWidget);
+      expect(find.byTooltip('Buscar y filtrar (filtros activos)'), findsNothing);
+    });
+  });
 }
