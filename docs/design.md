@@ -371,6 +371,37 @@ Sobre la lista del mes que `TransactionsScreen` ya tiene cargada (`monthlyTransa
 
 **Validación de la hoja, sin usar el `ArgumentError` de `TransactionFilter` como control de flujo.** Los campos de importe mínimo/máximo tienen su propio `validator` (reutilizando `parseEurosToCents`, el mismo parser que el formulario de alta/edición de movimientos) que comprueba el formato y, en el campo de máximo, que no sea menor que el mínimo — así el `Form` de la hoja nunca llega a construir un `TransactionFilter` con un rango inválido: el `ArgumentError` del constructor es la invariante de dominio (para quien construya el filtro desde código, como los tests), no el mecanismo con el que la interfaz evita el error.
 
+## Metas de ahorro
+
+Funcionalidad nueva, sin IA en ningún punto: una meta (nombre, importe objetivo, lo ya ahorrado y una fecha límite) con su progreso calculado en código. `users/{uid}/goals/{id}`, igual de aislada por usuario que `transactions`, pero una colección propia (nunca mezclada con los movimientos).
+
+**Capas, mismo patrón que `transactions`.** Dominio (`lib/domain/savings/`): `SavingsGoal` (constructor que valida con `ArgumentError.value`, igual que `Transaction` — nombre 1-60 caracteres, `targetCents > 0`, `savedCents >= 0`, los dos con el mismo límite único `maxAbsoluteAmountCents` que ya usan los movimientos) y `SavingsGoalRepository` (puerto). Aplicación (`lib/application/savings/`): `ListSavingsGoals`, `CreateSavingsGoal` (con el máximo de 10 por usuario, ver más abajo), `UpdateSavingsGoal`, `UpdateSavedAmount`, `DeleteSavingsGoal` — envoltorios finos sobre el repositorio, sin ningún `changeNotifier`: a diferencia de los movimientos, nada más en la app depende de las metas, así que la lista se mantiene al día sola, en tiempo real, vía `SavingsGoalRepository.watchAll` (el mismo patrón que `watchByMonth`, un `.snapshots()` de Firestore). Infraestructura: `FirestoreSavingsGoalRepository`, mismo mapeo (`Timestamp.fromDate`/`.toDate()`) y el mismo `newId` vía `.doc().id` que `FirestoreTransactionRepository`.
+
+### Progreso (`calculateSavingsGoalProgress`, dominio puro, sin ningún `double`)
+
+Recibe la meta y un `now` siempre inyectado (nunca `DateTime.now()` dentro de la función): ver `SavingsGoalsScreen`, que toma un `Clock` (por defecto `SystemClock`) solo para esto — no hay ningún caso de uso de por medio porque el cálculo es una derivación pura, igual que `MonthlySummary.fromTransactions`, invocada directamente desde la pantalla.
+
+- **Restante:** `max(0, targetCents - savedCents)`.
+- **Porcentaje:** `saved/target` redondeado al entero más cercano, con la mitad hacia arriba (`(saved*100 + target/2) ~/ target`, división entera), con tope en 100. Ejemplo del borde: con objetivo 800 y ahorrado 100 (12,5 % exacto), da 13, no 12.
+- **Meses naturales restantes:** año×12+mes de la fecha límite menos el de hoy, restando 1 si el día de la fecha límite todavía no se ha alcanzado este mes; nunca negativo (se recorta a 0). Con la fecha límite dentro del mismo mes en curso (y todavía no vencida), da exactamente 0 — caso de borde probado explícitamente.
+- **Aportación mensual necesaria:** `restante / max(1, meses restantes)`, con división entera **hacia arriba** (`(restante + divisor - 1) ~/ divisor`): con 1.000 céntimos restantes y 3 meses, da 334, no 333 — sobraría dinero redondeando hacia abajo. Con 0 meses, se divide por 1 (hay que aportar todo el resto ahora).
+- **Estado**, por prioridad: **cumplida** si `saved >= target` (siempre, aunque la fecha límite ya haya pasado — reaccionar al objetivo cumplido importa más que la fecha); si no, **vencida** si `now` es posterior a la fecha límite; si no, se compara lo ahorrado con la parte proporcional esperada hoy (`target × tiempo transcurrido desde createdAt / tiempo total hasta la fecha límite`, en milisegundos, sin `double`): **en camino** si lo alcanza, **por detrás** si no.
+- **Límite documentado, a propósito:** si la fecha límite no es posterior a la de creación (una meta degenerada, creada ya con la fecha límite en el pasado o igual a su propio día de creación), la parte proporcional esperada es directamente el objetivo completo — evita dividir por una duración de cero o negativa, al coste de exigir todo el ahorro desde el primer día en ese caso límite.
+
+### Máximo de 10 metas por usuario
+
+Validado en `CreateSavingsGoal` (aplicación), con `repository.count()` (consulta agregada, sin descargar ninguna meta) antes de `add()` — **no en las reglas de Firestore, y no es atómico**: `count()` y `add()` son dos llamadas separadas, así que dos creaciones casi simultáneas desde dos pestañas de la misma cuenta podrían las dos leer un recuento de 9 y las dos terminar escribiendo, dejando 11. Aceptado a propósito: es una cuota razonable para no dejar crecer la lista sin límite, no una garantía de seguridad — nada grave depende de que sean exactamente 10 y no 11 (ver docs/security.md, "Límites conocidos").
+
+### Punto de entrada: sin un séptimo icono en el `AppBar`
+
+`TransactionsScreen` ya tenía hasta 6-7 iconos en su `AppBar` según la combinación de IA/plataforma (buscar y filtrar, cargar datos de ejemplo, resumen del mes, chat, leer nómina, perfil, cerrar sesión). En vez de añadir uno más para las metas, el icono "Perfil" (`Icons.account_circle_outlined`, siempre visible, no depende de la IA) se sustituye por un `PopupMenuButton` ("Más opciones", con su propio `tooltip` — Flutter ya le da una etiqueta semántica a partir de él) con dos entradas: "Perfil" y "Metas de ahorro". Mismo número de iconos en la barra, en cualquier combinación de IA/plataforma, y funciona sin IA (el menú no depende de `effectiveEnableAi` en ningún punto, igual que "Perfil" y "Cerrar sesión" ya no dependían). Verificado antes del cambio que ningún test buscaba el tooltip "Perfil" directamente, y que la suite completa sigue pasando después, incluido el test del teclado abierto a 360×740 de `TransactionsScreen` (el menú no añade ninguna fila al `body`: es solo un `AppBar action`, mismo coste que el icono que sustituye).
+
+### Pantalla y formularios
+
+`SavingsGoalsScreen` (lista, `StreamProvider.family<List<SavingsGoal>, String>` por `userId`), `SavingsGoalFormScreen` (alta/edición: nombre, importe objetivo, fecha límite — nunca lo ahorrado) y `UpdateSavedAmountDialog` (diálogo aparte para actualizar solo lo ahorrado, con el valor absoluto, no un incremento). Cada tarjeta de la lista muestra una `LinearProgressIndicator` junto con el porcentaje en texto y un estado con icono **y** texto (nunca solo el color: "Cumplida"/"En camino"/"Por detrás"/"Vencida", cada uno con su propio icono). La fila de acciones de cada tarjeta usa `OverflowBar` (no un `Row` con `Spacer`), para que los tres botones ("Actualizar ahorrado", editar, eliminar) se acomoden en una pantalla estrecha con texto grande en vez de desbordar horizontalmente.
+
+Errores de Firestore (`permission-denied`, etc.) se traducen con `firestoreErrorMessage` (el mismo helper que ya usa `TransactionsScreen`), nunca el error crudo. `SavingsGoalLimitExceededException` es la excepción, no un error de Firestore: su `toString()` ya es un mensaje en español pensado para mostrarse tal cual.
+
 ## Docker (servir la web con nginx)
 
 `Dockerfile` multi-etapa (ver también README.md, "Ejecución con Docker"). El despliegue real sigue siendo Firebase Hosting; esto es una forma reproducible de levantar el mismo `build/web` en cualquier otro sitio (o en local).

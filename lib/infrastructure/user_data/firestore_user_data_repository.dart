@@ -7,7 +7,7 @@ import '../../domain/user_data/user_data_repository.dart';
 /// IMPORTANTE: cualquier colección nueva con datos del usuario debe añadirse
 /// aquí. El borrado de cuenta recorre esta lista; si una colección no aparece,
 /// sus documentos quedarían huérfanos al eliminar la cuenta de Auth.
-const userDataCollections = ['transactions'];
+const userDataCollections = ['transactions', 'goals'];
 
 /// Límite de Firestore para un `WriteBatch` es 500 operaciones; 400 deja margen.
 const _batchSize = 400;

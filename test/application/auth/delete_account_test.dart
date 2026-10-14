@@ -3,12 +3,14 @@ import 'package:accounting_saver/domain/auth/account_deletion_exception.dart';
 import 'package:accounting_saver/domain/auth/app_user.dart';
 import 'package:accounting_saver/domain/auth/auth_exception.dart';
 import 'package:accounting_saver/domain/common/transactions_change_notifier.dart';
+import 'package:accounting_saver/domain/savings/savings_goal.dart';
 import 'package:accounting_saver/domain/transactions/category.dart';
 import 'package:accounting_saver/domain/transactions/transaction.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../fakes/fake_auth_repository.dart';
+import '../../fakes/fake_savings_goal_repository.dart';
 import '../../fakes/fake_transaction_repository.dart';
 import '../../fakes/fake_user_data_repository.dart';
 
@@ -173,5 +175,70 @@ void main() {
     await expectLater(deleteAccount(password: 'mal'), throwsA(isA<AuthException>()));
 
     expect(changeNotifier.version, versionBefore);
+  });
+
+  group('con metas de ahorro', () {
+    late FakeSavingsGoalRepository goals;
+
+    SavingsGoal goal(String id) => SavingsGoal(
+      id: id,
+      name: 'Meta $id',
+      targetCents: 100000,
+      savedCents: 0,
+      deadline: DateTime(2027, 1, 1),
+      createdAt: DateTime(2026, 10, 1),
+    );
+
+    setUp(() {
+      goals = FakeSavingsGoalRepository();
+      userData = FakeUserDataRepository(transactions, goals: goals);
+      deleteAccount = DeleteAccount(auth, userData);
+    });
+
+    test('el borrado de cuenta también borra todas las metas del usuario', () async {
+      await seed('user-1', 2);
+      await goals.add(userId: 'user-1', goal: goal('g1'));
+      await goals.add(userId: 'user-1', goal: goal('g2'));
+      await goals.add(userId: 'user-1', goal: goal('g3'));
+
+      await deleteAccount(password: 'secreta123');
+
+      expect(transactions.transactionsOf('user-1'), isEmpty);
+      expect(goals.goalsOf('user-1'), isEmpty);
+      expect(auth.accountDeleted, isTrue);
+    });
+
+    test('un fallo a mitad del borrado de metas deja los movimientos ya borrados y se puede reintentar', () async {
+      await seed('user-1', 2); // 1 solo lote de movimientos (batchSize 2)
+      await goals.add(userId: 'user-1', goal: goal('g1'));
+      await goals.add(userId: 'user-1', goal: goal('g2'));
+      await goals.add(userId: 'user-1', goal: goal('g3'));
+      // Los movimientos se borran en el primer lote (índice 0); el fallo
+      // afecta al primer lote de METAS, que es el segundo lote en total.
+      userData.failBeforeBatch = 1;
+
+      await expectLater(
+        deleteAccount(password: 'secreta123'),
+        throwsA(
+          isA<AccountDeletionException>().having((e) => e.stage, 'stage', AccountDeletionStage.userData),
+        ),
+      );
+      expect(transactions.transactionsOf('user-1'), isEmpty);
+      expect(goals.goalsOf('user-1'), hasLength(3)); // nada borrado todavía
+      expect(auth.accountDeleted, isFalse);
+
+      await deleteAccount(password: 'secreta123');
+
+      expect(goals.goalsOf('user-1'), isEmpty);
+      expect(auth.accountDeleted, isTrue);
+    });
+
+    test('un usuario sin ninguna meta no rompe el borrado (colección vacía)', () async {
+      await seed('user-1', 1);
+
+      await deleteAccount(password: 'secreta123');
+
+      expect(auth.accountDeleted, isTrue);
+    });
   });
 }

@@ -14,6 +14,7 @@ import '../common/firestore_error_messages.dart';
 import '../payroll/payroll_screen.dart';
 import '../profile/profile_screen.dart';
 import '../reports/monthly_report_screen.dart';
+import '../savings/savings_goals_screen.dart';
 import '../theme/app_theme.dart';
 import 'category_style.dart';
 import 'day_groups.dart';
@@ -22,6 +23,12 @@ import 'natural_language_input.dart';
 import 'transaction_filter_sheet.dart';
 import 'transaction_form_screen.dart';
 import 'transaction_providers.dart';
+
+/// Entradas del menú "Más opciones" del `AppBar` (ver
+/// `_TransactionsScreenState._handleMoreMenuSelection`): un único icono en
+/// vez de uno por destino, para no sumar un séptimo icono a la barra (ver
+/// docs/design.md, "Metas de ahorro").
+enum _MoreMenuEntry { profile, savingsGoals }
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key, required this.userId});
@@ -166,6 +173,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
+  void _openSavingsGoals() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => SavingsGoalsScreen(userId: widget.userId)),
+    );
+  }
+
+  void _handleMoreMenuSelection(_MoreMenuEntry entry) {
+    switch (entry) {
+      case _MoreMenuEntry.profile:
+        _openProfile();
+      case _MoreMenuEntry.savingsGoals:
+        _openSavingsGoals();
+    }
+  }
+
   Future<void> _signOut() async {
     try {
       await ref.read(signOutProvider)();
@@ -258,10 +280,25 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               onPressed: _openPayroll,
               icon: const Icon(Icons.picture_as_pdf_outlined),
             ),
-          IconButton(
-            tooltip: 'Perfil',
-            onPressed: _openProfile,
-            icon: const Icon(Icons.account_circle_outlined),
+          PopupMenuButton<_MoreMenuEntry>(
+            tooltip: 'Más opciones',
+            onSelected: _handleMoreMenuSelection,
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _MoreMenuEntry.profile,
+                child: ListTile(
+                  leading: Icon(Icons.account_circle_outlined),
+                  title: Text('Perfil'),
+                ),
+              ),
+              PopupMenuItem(
+                value: _MoreMenuEntry.savingsGoals,
+                child: ListTile(
+                  leading: Icon(Icons.savings_outlined),
+                  title: Text('Metas de ahorro'),
+                ),
+              ),
+            ],
           ),
           IconButton(
             tooltip: 'Cerrar sesión',

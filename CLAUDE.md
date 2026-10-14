@@ -42,16 +42,21 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 
 ## Estado
 Hecho: MVP completo, lectura de nóminas en PDF, previsión de fin de mes, búsqueda y filtros de
-movimientos y, nuevo, detección de gastos inusuales en el resumen mensual (sin IA):
-`detectUnusualExpenses`/`BuildUnusualExpenses` marcan un gasto del mes en curso como inusual si
-supera el doble de la mediana de su categoría en los 3 meses anteriores (mínimo 4 gastos de
-histórico), excluyendo recurrentes con la misma regla que `findRecurringExpenses`; mismo patrón de
-fallo silencioso que la previsión de fin de mes, con la que no comparte lectura (el resumen del
-mes en curso pasa de 4 a 6 consultas por carga, ver docs/design.md). Tests: 517.
+movimientos, detección de gastos inusuales y, nuevo, metas de ahorro (`users/{uid}/goals`, sin
+IA): `SavingsGoal`/`calculateSavingsGoalProgress` (dominio puro: restante, porcentaje, meses
+naturales y aportación mensual con redondeo hacia arriba, estado cumplida/en camino/por
+detrás/vencida), casos de uso con máximo de 10 por usuario (aplicación, no atómico, no en las
+reglas), regla de Firestore propia para `goals` (probada contra el emulador real, 11/11), borrado
+de cuenta extendido sin tocar `DeleteAccount` (solo se añadió `'goals'` a `userDataCollections`,
+con un test que falla si se borra ese nombre de la lista), y la pantalla nueva accesible desde un
+`PopupMenuButton` que sustituye el icono de Perfil, sin sumar un séptimo icono al `AppBar`. Tests:
+517.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
 abierto, App Check de producción en Android, `thinkingConfig`, CI para `firestore-tests/`,
 repetir la evaluación del chat con `transactionLines`, cuota compartida entre nóminas y chat/
 lenguaje natural) más los riesgos de la previsión de fin de mes y los límites de la detección de
-gastos inusuales documentados en docs/design.md (sin estacionalidad, pocos datos, solo compara
-dentro de la misma categoría).
+gastos inusuales y de las metas de ahorro documentados en docs/design.md/docs/security.md (sin
+estacionalidad, pocos datos, solo compara dentro de la misma categoría; máximo de metas no
+atómico; sin test de integración Dart↔emulador para `DeleteAccount` completo, ni para
+`transactions` ni para `goals`).
 Siguiente: decidir los pendientes de seguridad antes de la entrega (26/10).
