@@ -42,17 +42,19 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 
 ## Estado
 Hecho: todo lo anterior (MVP, nóminas en PDF, previsión de fin de mes, búsqueda y filtros,
-gastos inusuales, metas de ahorro) y, nuevo, sugerencias de ahorro por meta (fase 1, sin IA):
-`calculateSavingsSuggestions` (dominio puro, reutiliza `findRecurringExpenses`/
-`detectUnusualExpenses` sin tocar su contrato: recurrentes, recorte del 20 % por categoría sin
-doble cómputo, exceso puntual aparte que no cuenta para la cobertura), `BuildSavingsSuggestions`
-(2 consultas más por apertura de la hoja, bajo demanda, no al abrir la pantalla de metas) y el
-botón "¿De dónde puedo ahorrar?" (solo en camino/por detrás) con su hoja modal. Tests: 517.
+gastos inusuales, metas de ahorro, sugerencias de ahorro por meta sin IA) y, nuevo, su fase 2:
+redacción con IA opcional de esas mismas sugerencias. `SavingsSuggestionsSummary` (dominio puro,
+sin ningún campo de texto libre: solo cifras formateadas en euros, categorías fijas y líneas ya
+redactadas listas para copiar) y `SavingsSuggestionsGateway`/`GeminiSavingsSuggestionsGateway`
+(mismo patrón de fallback/reintento/timeout/errores que el resto de usos de Gemini) y
+`ExplainSavingsSuggestions` (tope de 6 por sesión, caché por meta invalidada por movimientos o
+por cambios en la propia meta, aislado por usuario). Botón "Redactar resumen con IA" en la hoja
+de sugerencias, visible solo con `effectiveEnableAi`, nunca sustituye la lista. Tests: 517.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
 abierto, App Check de producción en Android, `thinkingConfig`, CI para `firestore-tests/`,
-repetir la evaluación del chat con `transactionLines`, cuota compartida entre nóminas y chat/
-lenguaje natural) más los riesgos/límites ya documentados en docs/design.md/docs/security.md
-(previsión de fin de mes, gastos inusuales, metas de ahorro, y ahora las sugerencias de ahorro:
-sin estacionalidad, poco representativas con pocos datos, el recorte del 20 % es solo aritmético,
-no comprueba que el gasto sea evitable de verdad).
+repetir la evaluación del chat con `transactionLines`, cuota compartida entre nóminas, chat,
+lenguaje natural, resumen mensual y ahora también sugerencias de ahorro) más los riesgos/límites
+ya documentados en docs/design.md/docs/security.md (previsión de fin de mes, gastos inusuales,
+metas de ahorro, sugerencias de ahorro sin IA y, ahora, su redacción con IA: nivel gratuito de
+Gemini, Google puede usar el contenido enviado).
 Siguiente: decidir los pendientes de seguridad antes de la entrega (26/10).
