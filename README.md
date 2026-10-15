@@ -63,7 +63,7 @@ Detalle completo (modelo de datos, decisiones de diseño por pantalla, formato d
 
 ## Uso de la IA y garantías
 
-Tres usos de Gemini, cada uno detrás de su propio puerto de dominio con su implementación en `lib/infrastructure/`:
+Usos de Gemini, cada uno detrás de su propio puerto de dominio con su implementación en `lib/infrastructure/`:
 
 | Puerto (dominio) | Implementación | Para qué |
 |---|---|---|
@@ -71,6 +71,7 @@ Tres usos de Gemini, cada uno detrás de su propio puerto de dominio con su impl
 | `ChatGateway` | `GeminiChatGateway` | Chat con *function calling* |
 | `MonthlyReportGateway` | `GeminiMonthlyReportGateway` | Comentario del resumen mensual |
 | `PayrollGateway` | `GeminiPayrollGateway` | Lectura de nóminas en PDF → `ExtractedPayroll` (solo web) |
+| `SavingsSuggestionsGateway` | `GeminiSavingsSuggestionsGateway` | Redacción en prosa de las sugerencias de ahorro de una meta (fase 2, opcional sobre el cálculo sin IA) |
 
 Garantías, todas verificables en el código y en los tests:
 
@@ -79,6 +80,7 @@ Garantías, todas verificables en el código y en los tests:
 - **Líneas de texto ya redactadas, listas para copiar.** `getCategoryBreakdown` y `compareMonths` devuelven, además de los datos estructurados, el ranking y la comparación ya escritos en texto plano (`rankingLines`, `comparisonLines`, `categoryComparisonLines`, por ejemplo `"1. Hogar: 938,90 € (62,2 %)"`); `listTransactions` hace lo mismo con cada movimiento (`transactionLines`, con fecha, concepto, importe y la etiqueta `(gasto)`/`(ingreso)`). La instrucción de sistema le exige al modelo copiarlas tal cual, sin reescribirlas ni recalcularlas.
 - **Los resultados de las funciones son datos, no instrucciones ni verdades absolutas.** El campo `description` de cada movimiento se trata como texto a mostrar, nunca como una orden a seguir; los argumentos que pide el modelo (año, mes, fechas, categoría) se validan antes de tocar Firestore, y si algo no es válido no se ejecuta ninguna consulta.
 - **El comentario del resumen mensual solo ve agregados.** `buildMonthlyReportExplanationPrompt` recibe un `MonthlyReport` (totales, gasto por categoría, comparación) que no tiene ningún campo para una descripción de movimiento individual: no es un filtrado que pueda fallar, es que el dato nunca llega a esa función.
+- **La redacción de las sugerencias de ahorro no ve el nombre de la meta ni ningún movimiento.** `SavingsSuggestionsSummary` (lo que recibe `SavingsSuggestionsGateway`) solo tiene cifras ya formateadas en euros y categorías fijas del código; ni el nombre de la meta ni ningún concepto o descripción de movimiento tienen un campo por el que llegar ahí. Mismo principio que el comentario mensual, mismo motivo.
 - **El chat es de solo lectura.** Las funciones que puede pedir el modelo (`getMonthlySummary`, `getCategoryBreakdown`, `compareMonths`, `listTransactions`, `recurringExpenses`) solo leen Firestore; no existe ninguna función de escritura expuesta al modelo.
 - **Aislamiento por usuario.** La caché de respuestas, el contador de preguntas/comentarios por sesión y el historial del chat están aislados por `userId` (`Provider.family`), para que cerrar sesión y entrar con otra cuenta en la misma app no herede nada del usuario anterior.
 - **Sin conversaciones guardadas.** El historial del chat y el comentario del resumen viven solo en el estado de la pantalla, en memoria; no se escriben en Firestore ni se registran en ningún log.
@@ -96,7 +98,7 @@ Detalle completo (incluido el hallazgo de que el chat llegó a dar cifras distin
   | `gemini-3.8-flash` | 5 peticiones/min, 20/día | de varios minutos ese día |
 
   **La latencia varía de un día a otro**: el 10/10/2026, con `gemini-3.8-flash`, se observaron respuestas válidas en 84 s y en 108 s, muy por encima de lo habitual; de ahí que el timeout esté fijado en 150 s y no en un valor menor.
-- **Tope de preguntas y comentarios por sesión**: `SendChatMessage.maxQuestionsPerSession` = 20 preguntas del chat; `ExplainMonthlyReport.maxCommentsPerSession` = 6 comentarios del resumen mensual. Solo cuenta una llamada que termina con éxito (ni una respuesta cacheada ni un error gastan cupo).
+- **Tope de preguntas y comentarios por sesión**: `SendChatMessage.maxQuestionsPerSession` = 20 preguntas del chat; `ExplainMonthlyReport.maxCommentsPerSession` = 6 comentarios del resumen mensual; `ExplainSavingsSuggestions.maxExplanationsPerSession` = 6 redacciones de sugerencias de ahorro. Solo cuenta una llamada que termina con éxito (ni una respuesta cacheada ni un error gastan cupo).
 - **Caché en memoria**: la última respuesta a cada pregunta (normalizada) y el último comentario por mes se cachean mientras los movimientos no cambien, para no repetir una llamada a Gemini si se repite la misma pregunta o se reabre el mismo mes.
 - **Timeout**: 150 segundos por petición a Gemini, sin reintento (un timeout no garantiza que la petición original haya fallado en el servidor). Ante un error transitorio del servidor (503), sí hay un reintento único con el mismo modelo.
 - **El nivel gratuito de Gemini permite a Google usar el contenido enviado para mejorar sus productos.** Por eso la demo pública solo debe usarse con los datos de ejemplo (ficticios) que carga la propia app, nunca con datos reales.

@@ -3,12 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/savings/build_savings_suggestions.dart';
 import '../../application/savings/create_savings_goal.dart';
 import '../../application/savings/delete_savings_goal.dart';
+import '../../application/savings/explain_savings_suggestions.dart';
 import '../../application/savings/list_savings_goals.dart';
 import '../../application/savings/update_saved_amount.dart';
 import '../../application/savings/update_savings_goal.dart';
 import '../../domain/savings/savings_goal.dart';
 import '../../domain/savings/savings_goal_repository.dart';
+import '../../domain/savings/savings_suggestions_gateway.dart';
 import '../../infrastructure/savings/firestore_savings_goal_repository.dart';
+import '../../infrastructure/savings/gemini_savings_suggestions_gateway.dart';
+import '../common/ai_providers.dart';
 import '../transactions/transaction_providers.dart';
 
 final savingsGoalRepositoryProvider = Provider<SavingsGoalRepository>((ref) {
@@ -42,6 +46,20 @@ final deleteSavingsGoalProvider = Provider<DeleteSavingsGoal>(
 final buildSavingsSuggestionsProvider = Provider<BuildSavingsSuggestions>(
   (ref) => BuildSavingsSuggestions(ref.watch(transactionRepositoryProvider)),
 );
+
+final geminiSavingsSuggestionsGatewayProvider = Provider<SavingsSuggestionsGateway>(
+  (ref) => GeminiSavingsSuggestionsGateway(availability: ref.watch(geminiModelAvailabilityProvider)),
+);
+
+/// Una instancia por usuario (familia por `userId`), igual que
+/// `explainMonthlyReportProvider`: su propia caché y su propio tope de 6
+/// resúmenes por sesión, aislados entre un usuario y otro.
+final explainSavingsSuggestionsProvider = Provider.family<ExplainSavingsSuggestions, String>((ref, userId) {
+  return ExplainSavingsSuggestions(
+    ref.watch(geminiSavingsSuggestionsGatewayProvider),
+    ref.watch(transactionsChangeNotifierProvider),
+  );
+});
 
 /// En tiempo real (ver `SavingsGoalRepository.watchAll`): se actualiza
 /// sola al crear, editar o borrar una meta, sin necesitar invalidarla a
