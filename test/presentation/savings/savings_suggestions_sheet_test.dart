@@ -2,6 +2,7 @@ import 'package:accounting_saver/application/savings/build_savings_suggestions.d
 import 'package:accounting_saver/application/savings/explain_savings_suggestions.dart';
 import 'package:accounting_saver/domain/savings/savings_goal.dart';
 import 'package:accounting_saver/domain/savings/savings_goal_progress.dart';
+import 'package:accounting_saver/domain/savings/savings_suggestions_summary.dart';
 import 'package:accounting_saver/domain/transactions/category.dart';
 import 'package:accounting_saver/domain/transactions/transaction.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
@@ -225,6 +226,36 @@ void main() {
       expect(find.textContaining('Podrías cubrir hasta'), findsOneWidget);
     });
 
+    testWidgets(
+      'cobertura menor: el texto de la hoja coincide exactamente con coverageLine del resumen',
+      (tester) async {
+        final repository = FakeTransactionRepository();
+        await repository.addAll(
+          userId: _userId,
+          transactions: [
+            _tx(amountCents: -1500, date: DateTime(2025, 10, 5)),
+            _tx(amountCents: -1500, date: DateTime(2025, 11, 5)),
+            _tx(amountCents: -1500, date: DateTime(2025, 12, 5)),
+          ],
+        );
+        final container = ProviderContainer(
+          overrides: [
+            buildSavingsSuggestionsProvider.overrideWithValue(
+              BuildSavingsSuggestions(repository, FakeClock(DateTime(2026, 1, 1))),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final progress = calculateSavingsGoalProgress(goal, now: DateTime(2026, 1, 1));
+        final result = await container.read(buildSavingsSuggestionsProvider)(userId: _userId);
+        final summary = summarizeSavingsSuggestions(goal: goal, progress: progress, suggestions: result);
+
+        await _open(tester, container, goal: goal, progress: progress);
+
+        expect(find.text(summary.coverageLine), findsOneWidget);
+      },
+    );
+
     testWidgets('cobertura mayor que la necesaria: lo dice sin "hasta X de Y"', (tester) async {
       final repository = FakeTransactionRepository();
       await repository.addAll(
@@ -250,6 +281,36 @@ void main() {
       expect(find.textContaining('podrías cubrir toda tu aportación mensual'), findsOneWidget);
       expect(find.textContaining('Podrías cubrir hasta'), findsNothing);
     });
+
+    testWidgets(
+      'cobertura mayor: el texto de la hoja coincide exactamente con coverageLine del resumen',
+      (tester) async {
+        final repository = FakeTransactionRepository();
+        await repository.addAll(
+          userId: _userId,
+          transactions: [
+            _tx(amountCents: -500000, date: DateTime(2025, 10, 5)),
+            _tx(amountCents: -500000, date: DateTime(2025, 11, 5)),
+            _tx(amountCents: -500000, date: DateTime(2025, 12, 5)),
+          ],
+        );
+        final container = ProviderContainer(
+          overrides: [
+            buildSavingsSuggestionsProvider.overrideWithValue(
+              BuildSavingsSuggestions(repository, FakeClock(DateTime(2026, 1, 1))),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final progress = calculateSavingsGoalProgress(goal, now: DateTime(2026, 1, 1));
+        final result = await container.read(buildSavingsSuggestionsProvider)(userId: _userId);
+        final summary = summarizeSavingsSuggestions(goal: goal, progress: progress, suggestions: result);
+
+        await _open(tester, container, goal: goal, progress: progress);
+
+        expect(find.text(summary.coverageLine), findsOneWidget);
+      },
+    );
 
     testWidgets(
       'cobertura cero (solo gastos puntuales): mensaje propio, distinto del de "sin histórico suficiente"',
@@ -288,6 +349,43 @@ void main() {
           find.text('No hay histórico suficiente en los últimos 3 meses para calcular opciones de ahorro.'),
           findsNothing,
         );
+      },
+    );
+
+    testWidgets(
+      'cobertura cero: el texto de la hoja coincide exactamente con coverageLine del resumen',
+      (tester) async {
+        final repository = FakeTransactionRepository();
+        await repository.addAll(
+          userId: _userId,
+          transactions: [
+            _tx(amountCents: -800, date: DateTime(2025, 10, 10), category: Category.transporte),
+            _tx(amountCents: -900, date: DateTime(2025, 11, 10), category: Category.transporte),
+            _tx(amountCents: -1100, date: DateTime(2025, 12, 10), category: Category.transporte),
+            _tx(amountCents: -1200, date: DateTime(2025, 12, 20), category: Category.transporte),
+            _tx(
+              amountCents: -5000,
+              date: DateTime(2026, 1, 5),
+              category: Category.transporte,
+              description: 'Taxi urgente',
+            ),
+          ],
+        );
+        final container = ProviderContainer(
+          overrides: [
+            buildSavingsSuggestionsProvider.overrideWithValue(
+              BuildSavingsSuggestions(repository, FakeClock(DateTime(2026, 1, 10))),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final progress = calculateSavingsGoalProgress(goal, now: DateTime(2026, 1, 10));
+        final result = await container.read(buildSavingsSuggestionsProvider)(userId: _userId);
+        final summary = summarizeSavingsSuggestions(goal: goal, progress: progress, suggestions: result);
+
+        await _open(tester, container, goal: goal, progress: progress);
+
+        expect(find.text(summary.coverageLine), findsOneWidget);
       },
     );
 

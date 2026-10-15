@@ -77,6 +77,7 @@ void main() {
         summary.savedFormatted,
         summary.monthlyContributionFormatted,
         summary.monthlyCoveredFormatted,
+        summary.coverageLine,
         for (final item in summary.recurringByCategory) item.line,
         for (final item in summary.categoryCuts) item.line,
         for (final item in summary.oneOffExcesses) item.line,
@@ -119,6 +120,56 @@ void main() {
       expect(summary.categoryCuts, isEmpty);
       expect(summary.oneOffExcesses, isEmpty);
       expect(summary.monthlyCoveredFormatted, '0,00 €');
+    });
+
+    test('la coverageLine del resumen es exactamente savingsSuggestionCoverageText de los mismos céntimos', () {
+      final g = goal(targetCents: 1000000, savedCents: 10000, deadline: DateTime(2026, 12, 1), createdAt: DateTime(2026, 1, 1));
+      final history = [
+        tx(amountCents: -7464, date: DateTime(2025, 11, 5), category: Category.suscripciones),
+        tx(amountCents: -7464, date: DateTime(2025, 12, 5), category: Category.suscripciones),
+      ];
+      final progress = calculateSavingsGoalProgress(g, now: DateTime(2026, 1, 1));
+      final suggestions = calculateSavingsSuggestions(historyTransactions: history, currentMonthTransactions: const []);
+
+      final summary = summarizeSavingsSuggestions(goal: g, progress: progress, suggestions: suggestions);
+
+      expect(
+        summary.coverageLine,
+        savingsSuggestionCoverageText(suggestions.monthlyCoveredCents, progress.monthlyContributionCents),
+      );
+    });
+  });
+
+  group('savingsSuggestionCoverageText', () {
+    test('cobertura cero: lo dice explícitamente, sin el molde "hasta X de Y"', () {
+      final text = savingsSuggestionCoverageText(0, 40000);
+
+      expect(
+        text,
+        'Estas opciones son gastos puntuales de este mes: no cubren nada de tu aportación mensual de 400,00 €.',
+      );
+    });
+
+    test('cobertura parcial: "Podrías cubrir hasta X de los Y/mes que necesitas aportar."', () {
+      final text = savingsSuggestionCoverageText(7464, 9100);
+
+      expect(text, 'Podrías cubrir hasta 74,64 € de los 91,00 €/mes que necesitas aportar.');
+    });
+
+    test('cobertura suficiente: frase natural, sin el molde "hasta X de Y"', () {
+      final text = savingsSuggestionCoverageText(50000, 40000);
+
+      expect(
+        text,
+        'Con estas opciones podrías cubrir toda tu aportación mensual de 400,00 € e incluso dejar margen de sobra.',
+      );
+      expect(text, isNot(contains('hasta')));
+    });
+
+    test('cobertura exacta: cuenta como suficiente, no como parcial', () {
+      final text = savingsSuggestionCoverageText(40000, 40000);
+
+      expect(text, contains('podrías cubrir toda tu aportación mensual'));
     });
   });
 }

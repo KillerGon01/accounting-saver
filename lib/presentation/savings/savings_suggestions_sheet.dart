@@ -7,6 +7,7 @@ import '../../app_check_config.dart';
 import '../../domain/savings/savings_goal.dart';
 import '../../domain/savings/savings_goal_progress.dart';
 import '../../domain/savings/savings_suggestion.dart';
+import '../../domain/savings/savings_suggestions_summary.dart';
 import '../theme/app_theme.dart';
 import '../transactions/category_style.dart';
 import '../transactions/formatters.dart';
@@ -304,7 +305,7 @@ List<Widget> _suggestionsSectionChildren(
   final theme = Theme.of(context);
   return [
     Text(
-      _coverageText(result.monthlyCoveredCents, progress.monthlyContributionCents),
+      savingsSuggestionCoverageText(result.monthlyCoveredCents, progress.monthlyContributionCents),
       style: theme.textTheme.bodyMedium,
     ),
     if (result.truncated) ...[
@@ -336,18 +337,6 @@ List<Widget> _suggestionsSectionChildren(
       style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
     ),
   ];
-}
-
-String _coverageText(int coveredCents, int neededCents) {
-  if (coveredCents <= 0) {
-    return 'Estas opciones son gastos puntuales de este mes: no cubren nada de tu aportación mensual de '
-        '${formatCents(neededCents)}.';
-  }
-  if (coveredCents >= neededCents) {
-    return 'Con estas opciones podrías cubrir toda tu aportación mensual de ${formatCents(neededCents)} '
-        'e incluso dejar margen de sobra.';
-  }
-  return 'Podrías cubrir hasta ${formatCents(coveredCents)} de los ${formatCents(neededCents)}/mes que necesitas aportar.';
 }
 
 /// Icono, texto (nunca solo el icono) y, si procede, categoría de

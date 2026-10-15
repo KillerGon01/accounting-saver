@@ -122,7 +122,7 @@ void main() {
     test('limita a un máximo de 4 frases cortas', () {
       final prompt = buildSavingsSuggestionsExplanationPrompt(summaryOf());
 
-      expect(prompt, contains('máximo de 4 frases cortas'));
+      expect(prompt, contains('MÁXIMO de 4 frases cortas'));
     });
 
     test('prohíbe empezar por "la aplicación" y describir cómo se ha hecho el cálculo', () {
@@ -137,6 +137,37 @@ void main() {
 
       expect(prompt, contains('con su unidad pegada a la cifra'));
       expect(prompt, contains('nunca lo separes en "19,66" y "euros" en frases distintas'));
+    });
+
+    test('incluye la línea de cobertura ya redactada (coverageLine), tal cual', () {
+      final summary = summaryOf(
+        history: [
+          tx(amountCents: -1966, date: DateTime(2025, 11, 5)),
+          tx(amountCents: -1966, date: DateTime(2025, 12, 5)),
+        ],
+      );
+
+      final prompt = buildSavingsSuggestionsExplanationPrompt(summary);
+
+      expect(prompt, contains(summary.coverageLine));
+    });
+
+    test('exige la estructura (a)-(d): cobertura, opciones mensuales, exceso puntual aparte y cierre', () {
+      final prompt = buildSavingsSuggestionsExplanationPrompt(summaryOf());
+
+      expect(prompt, contains('(a) La línea de cobertura de arriba, copiada tal cual'));
+      expect(prompt, contains('(b) Las opciones mensuales (recurrentes y recortes)'));
+      expect(prompt, contains('(c) Si hay algún gasto puntual por encima de lo habitual'));
+      expect(prompt, contains('como un ahorro único de este mes'));
+      expect(prompt, contains('(d) Cierra diciendo que la decisión'));
+    });
+
+    test('prohíbe repetir "necesaria", mencionar el estado de la meta y comparar o recalcular importes', () {
+      final prompt = buildSavingsSuggestionsExplanationPrompt(summaryOf());
+
+      expect(prompt, contains('No repitas la palabra "necesaria"'));
+      expect(prompt, contains('No menciones el estado de la meta'));
+      expect(prompt, contains('No compares ni recalcules ningún importe entre sí'));
     });
   });
 }

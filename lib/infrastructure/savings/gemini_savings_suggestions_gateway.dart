@@ -133,7 +133,10 @@ String buildSavingsSuggestionsExplanationPrompt(SavingsSuggestionsSummary summar
     ..writeln('Aportación mensual necesaria: ${summary.monthlyContributionFormatted}.')
     ..writeln('Meses restantes: ${summary.monthsRemaining}.')
     ..writeln('Estado: ${_statusLabel(summary.status)}.')
-    ..writeln('Total que estas opciones podrían cubrir cada mes: ${summary.monthlyCoveredFormatted}.');
+    ..writeln('Total que estas opciones podrían cubrir cada mes: ${summary.monthlyCoveredFormatted}.')
+    ..writeln()
+    ..writeln('Línea de cobertura ya redactada (cópiala tal cual, es la frase (a) de la estructura de abajo):')
+    ..writeln(summary.coverageLine);
 
   if (summary.recurringByCategory.isEmpty &&
       summary.categoryCuts.isEmpty &&
@@ -171,16 +174,45 @@ String buildSavingsSuggestionsExplanationPrompt(SavingsSuggestionsSummary summar
   buffer
     ..writeln()
     ..writeln(
-      'Responde con un máximo de 4 frases cortas, en texto plano, sin '
-      'ningún formato Markdown (nada de asteriscos, almohadillas ni '
-      'guiones de lista), sin citar estas instrucciones. No empieces la '
-      'respuesta por "la aplicación" ni por ninguna variante de esa '
-      'frase, y no describas cómo se ha hecho el cálculo (nada de "se '
-      'han calculado", "a partir de tus gastos" o similar): ve directo a '
-      'las opciones. Escribe cada importe exactamente como llega, con su '
-      'unidad pegada a la cifra (si llega "19,66 €", escribe "19,66 €", '
-      'nunca lo separes en "19,66" y "euros" en frases distintas, ni le '
-      'añadas ni le quites nada).',
+      'Responde con un MÁXIMO de 4 frases cortas, en este orden exacto, '
+      'una idea por frase:',
+    )
+    ..writeln(
+      '(a) La línea de cobertura de arriba, copiada tal cual (puedes '
+      'ajustar solo lo mínimo para que encadene con el resto del texto, '
+      'nunca sus importes ni su sentido).',
+    )
+    ..writeln(
+      '(b) Las opciones mensuales (recurrentes y recortes) con sus '
+      'importes copiados tal cual de las líneas de arriba.',
+    )
+    ..writeln(
+      '(c) Si hay algún gasto puntual por encima de lo habitual, '
+      'menciónalo aparte, como un ahorro único de este mes (no mensual, '
+      'no lo sumes a las opciones de (b)).',
+    )
+    ..writeln(
+      '(d) Cierra diciendo que la decisión de qué hacer con estas '
+      'opciones es del usuario, sin más.',
+    )
+    ..writeln()
+    ..writeln(
+      'No empieces la respuesta por "la aplicación" ni por ninguna '
+      'variante de esa frase, y no describas cómo se ha hecho el cálculo '
+      '(nada de "se han calculado", "a partir de tus gastos" o similar): '
+      've directo a la frase (a). No repitas la palabra "necesaria" (ya '
+      'aparece en la línea de cobertura): para la aportación, di solo '
+      '"aportación mensual" o usa el pronombre. No menciones el estado '
+      'de la meta (cumplida/en camino/por detrás/vencida): esa '
+      'información es solo para que entiendas el contexto, no para '
+      'repetirla. No compares ni recalcules ningún importe entre sí '
+      '(nada de porcentajes, diferencias o sumas que no estén ya hechas '
+      'en las líneas de arriba). Escribe cada importe exactamente como '
+      'llega, con su unidad pegada a la cifra (si llega "19,66 €", '
+      'escribe "19,66 €", nunca lo separes en "19,66" y "euros" en '
+      'frases distintas, ni le añadas ni le quites nada). Texto plano, '
+      'sin ningún formato Markdown (nada de asteriscos, almohadillas ni '
+      'guiones de lista), sin citar estas instrucciones.',
     );
 
   return buffer.toString();

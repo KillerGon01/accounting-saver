@@ -49,6 +49,7 @@ class SavingsSuggestionsSummary {
     required this.monthsRemaining,
     required this.status,
     required this.monthlyCoveredFormatted,
+    required this.coverageLine,
     required this.recurringByCategory,
     required this.categoryCuts,
     required this.oneOffExcesses,
@@ -64,9 +65,45 @@ class SavingsSuggestionsSummary {
   /// `SavingsSuggestionsResult.monthlyCoveredCents`), ya formateada.
   final String monthlyCoveredFormatted;
 
+  /// Frase ya redactada en español que relaciona [monthlyCoveredFormatted]
+  /// con [monthlyContributionFormatted] (ver [savingsSuggestionCoverageText]):
+  /// el mismo texto, palabra por palabra, que ya muestra la hoja de
+  /// sugerencias — así el modelo no tiene que relacionar los dos importes
+  /// por su cuenta, solo copiar esta línea.
+  final String coverageLine;
+
   final List<SavingsSuggestionCategoryAggregate> recurringByCategory;
   final List<SavingsSuggestionCategoryAggregate> categoryCuts;
   final List<SavingsSuggestionCategoryAggregate> oneOffExcesses;
+}
+
+/// Frase ya redactada en español que relaciona lo que las opciones de
+/// ahorro cubrirían cada mes ([coveredCents]) con lo que la meta necesita
+/// cada mes ([neededCents]), en céntimos enteros. Dart puro, sin ningún
+/// `double`: la única lógica de "cuánto cubre" de toda la app, usada tanto
+/// por `SavingsSuggestionsSheet` (para mostrarla) como por
+/// `summarizeSavingsSuggestions` (para que viaje también al modelo como
+/// [SavingsSuggestionsSummary.coverageLine]) — un único sitio, no dos
+/// textos que puedan desincronizarse.
+///
+/// Tres casos:
+/// - [coveredCents] es 0 o menos (solo hay excesos puntuales, que no
+///   cuentan aquí): lo dice explícitamente, sin el molde "hasta X de Y".
+/// - [coveredCents] es menor que [neededCents]: "Podrías cubrir hasta X
+///   de los Y/mes que necesitas aportar.".
+/// - [coveredCents] alcanza o supera [neededCents]: una frase natural sin
+///   el molde "hasta X de Y" (decir "hasta 2.000 de los 500 €/mes" sonaría
+///   absurdo cuando ya se cubre de sobra).
+String savingsSuggestionCoverageText(int coveredCents, int neededCents) {
+  if (coveredCents <= 0) {
+    return 'Estas opciones son gastos puntuales de este mes: no cubren nada de tu aportación mensual de '
+        '${_euros(neededCents)}.';
+  }
+  if (coveredCents >= neededCents) {
+    return 'Con estas opciones podrías cubrir toda tu aportación mensual de ${_euros(neededCents)} '
+        'e incluso dejar margen de sobra.';
+  }
+  return 'Podrías cubrir hasta ${_euros(coveredCents)} de los ${_euros(neededCents)}/mes que necesitas aportar.';
 }
 
 /// Construye el [SavingsSuggestionsSummary] de [goal]/[progress]/[suggestions],
@@ -88,6 +125,7 @@ SavingsSuggestionsSummary summarizeSavingsSuggestions({
     monthsRemaining: progress.monthsRemaining,
     status: progress.status,
     monthlyCoveredFormatted: _euros(suggestions.monthlyCoveredCents),
+    coverageLine: savingsSuggestionCoverageText(suggestions.monthlyCoveredCents, progress.monthlyContributionCents),
     recurringByCategory: _groupByCategory(
       suggestions.suggestions.where((s) => s.type == SavingsSuggestionType.recurring),
       withCount: true,
