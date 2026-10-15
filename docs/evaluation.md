@@ -274,3 +274,75 @@ El resto de casos pasó.
 **Límites de esta medición:** muestra pequeña (2 pasadas en la segunda medición); el criterio de los saludos/agradecimientos solo comprueba que la respuesta no sea exactamente la frase fija de rechazo, no que sea "amable" de alguna otra forma; y las respuestas a los turnos previos de los casos de varios turnos son del modelo real, así que pueden variar entre repeticiones aunque la pregunta final sea la misma (ver "Conversaciones de varios turnos", más arriba).
 
 **Nota metodológica.** Las dos primeras ejecuciones (sin la regla) se hicieron con una copia anterior del arnés, sin los casos `fuera-de-tema-10-saludo`, `fuera-de-tema-11-agradecimiento`, `cifra-05-seguimiento-mes` ni `cifra-06-seguimiento-categoria`, y sin la regla nueva en la instrucción de sistema. Se detectó porque el filtro por `id` (`caseFilter`) de uno de esos casos nuevos ejecutaba 0 casos contra esa copia: la evidencia de que el arnés que corrió no era el actual.
+
+## Sugerencias de ahorro con IA
+
+Arnés **paralelo e independiente** del de arriba (chat): evalúa `GeminiSavingsSuggestionsGateway` (fase 2 de las sugerencias de ahorro por meta, ver docs/design.md) directamente, con 5 casos fabricados en código. Vive en los mismos directorios (`lib/eval/`, `test/eval/`), en archivos propios con el prefijo `savings_suggestions_`, y un segundo punto de entrada, `lib/eval_savings_suggestions_main.dart` — **no toca ni una línea de los archivos del arnés del chat** (`eval_cases.dart`, `eval_grading.dart`, `eval_report.dart`, `eval_runner.dart`, `eval_main.dart`): solo los importa (`extractAmountsCents`, `containsSpelledOutAmount`, `EvalRunConfig`, `EvalProgressCallback`, `EvalCaseFilterError`, `evalNow`), todos ya genéricos o públicos.
+
+### Por qué no encaja en `EvalCase`/`runEval`
+
+`EvalCase` es específico del chat (`priorTurns`, `relevantMonths`, `monthLabelByAmountCents`, `mustNotConfirmCents`, `requireNoTransactionCountChange`...) y `runEval` verifica una cuenta, borra y siembra Firestore, y reproduce una conversación con `ChatGateway`/`TransactionChatFunctions`. `GeminiSavingsSuggestionsGateway` es una sola llamada sin *function calling*, sin conversación, sin cuenta ni Firestore de por medio (el resumen que recibe ya está calculado en memoria) y con un criterio de acierto completamente distinto (importes/conceptos/inversión/consejo/markdown/frases, no importes-por-mes). Forzarlo dentro de `EvalCase` habría significado añadir media docena de campos que nunca se usarían.
+
+### Los 5 casos (`lib/eval/savings_suggestions_eval_cases.dart`)
+
+Cada caso es un `SavingsSuggestionsEvalCase {id, description, summary}`, con el `summary` construido con los mismos pasos que la app real: `SavingsGoal` + `calculateSavingsGoalProgress` + una `SavingsSuggestionsResult` fabricada con objetos `SavingsSuggestion` reales (nunca una cifra escrita a mano) → `summarizeSavingsSuggestions`. `evalNow` (reutilizado de `eval_cases.dart`) es la fecha fija.
+
+| Caso | Qué fabrica |
+|---|---|
+| `savings-a-parcial-exigente` | Meta exigente: 3.000 € en 6 meses (aportación necesaria 500,00 €/mes), opciones que cubren 74,64 €/mes (tres recurrentes de 19,66 € + un recorte de 15,66 €) y un exceso puntual de 141,00 € |
+| `savings-b-suficiente-pequena` | Meta pequeña: 100 € en 11 meses (aportación necesaria 9,10 €/mes), una opción de 15,00 €/mes — cobertura suficiente, sin exceso puntual |
+| `savings-c-sin-opciones` | Sin ninguna opción calculada (las tres listas vacías) |
+| `savings-d-sin-exceso-puntual` | Recurrente y recorte presentes (cobertura parcial), pero ningún exceso puntual |
+| `savings-e-mezcla-completa` | Recurrentes, recorte y exceso puntual a la vez, en categorías distintas, con cobertura suficiente |
+
+**Los conceptos prohibidos salen de los propios casos, probado por construcción.** Al fabricar los `SavingsSuggestion`, varios llevan `description: 'netflix'/'spotify'/'gimnasio'` — los mismos conceptos que `savingsSuggestionsForbiddenConcepts` prohíbe en la respuesta (ver más abajo). `test/eval/savings_suggestions_eval_cases_test.dart` comprueba que, aun así, ninguno de los 5 `summary` los contiene: `SavingsSuggestionCategoryAggregate` (lo que de verdad ve el modelo) no tiene ningún campo para la descripción de una sugerencia individual, así que no es una mitigación que pudiera fallar — es que el tipo no transporta ese dato. Esto es, además, la justificación de por qué esos tres son los conceptos elegidos para el criterio (y no otros cualesquiera): son los que, de existir un fallo real de minimización de datos, aparecerían.
+
+### Criterio de acierto: 7 criterios independientes (`lib/eval/savings_suggestions_eval_grading.dart`)
+
+`gradeSavingsSuggestionsCase(evalCase, response: ...)` nunca acumula los motivos en una sola lista (como `gradeCase`, chat): cada criterio que falla añade su propia entrada a `failuresByCriterion` (clave = nombre del criterio), para que el informe pueda decir exactamente cuál o cuáles ha incumplido cada caso, con la respuesta literal.
+
+1. **`importes`.** Todo importe bien formado de la respuesta (`extractAmountsCents`, reutilizada tal cual de `eval_grading.dart`) debe estar en `summaryValidAmountsCents(evalCase.summary)` — el conjunto de céntimos que resulta de deshacer el formato de cada importe ya formateado del resumen (objetivo, ahorrado, aportación mensual, total cubierto y el importe agregado de cada grupo de recurrentes/recortes/excesos), calculado a partir del propio `summary`, nunca escrito a mano. `extractAmountsCents` ya acepta tanto `"58,98 €/mes"` (el sufijo "/mes" no le afecta: el patrón no exige que el importe termine el texto) como `"1.234,56 €"` (con separador de miles) sin ningún cambio — reutilización directa, probada con los dos formatos en `test/eval/savings_suggestions_eval_grading_test.dart`.
+2. **`palabras`.** Un importe escrito con palabras (`containsSpelledOutAmount`, reutilizada igual) es un **fallo de formato aparte**, independiente de `importes`: una respuesta que diga "quince euros al mes" en vez de "15,00 €" falla por `palabras` aunque no haya ningún importe en cifras que comparar contra el resumen (no hay nada que clasificar como "ajeno").
+3. **`conceptos`.** Ninguno de `savingsSuggestionsForbiddenConcepts` (`netflix`, `spotify`, `gimnasio`; case-insensitive) — ver más arriba de dónde salen.
+4. **`inversion`.** Ninguno de `savingsSuggestionsForbiddenInvestmentTerms` (`bolsa`, `fondos`, `cripto`, `invertir`, `acciones`).
+5. **`consejo`.** Ninguna de `savingsSuggestionsForbiddenAdvicePhrases` (`deberías`, `te recomiendo`, `tienes que`, `vas bien`) — las dos primeras, consejo explícito; las dos últimas, juicio sobre si la meta es alcanzable (prohibido por la instrucción de sistema, ver docs/design.md).
+6. **`markdown`.** Sin asteriscos, almohadillas ni un guion de lista al principio de línea.
+7. **`frases`.** Como máximo `savingsSuggestionsMaxSentences` (4), contadas con `splitIntoSentences` (ver "Cómo se cuentan las frases" más abajo).
+
+### Cómo se cuentan las frases
+
+Un corte de frase es cualquier `.`/`!`/`?` que **no** vaya seguido inmediatamente de un dígito, sin espacio de por medio (`RegExp(r'[.!?]+(?!\d)')`). Dos casos a propósito, con test en `test/eval/savings_suggestions_eval_grading_test.dart`:
+
+- **Un separador de miles no cuenta como corte.** En `"1.234,56 €"`, el punto va seguido de "2" (un dígito): no es un corte, así que el número no fragmenta la frase en dos. La coma decimal española nunca entra en conflicto con esto, porque no es ninguno de los tres signos (`.`/`!`/`?`).
+- **Un punto de cierre real, incluso tras "€/mes", sí cuenta.** En `"Podrías cubrir 58,98 €/mes. Además..."`, el punto va seguido de un espacio (no de un dígito): es un corte normal, la frase termina ahí como gramaticalmente corresponde.
+
+**Simplificación a propósito** (igual que las de `eval_grading.dart`, documentadas también allí): si dos importes aparecieran pegados sin ningún espacio entre ellos (`"...€/mes.141,00 €..."`, sin espacio tras el primer punto), ese punto no se contaría como corte (va seguido de un dígito), fusionando dos frases en una. No se ha visto nunca en prosa normal, donde siempre hay al menos un espacio entre frases.
+
+### Cómo se ejecuta
+
+No necesita ninguna cuenta ni toca Firestore (a diferencia de `eval_main.dart`): `GeminiSavingsSuggestionsGateway.explain` recibe un resumen ya construido en memoria, así que no hay nada que verificar ni que borrar o sembrar antes. El punto de entrada (`lib/eval_savings_suggestions_main.dart`) no tiene pantalla de login, solo un campo de filtro por `id` y un botón:
+
+```
+flutter run -t lib/eval_savings_suggestions_main.dart -d chrome --web-port=5000 \
+  --dart-define=ENABLE_AI=true
+```
+
+Un id desconocido en el filtro (o un filtro que no selecciona ningún caso) aborta con `EvalCaseFilterError` — mismo tipo que usa `runEval` — **antes** de llamar a Gemini, con un mensaje claro (`"No existe el caso: <id>."`), igual que el arnés del chat ante un `type`/`id` desconocido.
+
+### El informe
+
+`buildSavingsSuggestionsEvalReportMarkdown` imprime, en este orden: peticiones usadas y aviso si se cortó por el tope; recuento de aciertos/fallos/no evaluables; una tabla de fallos por criterio (los 7 de arriba); los casos no evaluables (error de infraestructura, con el mensaje); y, para cada caso que falla, qué criterio o criterios incumplió y la **respuesta literal** completa (nunca resumida), para poder leer exactamente qué escribió el modelo.
+
+### Primera medición real — 16/10/2026, `gemini-3.5-flash-lite`
+
+3 ejecuciones de los 5 casos (5 peticiones cada una, 15 en total): **15 de 15 casos acertados, 0 fallos en ninguno de los 7 criterios** (`importes`, `palabras`, `conceptos`, `inversion`, `consejo`, `markdown`, `frases`).
+
+**No hay una medición equivalente de la versión anterior de la instrucción de sistema** (antes de la estructura obligatoria (a)-(d) y de las prohibiciones de "necesaria"/estado de la meta/comparar importes, ver docs/design.md): el "antes" fue la prueba manual que motivó ese cambio, no una ejecución de este arnés — con la versión anterior, una respuesta típica tenía unas 6 frases (por encima del tope de 4) y no relacionaba explícitamente la cobertura con la aportación necesaria.
+
+### Límites de esta evaluación, a propósito
+
+- Solo 5 casos: cubren las combinaciones de tipos de opción (ninguna, solo recurrente+recorte, las tres a la vez) y los dos sentidos de cobertura (parcial/suficiente), no todas las combinaciones posibles de categorías o de redondeos de `calculateSavingsSuggestions`/`summarizeSavingsSuggestions` (ya probadas aparte, con fakes, en `test/domain/savings/`).
+- El criterio de "conceptos" es una lista cerrada de 3 palabras, igual que "inversión" (5) y "consejo" (4): una respuesta que usara un sinónimo no listado (p. ej. "acciones bursátiles" sí lo pilla por "acciones", pero "ETF" no) no se detectaría — mismo tipo de simplificación, a propósito, que las heurísticas por palabra clave del arnés del chat.
+- El contador de frases es una heurística de puntuación, no de significado (igual que `_splitSentences` en `eval_grading.dart`): ver el caso límite documentado en "Cómo se cuentan las frases".
+- **El criterio automático no mide la claridad de la redacción, solo cifras/conceptos/consejo/markdown/longitud.** Comprueba que los importes sean correctos, que no aparezcan conceptos/inversión/consejo prohibidos, que no haya Markdown y que no se pase de 4 frases — nada de eso dice si la frase se entiende bien. En la prueba manual del 16/10/2026 se vio una formulación ambigua, "tienes disponibles 58,98 €/mes" (podría leerse como dinero ya disponible, no como una opción de ahorro calculada), que ningún criterio automático detecta: no usa ninguna palabra prohibida, el importe es correcto y la frase es gramaticalmente válida. Evaluar claridad exigiría revisión humana o un criterio mucho más sofisticado (fuera del alcance de este arnés).
+- **Sin medición de la versión anterior de la instrucción, solo la prueba manual que la motivó** (ver "Primera medición real" arriba): no hay una cifra "antes" de este mismo arnés con la que comparar directamente los 7 criterios, solo la observación manual de que se pasaba de frases y no relacionaba cobertura con aportación.
