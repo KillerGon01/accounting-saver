@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../application/savings/build_savings_suggestions.dart';
 import '../../application/savings/create_savings_goal.dart';
 import '../../application/savings/delete_savings_goal.dart';
 import '../../application/savings/list_savings_goals.dart';
@@ -8,6 +9,7 @@ import '../../application/savings/update_savings_goal.dart';
 import '../../domain/savings/savings_goal.dart';
 import '../../domain/savings/savings_goal_repository.dart';
 import '../../infrastructure/savings/firestore_savings_goal_repository.dart';
+import '../transactions/transaction_providers.dart';
 
 final savingsGoalRepositoryProvider = Provider<SavingsGoalRepository>((ref) {
   return FirestoreSavingsGoalRepository();
@@ -31,6 +33,14 @@ final updateSavedAmountProvider = Provider<UpdateSavedAmount>(
 
 final deleteSavingsGoalProvider = Provider<DeleteSavingsGoal>(
   (ref) => DeleteSavingsGoal(ref.watch(savingsGoalRepositoryProvider)),
+);
+
+/// Se llama bajo demanda, al pulsar "¿De dónde puedo ahorrar?" (ver
+/// `BuildSavingsSuggestions`): no hay ningún provider que mantenga su
+/// resultado en caché ni lo recalcule solo, a diferencia de
+/// `savingsGoalsStreamProvider`.
+final buildSavingsSuggestionsProvider = Provider<BuildSavingsSuggestions>(
+  (ref) => BuildSavingsSuggestions(ref.watch(transactionRepositoryProvider)),
 );
 
 /// En tiempo real (ver `SavingsGoalRepository.watchAll`): se actualiza

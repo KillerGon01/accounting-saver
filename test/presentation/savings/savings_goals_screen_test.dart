@@ -1,4 +1,8 @@
+import 'package:accounting_saver/application/savings/build_savings_suggestions.dart';
 import 'package:accounting_saver/domain/savings/savings_goal.dart';
+import 'package:accounting_saver/domain/transactions/category.dart';
+import 'package:accounting_saver/domain/transactions/transaction.dart';
+import 'package:accounting_saver/domain/transactions/transaction_source.dart';
 import 'package:accounting_saver/presentation/savings/savings_goal_providers.dart';
 import 'package:accounting_saver/presentation/savings/savings_goals_screen.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
@@ -9,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../fakes/fake_clock.dart';
 import '../../fakes/fake_savings_goal_repository.dart';
+import '../../fakes/fake_transaction_repository.dart';
 
 const _userId = 'user-1';
 
@@ -205,5 +210,166 @@ void main() {
       expect(find.text('Meta de A'), findsNothing);
       expect(find.text('Todavía no tienes ninguna meta de ahorro'), findsOneWidget);
     });
+
+    testWidgets(
+      '"¿De dónde puedo ahorrar?" solo aparece para metas en camino o por detrás, '
+      'no para cumplidas ni vencidas',
+      (tester) async {
+        final repository = FakeSavingsGoalRepository();
+        await repository.add(
+          userId: _userId,
+          goal: SavingsGoal(
+            id: 'g-on-track',
+            name: 'En camino',
+            targetCents: 100000,
+            savedCents: 0,
+            deadline: DateTime(2027, 1, 1),
+            createdAt: DateTime(2026, 1, 1),
+          ),
+        );
+        await repository.add(
+          userId: _userId,
+          goal: SavingsGoal(
+            id: 'g-completed',
+            name: 'Meta cumplida',
+            targetCents: 100000,
+            savedCents: 100000,
+            deadline: DateTime(2027, 1, 1),
+            createdAt: DateTime(2026, 1, 1),
+          ),
+        );
+        await repository.add(
+          userId: _userId,
+          goal: SavingsGoal(
+            id: 'g-overdue',
+            name: 'Meta vencida',
+            targetCents: 100000,
+            savedCents: 0,
+            deadline: DateTime(2025, 1, 1),
+            createdAt: DateTime(2024, 1, 1),
+          ),
+        );
+        final container = ProviderContainer(
+          overrides: [
+            savingsGoalRepositoryProvider.overrideWithValue(repository),
+            buildSavingsSuggestionsProvider.overrideWithValue(
+              BuildSavingsSuggestions(FakeTransactionRepository(), FakeClock(DateTime(2026, 1, 1))),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await _pump(tester, container, clock: FakeClock(DateTime(2026, 1, 1)));
+
+        expect(find.text('¿De dónde puedo ahorrar?'), findsOneWidget);
+        expect(find.text('Meta cumplida'), findsOneWidget);
+        expect(find.text('Meta vencida'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'la hoja de sugerencias muestra el aviso fijo y, sin histórico, su propio estado vacío',
+      (tester) async {
+        final repository = FakeSavingsGoalRepository();
+        await repository.add(
+          userId: _userId,
+          goal: SavingsGoal(
+            id: 'g1',
+            name: 'Vacaciones',
+            targetCents: 100000,
+            savedCents: 0,
+            deadline: DateTime(2027, 1, 1),
+            createdAt: DateTime(2026, 1, 1),
+          ),
+        );
+        final container = ProviderContainer(
+          overrides: [
+            savingsGoalRepositoryProvider.overrideWithValue(repository),
+            buildSavingsSuggestionsProvider.overrideWithValue(
+              BuildSavingsSuggestions(FakeTransactionRepository(), FakeClock(DateTime(2026, 1, 1))),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await _pump(tester, container, clock: FakeClock(DateTime(2026, 1, 1)));
+
+        await tester.tap(find.text('¿De dónde puedo ahorrar?'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('No hay histórico suficiente en los últimos 3 meses para calcular opciones de ahorro.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'la hoja de sugerencias, con histórico, muestra las opciones y el total cubierto',
+      (tester) async {
+        final repository = FakeSavingsGoalRepository();
+        await repository.add(
+          userId: _userId,
+          goal: SavingsGoal(
+            id: 'g1',
+            name: 'Vacaciones',
+            targetCents: 100000,
+            savedCents: 0,
+            deadline: DateTime(2026, 2, 1),
+            createdAt: DateTime(2026, 1, 1),
+          ),
+        );
+        final transactionRepository = FakeTransactionRepository();
+        await transactionRepository.addAll(
+          userId: _userId,
+          transactions: [
+            Transaction(
+              id: 'tx-1',
+              amountCents: -1500,
+              date: DateTime(2025, 10, 5),
+              description: 'Netflix',
+              categoryId: Category.suscripciones,
+              source: TransactionSource.manual,
+              createdAt: DateTime(2025, 10, 5),
+            ),
+            Transaction(
+              id: 'tx-2',
+              amountCents: -1500,
+              date: DateTime(2025, 11, 5),
+              description: 'Netflix',
+              categoryId: Category.suscripciones,
+              source: TransactionSource.manual,
+              createdAt: DateTime(2025, 11, 5),
+            ),
+            Transaction(
+              id: 'tx-3',
+              amountCents: -1500,
+              date: DateTime(2025, 12, 5),
+              description: 'Netflix',
+              categoryId: Category.suscripciones,
+              source: TransactionSource.manual,
+              createdAt: DateTime(2025, 12, 5),
+            ),
+          ],
+        );
+        final container = ProviderContainer(
+          overrides: [
+            savingsGoalRepositoryProvider.overrideWithValue(repository),
+            buildSavingsSuggestionsProvider.overrideWithValue(
+              BuildSavingsSuggestions(transactionRepository, FakeClock(DateTime(2026, 1, 1))),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await _pump(tester, container, clock: FakeClock(DateTime(2026, 1, 1)));
+
+        await tester.tap(find.text('¿De dónde puedo ahorrar?'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Netflix'), findsOneWidget);
+        expect(find.textContaining('Decidir qué recortar es cosa tuya'), findsOneWidget);
+      },
+    );
   });
 }

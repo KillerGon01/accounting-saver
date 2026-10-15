@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../transactions/formatters.dart';
 import 'savings_goal_form_screen.dart';
 import 'savings_goal_providers.dart';
+import 'savings_suggestions_sheet.dart';
 import 'update_saved_amount_dialog.dart';
 
 /// Lista de metas de ahorro del usuario, con su progreso calculado en
@@ -124,6 +125,7 @@ class SavingsGoalsScreen extends ConsumerWidget {
                 children: [
                   for (final goal in goals) ...[
                     _SavingsGoalCard(
+                      userId: userId,
                       goal: goal,
                       progress: calculateSavingsGoalProgress(goal, now: now),
                       onEdit: () => _openForm(context, goal: goal),
@@ -223,6 +225,7 @@ class _EmptyGoals extends StatelessWidget {
 
 class _SavingsGoalCard extends StatelessWidget {
   const _SavingsGoalCard({
+    required this.userId,
     required this.goal,
     required this.progress,
     required this.onEdit,
@@ -230,6 +233,7 @@ class _SavingsGoalCard extends StatelessWidget {
     required this.onDelete,
   });
 
+  final String userId;
   final SavingsGoal goal;
   final SavingsGoalProgress progress;
   final VoidCallback onEdit;
@@ -299,6 +303,17 @@ class _SavingsGoalCard extends StatelessWidget {
                         '(quedan ${progress.monthsRemaining} ${progress.monthsRemaining == 1 ? 'mes' : 'meses'})',
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
+            if (progress.status == SavingsGoalStatus.onTrack || progress.status == SavingsGoalStatus.behind) ...[
+              const SizedBox(height: AppSpacing.s),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => SavingsSuggestionsSheet.show(context, userId: userId, goal: goal, progress: progress),
+                  icon: const Icon(Icons.lightbulb_outline),
+                  label: const Text('¿De dónde puedo ahorrar?'),
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.s),
             OverflowBar(
               spacing: AppSpacing.s,

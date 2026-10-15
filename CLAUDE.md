@@ -41,22 +41,18 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: MVP completo, lectura de nóminas en PDF, previsión de fin de mes, búsqueda y filtros de
-movimientos, detección de gastos inusuales y, nuevo, metas de ahorro (`users/{uid}/goals`, sin
-IA): `SavingsGoal`/`calculateSavingsGoalProgress` (dominio puro: restante, porcentaje, meses
-naturales y aportación mensual con redondeo hacia arriba, estado cumplida/en camino/por
-detrás/vencida), casos de uso con máximo de 10 por usuario (aplicación, no atómico, no en las
-reglas), regla de Firestore propia para `goals` (probada contra el emulador real, 11/11), borrado
-de cuenta extendido sin tocar `DeleteAccount` (solo se añadió `'goals'` a `userDataCollections`,
-con un test que falla si se borra ese nombre de la lista), y la pantalla nueva accesible desde un
-`PopupMenuButton` que sustituye el icono de Perfil, sin sumar un séptimo icono al `AppBar`. Tests:
-517.
+Hecho: todo lo anterior (MVP, nóminas en PDF, previsión de fin de mes, búsqueda y filtros,
+gastos inusuales, metas de ahorro) y, nuevo, sugerencias de ahorro por meta (fase 1, sin IA):
+`calculateSavingsSuggestions` (dominio puro, reutiliza `findRecurringExpenses`/
+`detectUnusualExpenses` sin tocar su contrato: recurrentes, recorte del 20 % por categoría sin
+doble cómputo, exceso puntual aparte que no cuenta para la cobertura), `BuildSavingsSuggestions`
+(2 consultas más por apertura de la hoja, bajo demanda, no al abrir la pantalla de metas) y el
+botón "¿De dónde puedo ahorrar?" (solo en camino/por detrás) con su hoja modal. Tests: 517.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
 abierto, App Check de producción en Android, `thinkingConfig`, CI para `firestore-tests/`,
 repetir la evaluación del chat con `transactionLines`, cuota compartida entre nóminas y chat/
-lenguaje natural) más los riesgos de la previsión de fin de mes y los límites de la detección de
-gastos inusuales y de las metas de ahorro documentados en docs/design.md/docs/security.md (sin
-estacionalidad, pocos datos, solo compara dentro de la misma categoría; máximo de metas no
-atómico; sin test de integración Dart↔emulador para `DeleteAccount` completo, ni para
-`transactions` ni para `goals`).
+lenguaje natural) más los riesgos/límites ya documentados en docs/design.md/docs/security.md
+(previsión de fin de mes, gastos inusuales, metas de ahorro, y ahora las sugerencias de ahorro:
+sin estacionalidad, poco representativas con pocos datos, el recorte del 20 % es solo aritmético,
+no comprueba que el gasto sea evitable de verdad).
 Siguiente: decidir los pendientes de seguridad antes de la entrega (26/10).

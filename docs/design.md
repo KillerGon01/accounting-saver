@@ -402,6 +402,35 @@ Validado en `CreateSavingsGoal` (aplicación), con `repository.count()` (consult
 
 Errores de Firestore (`permission-denied`, etc.) se traducen con `firestoreErrorMessage` (el mismo helper que ya usa `TransactionsScreen`), nunca el error crudo. `SavingsGoalLimitExceededException` es la excepción, no un error de Firestore: su `toString()` ya es un mensaje en español pensado para mostrarse tal cual.
 
+### Sugerencias de ahorro por meta (fase 1, sin IA)
+
+Botón "¿De dónde puedo ahorrar?" bajo cada meta en camino o por detrás (nunca en una cumplida o vencida: no hay nada que sugerir), que abre una hoja modal con opciones concretas de dónde liberar dinero para esa meta — puro cálculo sobre los movimientos ya existentes, sin ningún modelo de IA de por medio, como la previsión de fin de mes y la detección de gastos inusuales.
+
+**Método (`calculateSavingsSuggestions`, `lib/domain/savings/savings_suggestion.dart`, Dart puro).** Reutiliza, tal cual, `findRecurringExpenses` y `detectUnusualExpenses` sin cambiar su contrato. Tres tipos de opción (`SavingsSuggestionType`), todas en céntimos enteros:
+
+- **Recurrente.** Cada gasto de `findRecurringExpenses(historyTransactions)` libera su importe mensual completo. Como `RecurringExpense` no guarda categoría (puede, en teoría, variar entre apariciones), se le asigna la categoría de su aparición más reciente en el histórico con esa misma clave (concepto normalizado + importe exacto); si no se encuentra (caso infrecuente), se muestra igual con `categoryId: null` en vez de descartarla — **límite documentado a propósito**: si el usuario cambia la categoría de un recurrente de un mes a otro, decide con la del último mes, no con todos.
+- **Recorte por categoría.** Solo para `savingsSuggestionCutCategories` (Restaurantes, Ocio, Suscripciones, Otros): `savingsSuggestionCutPercent` (20) % de la media mensual (`savingsSuggestionHistoryMonths` = 3, división entera hacia abajo) del gasto de esa categoría que **no** coincida con ninguna clave recurrente (sin doble cómputo con la opción anterior). Si el recorte resultante da 0 (categoría sin gasto no recurrente, o media demasiado pequeña), no genera sugerencia.
+- **Exceso puntual.** Cada gasto de `detectUnusualExpenses` sobre el mes en curso: el importe sugerido es el exceso sobre la mediana de su categoría (`amountCentsAbs - categoryMedianCentsAbs`), no el gasto completo, porque es un suceso de este mes, no algo con lo que se pueda contar todos los meses — **no suma** a `monthlyCoveredCents`.
+
+`savingsSuggestionExcludedCategories` (Hogar, Salud, Nómina) nunca genera ninguna sugerencia, de ningún tipo: gasto fijo, necesario, o que no es gasto propiamente dicho sobre el que decidir recortar. El resultado (`SavingsSuggestionsResult.suggestions`) va ordenado de mayor a menor importe mezclando los tres tipos, sin agrupar por tipo: lo que importa a quien mira la lista es cuánto libera cada opción, no de qué tipo es. `monthlyCoveredCents` es la suma de recurrentes + recortes únicamente.
+
+**`BuildSavingsSuggestions` (`lib/application/savings/build_savings_suggestions.dart`).** Se llama bajo demanda, al pulsar el botón, no al abrir la pantalla de metas: **añade 2 consultas a Firestore por apertura de la hoja** (histórico de 3 meses + mes en curso), cada una con el mismo tope de seguridad de 2.000 movimientos que `BuildMonthEndForecast.maxFetchLimit` (reutilizado, no duplicado) y el mismo aviso `truncated` si se alcanza. No comparte sus resultados con `BuildMonthEndForecast`/`BuildUnusualExpenses` del resumen mensual: mismo tradeoff ya aceptado allí (más tráfico por pantalla a cambio de no acoplar casos de uso que no tienen por qué conocerse). A diferencia de esos dos casos de uso, no depende de "qué mes se está mirando": siempre calcula sobre "ahora" (el `Clock` inyectado).
+
+**La hoja (`SavingsSuggestionsSheet`, `lib/presentation/savings/savings_suggestions_sheet.dart`) calcula al abrirse, no antes.** El `Future` vive en el propio `State` de la hoja (no en ningún provider cacheado del árbol de la pantalla de metas): si falla, solo la hoja muestra un mensaje genérico y el resto de la pantalla de metas sigue funcionando con normalidad, igual en espíritu al patrón de `AsyncValue.value` nullable de la previsión de fin de mes, pero aquí sin ningún provider de por medio porque el cálculo no es algo que la pantalla necesite tener siempre disponible.
+
+**Tres mensajes de cobertura distintos, no una única frase con un hueco.** Comparando `monthlyCoveredCents` con la aportación mensual necesaria de la meta (`SavingsGoalProgress.monthlyContributionCents`, ya calculada por la pantalla):
+- Si no cubre nada (`monthlyCoveredCents == 0`, por ejemplo porque todo lo que hay son excesos puntuales): mensaje propio ("no cubren nada de tu aportación mensual"), distinto del estado vacío de "sin histórico suficiente" (que es cuando no hay ninguna sugerencia de ningún tipo, ni siquiera puntual).
+- Si cubre menos de lo necesario: "Podrías cubrir hasta X de los Y €/mes que necesitas aportar."
+- Si cubre lo necesario o más: una frase natural sin el molde "hasta X de Y" ("podrías cubrir toda tu aportación mensual... e incluso dejar margen de sobra"), para no decir algo absurdo como "hasta 2.000 de los 500 €/mes".
+
+**Aviso fijo, sin lenguaje de consejo.** Siempre visible junto a las opciones: "Opciones informativas calculadas con tus gastos de los últimos 3 meses. Decidir qué recortar es cosa tuya: no son recomendaciones financieras." — nunca "deberías" ni "te recomendamos": son datos para decidir, no una sugerencia de la app sobre qué hacer con el dinero del usuario.
+
+**Icono y texto en cada opción, nunca solo un color.** `_SuggestionTile` muestra un icono por tipo (`Icons.autorenew` para recurrente, el icono de la categoría para el recorte, `Icons.bolt_outlined` para el exceso puntual) junto con el título, la descripción del tipo y el importe — igual de accesible que el resto de la app (metas, categorías).
+
+**Sin cambios en `firestore.rules` ni en `pubspec.yaml`.** Ninguna consulta nueva en forma (sigue siendo `where` por fecha + `orderBy`, como el resto de la app), solo más llamadas a las mismas consultas. Nada se registra en logs.
+
+**Límites, a propósito (los mismos de fondo que ya tienen `findRecurringExpenses`/`detectUnusualExpenses`, heredados aquí):** sin estacionalidad, la mediana/media es poco representativa con pocos datos, y la comparación de "inusual" es siempre dentro de la misma categoría (ver "Detección de gastos inusuales" más arriba, con el mismo alcance). Además, específico de esta función: el recorte del 20 % es puramente aritmético sobre el histórico, no comprueba que ese gasto sea realmente evitable (una categoría "Otros" con un único gasto grande y puntual puede sugerir un recorte que en la práctica no se pueda repetir).
+
 ## Docker (servir la web con nginx)
 
 `Dockerfile` multi-etapa (ver también README.md, "Ejecución con Docker"). El despliegue real sigue siendo Firebase Hosting; esto es una forma reproducible de levantar el mismo `build/web` en cualquier otro sitio (o en local).
