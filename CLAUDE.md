@@ -42,19 +42,21 @@ description, categoryId, source, createdAt. Categorías fijas en código.
 
 ## Estado
 Hecho: todo lo anterior (MVP, nóminas en PDF, previsión de fin de mes, búsqueda y filtros,
-gastos inusuales, metas de ahorro, sugerencias de ahorro por meta sin IA) y, nuevo, su fase 2:
-redacción con IA opcional de esas mismas sugerencias. `SavingsSuggestionsSummary` (dominio puro,
-sin ningún campo de texto libre: solo cifras formateadas en euros, categorías fijas y líneas ya
-redactadas listas para copiar) y `SavingsSuggestionsGateway`/`GeminiSavingsSuggestionsGateway`
-(mismo patrón de fallback/reintento/timeout/errores que el resto de usos de Gemini) y
-`ExplainSavingsSuggestions` (tope de 6 por sesión, caché por meta invalidada por movimientos o
-por cambios en la propia meta, aislado por usuario). Botón "Redactar resumen con IA" en la hoja
-de sugerencias, visible solo con `effectiveEnableAi`, nunca sustituye la lista. Tests: 666.
+gastos inusuales, metas de ahorro, sugerencias de ahorro con y sin IA) y, nuevo, un rediseño
+visual y dos arreglos de autenticación en Android (detalle en docs/design.md/docs/security.md):
+tema oscuro forzado (`ThemeMode.dark`, paleta propia con contraste AA comprobado), icono propio
+en web y Android (adaptativo + monocromo, generado por `tool/generate_icons.dart`), avisos de
+sesión (cierre de sesión y borrado de cuenta, en memoria vía `sessionFeedbackProvider`) y
+animaciones con `AppMotion` (respeta `disableAnimations`); y el login con Google en Android, que
+usaba `signInWithProvider` y lo bloqueaba un 403 de `identitytoolkit`, sustituido por el SDK
+nativo (`google_sign_in`, único paquete nuevo). Tests: 688.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
-abierto, App Check de producción en Android, `thinkingConfig`, CI para `firestore-tests/`,
-repetir la evaluación del chat con `transactionLines`, cuota compartida entre nóminas, chat,
-lenguaje natural, resumen mensual y ahora también sugerencias de ahorro) más los riesgos/límites
-ya documentados en docs/design.md/docs/security.md (previsión de fin de mes, gastos inusuales,
-metas de ahorro, sugerencias de ahorro sin IA y, ahora, su redacción con IA: nivel gratuito de
-Gemini, Google puede usar el contenido enviado).
+abierto, `thinkingConfig`, CI para `firestore-tests/`, cuota compartida entre nóminas, chat,
+lenguaje natural, resumen mensual y sugerencias de ahorro) más los riesgos/límites ya
+documentados en docs/design.md/docs/security.md (previsión de fin de mes, gastos inusuales,
+metas de ahorro, sugerencias de ahorro con y sin IA: nivel gratuito de Gemini, Google puede usar
+el contenido enviado) y, en Android, lo que sigue vigente: nombre de paquete por defecto
+(`com.example.accounting_saver`), sin proveedor de App Check de producción (Play Integrity sin
+vincular en Play Console) y `FirebaseAuthRepository` sin tests automatizados (verificado a mano
+en móvil).
 Siguiente: decidir los pendientes de seguridad antes de la entrega (26/10).
