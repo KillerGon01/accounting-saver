@@ -38,6 +38,11 @@ Un asistente financiero personal que permite registrar movimientos (de forma man
 - **Lectura de nóminas en PDF** (solo web): adjuntas el PDF de una nómina y la IA extrae periodo, bruto, deducciones (con su % sobre el bruto y una descripción en el glosario) y líquido; la coherencia de las cifras se comprueba siempre en código, nunca con un cálculo del modelo, y solo se propone un ingreso (por el mismo formulario de siempre) si cuadran. Aviso de privacidad obligatorio antes de elegir archivo: solo documentos ficticios, nunca una nómina real.
 - **Perfil y borrado de cuenta**: datos de la cuenta, resumen de actividad (movimientos totales, por origen, ingresos/gastos acumulados) y eliminación completa de la cuenta y sus datos, con confirmación escribiendo el correo.
 - **Datos de ejemplo**: carga un conjunto de movimientos ficticios de los últimos 3 meses para probar la app sin introducir datos a mano.
+- **Búsqueda y filtro de movimientos**: un único botón en la barra superior abre una hoja con texto de búsqueda (ignora mayúsculas, tildes y espacios repetidos), categoría, tipo (gasto/ingreso) e importe mínimo/máximo, con un indicador y un contador de cuántos criterios hay activos.
+- **Gastos inusuales (estimación)**: dentro del resumen mensual, sin IA, señala los gastos del mes en curso que superan el doble de la mediana de su categoría en los 3 meses anteriores completos (con una muestra mínima de datos); solo existe para el mes en curso.
+- **Metas de ahorro**: nombre, importe objetivo, lo ya ahorrado y una fecha límite, con el progreso calculado en código, en su propia colección de Firestore (máximo 10 por usuario, aplicado en código, no en las reglas).
+- **Sugerencias de ahorro**: por cada meta en camino o por detrás, opciones concretas de dónde liberar dinero (gastos recurrentes, recorte de categoría, exceso puntual), calculadas en código sin ningún modelo de IA de por medio. Opcionalmente, un botón "Redactar resumen con IA" pide a Gemini una redacción en prosa de esas mismas cifras, sin sustituir nunca la lista: solo recibe cifras ya formateadas en euros y categorías fijas del código, nunca el nombre de la meta ni ningún concepto o descripción de movimiento.
+- **Menú "Más opciones"**: agrupa "Perfil" y "Metas de ahorro" en un único icono del `AppBar`, sin sumar iconos nuevos a la barra.
 
 Detalle completo de requisitos y decisiones en `docs/analysis.md`.
 
@@ -98,7 +103,7 @@ Detalle completo (incluido el hallazgo de que el chat llegó a dar cifras distin
   | `gemini-3.8-flash` | 5 peticiones/min, 20/día | de varios minutos ese día |
 
   **La latencia varía de un día a otro**: el 10/10/2026, con `gemini-3.8-flash`, se observaron respuestas válidas en 84 s y en 108 s, muy por encima de lo habitual; de ahí que el timeout esté fijado en 150 s y no en un valor menor.
-- **Tope de preguntas y comentarios por sesión**: `SendChatMessage.maxQuestionsPerSession` = 20 preguntas del chat; `ExplainMonthlyReport.maxCommentsPerSession` = 6 comentarios del resumen mensual; `ExplainSavingsSuggestions.maxExplanationsPerSession` = 6 redacciones de sugerencias de ahorro. Solo cuenta una llamada que termina con éxito (ni una respuesta cacheada ni un error gastan cupo).
+- **Tope de preguntas, lecturas y comentarios por sesión**: `SendChatMessage.maxQuestionsPerSession` = 20 preguntas del chat; `ExplainMonthlyReport.maxCommentsPerSession` = 6 comentarios del resumen mensual; `ParsePayroll.maxReadsPerSession` = 5 lecturas de nómina; `ExplainSavingsSuggestions.maxExplanationsPerSession` = 6 redacciones de sugerencias de ahorro. Solo cuenta una llamada que termina con éxito (ni una respuesta cacheada ni un error gastan cupo).
 - **Caché en memoria**: la última respuesta a cada pregunta (normalizada) y el último comentario por mes se cachean mientras los movimientos no cambien, para no repetir una llamada a Gemini si se repite la misma pregunta o se reabre el mismo mes.
 - **Timeout**: 150 segundos por petición a Gemini, sin reintento (un timeout no garantiza que la petición original haya fallado en el servidor). Ante un error transitorio del servidor (503), sí hay un reintento único con el mismo modelo.
 - **El nivel gratuito de Gemini permite a Google usar el contenido enviado para mejorar sus productos.** Por eso la demo pública solo debe usarse con los datos de ejemplo (ficticios) que carga la propia app, nunca con datos reales.
@@ -204,7 +209,7 @@ Los dos jobs ejecutan sin `continue-on-error` (confirmado en el YAML), así que 
 
 ## Pruebas
 
-517 tests (`flutter test`), cubriendo dominio, aplicación y presentación con fakes (sin mocks): parseo e importe de movimientos, casos de uso de alta/edición/borrado, datos de ejemplo, autenticación y verificación de correo, perfil y borrado de cuenta, entrada en lenguaje natural (validación del esquema, contraste determinista de que el texto mencione un número, casos de error), chat (validación de argumentos de cada función, desglose por categoría y comparación de meses consistentes con el resumen mensual, aislamiento por usuario), fallback y reintento de Gemini (cuota agotada, modelo no encontrado, timeouts, 503 transitorio), mensajes de error traducidos a español sin filtrar texto interno, el resumen mensual con su gráfico y su comentario de IA, y la lógica (generación de casos y criterio de acierto) de la evaluación del chat contra Gemini real (`test/eval/`, ver docs/evaluation.md).
+666 tests (`flutter test`), cubriendo dominio, aplicación y presentación con fakes (sin mocks): parseo e importe de movimientos, casos de uso de alta/edición/borrado, datos de ejemplo, autenticación y verificación de correo, perfil y borrado de cuenta, entrada en lenguaje natural (validación del esquema, contraste determinista de que el texto mencione un número, casos de error), chat (validación de argumentos de cada función, desglose por categoría y comparación de meses consistentes con el resumen mensual, aislamiento por usuario), fallback y reintento de Gemini (cuota agotada, modelo no encontrado, timeouts, 503 transitorio), mensajes de error traducidos a español sin filtrar texto interno, el resumen mensual con su gráfico y su comentario de IA, y la lógica (generación de casos y criterio de acierto) de las dos baterías de evaluación contra Gemini real (`test/eval/`, ver docs/evaluation.md).
 
 ```bash
 flutter analyze
@@ -213,9 +218,23 @@ flutter test
 
 Detalle completo, archivo por archivo, en `docs/testing.md`. Aparte, `firestore-tests/` (Node, no `flutter test`) prueba `firestore.rules` contra el emulador real — ver `docs/security.md`.
 
-### Evaluación de calidad del chat contra Gemini real
+### Evaluación de calidad contra Gemini real
 
-`lib/eval_main.dart` es una **herramienta de evaluación local, para documentar el TFM — no es parte de la app**: no se publica, no se incluye en el Dockerfile ni en ningún build de producción, y no la ejecuta ni `flutter test` ni el CI (los dos solo conocen `lib/main.dart`). Hace ~42 preguntas al gateway de Gemini y al ejecutor de funciones del chat reales (sin pasar por la pantalla de chat) contra una cuenta de evaluación dedicada (nunca la de "Credenciales de prueba"), con importes esperados calculados en código, nunca a mano. Metodología, criterio de acierto y cómo ejecutarla en `docs/evaluation.md`.
+Dos baterías independientes, ninguna parte de la app (no se publican, no se incluyen en el Dockerfile ni en ningún build de producción, y no las ejecuta ni `flutter test` ni el CI, que solo conocen `lib/main.dart`):
+
+- **Chat** (`lib/eval_main.dart`): ~42 preguntas al gateway de Gemini y al ejecutor de funciones del chat reales (sin pasar por la pantalla de chat) contra una cuenta de evaluación dedicada (nunca la de "Credenciales de prueba"), con importes esperados calculados en código, nunca a mano.
+  ```bash
+  flutter run -t lib/eval_main.dart -d chrome --web-port=5000 \
+    --dart-define=ENABLE_AI=true \
+    --dart-define=EVAL_ACCOUNT_EMAIL=<correo-de-la-cuenta-de-evaluación>
+  ```
+- **Sugerencias de ahorro con IA** (`lib/eval_savings_suggestions_main.dart`): 5 casos fabricados en código contra `GeminiSavingsSuggestionsGateway` (una sola llamada sin *function calling*, sin cuenta ni Firestore de por medio), graduados por 7 criterios independientes (importes, palabras escritas, conceptos/inversión/consejo prohibidos, markdown, número de frases).
+  ```bash
+  flutter run -t lib/eval_savings_suggestions_main.dart -d chrome --web-port=5000 \
+    --dart-define=ENABLE_AI=true
+  ```
+
+Metodología, criterio de acierto de cada una y resultados en `docs/evaluation.md`.
 
 ## Estructura del repositorio
 
@@ -225,8 +244,9 @@ lib/
   application/       Casos de uso (auth, chat, reports, transactions)
   infrastructure/    Firestore, Firebase Auth, Gemini (auth, chat, reports, transactions, user_data, common)
   presentation/      Pantallas y providers de Riverpod (auth, chat, profile, reports, theme, transactions, common)
-  eval/              Evaluación de calidad del chat contra Gemini real (ver docs/evaluation.md)
-  eval_main.dart     Punto de entrada de esa evaluación; local, no se despliega (ver arriba)
+  eval/              Evaluación de calidad contra Gemini real: chat y sugerencias de ahorro (ver docs/evaluation.md)
+  eval_main.dart     Punto de entrada de la evaluación del chat; local, no se despliega (ver arriba)
+  eval_savings_suggestions_main.dart  Punto de entrada de la evaluación de sugerencias de ahorro; local, no se despliega (ver arriba)
 test/                Tests unitarios y de widgets, con fakes en test/fakes/ (incluye test/eval/)
 firestore-tests/     Tests de firestore.rules contra el emulador (Node, independiente del proyecto Flutter)
 docs/                analysis.md, design.md, testing.md, security.md, evaluation.md
