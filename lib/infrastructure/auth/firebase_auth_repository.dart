@@ -1,15 +1,27 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../domain/auth/app_user.dart';
 import '../../domain/auth/auth_exception.dart';
 import '../../domain/auth/auth_repository.dart';
+import 'native_google_credential.dart';
 
+/// Único punto de la app que importa `google_sign_in` (a través de
+/// `NativeGoogleCredential`): ni el dominio ni la presentación lo
+/// conocen (ver docs/design.md, "Inicio de sesión con Google en
+/// Android"). [googleSignIn] es inyectable solo para los tests (un
+/// `GoogleSignIn` de verdad por defecto), igual que [firebaseAuth].
 class FirebaseAuthRepository implements AuthRepository {
-  FirebaseAuthRepository({firebase_auth.FirebaseAuth? firebaseAuth})
-    : _firebaseAuth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance;
+  FirebaseAuthRepository({
+    firebase_auth.FirebaseAuth? firebaseAuth,
+    GoogleSignIn? googleSignIn,
+  }) : _firebaseAuth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance,
+       _nativeGoogle = NativeGoogleCredential(googleSignIn ?? GoogleSignIn());
 
   final firebase_auth.FirebaseAuth _firebaseAuth;
+  final NativeGoogleCredential _nativeGoogle;
 
   @override
   Stream<AppUser?> authStateChanges() {
@@ -50,10 +62,17 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<AppUser> signInWithGoogle() {
     return _mapErrors(() async {
-      final provider = firebase_auth.GoogleAuthProvider();
-      final userCredential = kIsWeb
-          ? await _firebaseAuth.signInWithPopup(provider)
-          : await _firebaseAuth.signInWithProvider(provider);
+      if (kIsWeb) {
+        final userCredential = await _firebaseAuth.signInWithPopup(firebase_auth.GoogleAuthProvider());
+        return _requireAppUser(userCredential.user);
+      }
+      // Android (y el resto de plataformas nativas): el SDK nativo de
+      // Google, no `signInWithProvider` (el flujo por pestaña de Chrome
+      // que `identitytoolkit` bloquea con 403 "Requests from this
+      // Android client application <empty> are blocked" — ver
+      // docs/security.md).
+      final credential = await _nativeGoogle();
+      final userCredential = await _firebaseAuth.signInWithCredential(credential);
       return _requireAppUser(userCredential.user);
     });
   }
@@ -103,12 +122,16 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<void> reauthenticateWithGoogle() {
     return _mapErrors(() async {
       final user = _currentUserOrThrow();
-      final provider = firebase_auth.GoogleAuthProvider();
       if (kIsWeb) {
-        await user.reauthenticateWithPopup(provider);
-      } else {
-        await user.reauthenticateWithProvider(provider);
+        await user.reauthenticateWithPopup(firebase_auth.GoogleAuthProvider());
+        return;
       }
+      // Mismo motivo que `signInWithGoogle`: sin esto, borrar la cuenta
+      // de un usuario que entró con Google seguiría fallando en Android
+      // (la reautenticación es obligatoria antes del borrado — ver
+      // `DeleteAccount`).
+      final credential = await _nativeGoogle();
+      await user.reauthenticateWithCredential(credential);
     });
   }
 
@@ -120,12 +143,30 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<void> signOut() async {
     await _firebaseAuth.signOut();
+    if (!kIsWeb) {
+      try {
+        // Sin esto, el selector nativo de Google (`NativeGoogleCredential`)
+        // podría recordar la cuenta y no volver a mostrar el selector en
+        // el siguiente inicio de sesión. Un fallo aquí no deshace el
+        // `signOut` de Firebase de arriba — la sesión de la app ya ha
+        // terminado igualmente.
+        await _nativeGoogle.signOut();
+      } catch (_) {
+        // Ignorado a propósito: ver el comentario de arriba.
+      }
+    }
   }
 
   Future<T> _mapErrors<T>(Future<T> Function() action) async {
     try {
       return await action();
     } on firebase_auth.FirebaseAuthException catch (error) {
+      throw AuthException(error.code, message: error.message);
+    } on PlatformException catch (error) {
+      // `google_sign_in` lanza esto para sus propios errores nativos
+      // (no es un `FirebaseAuthException`): mismo tipo de traducción,
+      // para que nunca llegue a la interfaz un error sin pasar por
+      // `authErrorMessage`.
       throw AuthException(error.code, message: error.message);
     }
   }
