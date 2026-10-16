@@ -85,11 +85,26 @@ Future<void> _pump(
   ProviderContainer container, {
   bool? showAiComment,
 }) async {
+  // Viewport más alto que el tamaño de prueba por defecto (800x600):
+  // `_ReportBody` es un `ListView(children: [...])` (lista de slivers
+  // perezosa), y con todas sus tarjetas —incluida la nueva línea
+  // explicativa bajo "Gasto por categoría"— el contenido ya no cabe en
+  // 600px de alto; las tarjetas que quedan fuera del rango ya construido
+  // (p. ej. "Previsión de fin de mes") no se encuentran con `find.text`
+  // sin dar antes una pantalla con sitio de sobra. 2200px da margen para
+  // cualquier combinación de tarjetas que prueba este archivo, incluida
+  // la combinación más larga (previsión de fin de mes + gastos inusuales
+  // + comentario de IA a la vez).
+  tester.view.physicalSize = const Size(800, 2200);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        theme: AppTheme.light(),
+        theme: AppTheme.dark(),
         home: MonthlyReportScreen(userId: _userId, showAiComment: showAiComment),
       ),
     ),
@@ -236,6 +251,25 @@ void main() {
     });
   });
 
+  testWidgets('la tarjeta de gasto por categoría explica cómo leer las barras y el porcentaje', (tester) async {
+    final repository = FakeTransactionRepository();
+    await repository.addAll(
+      userId: _userId,
+      transactions: [_tx(amountCents: -2000, date: DateTime(now.year, now.month, 1), category: Category.ocio)],
+    );
+    final container = ProviderContainer(
+      overrides: [transactionRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    await _pump(tester, container, showAiComment: false);
+
+    expect(
+      find.text('Las barras se comparan con la categoría de mayor gasto; el porcentaje es sobre el gasto total.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('un informe truncado muestra el aviso de informe parcial', (tester) async {
     final repository = FakeTransactionRepository();
     await repository.addAll(
@@ -288,16 +322,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // "-50,00 €" aparece dos veces: el balance del mes y, al no haber
-    // ningún gasto recurrente pendiente, el mismo importe como "Balance
-    // previsto" en la tarjeta de previsión de fin de mes.
-    expect(find.text(_eur('-50,00')), findsNWidgets(2));
-    // "50,00 €" aparece cuatro veces: en el total de gastos y en la fila
-    // de la categoría del gráfico (el único gasto del mes), y otra vez
-    // más en la tarjeta de previsión ("Gastado hasta hoy" y "Gasto
-    // previsto", iguales entre sí al no haber ningún recurrente
-    // pendiente).
-    expect(find.text(_eur('50,00')), findsNWidgets(4));
+    // "-50,00 €" aparece tres veces: el balance del mes, el total de
+    // gastos (con signo, igual que en la pantalla de movimientos — ver
+    // `monthly_report_screen.dart`, `_SummaryTile` de "Gastos") y, al no
+    // haber ningún gasto recurrente pendiente, el mismo importe como
+    // "Balance previsto" en la tarjeta de previsión de fin de mes.
+    expect(find.text(_eur('-50,00')), findsNWidgets(3));
+    // "50,00 €" aparece tres veces: en la fila de la categoría del
+    // gráfico (el único gasto del mes, siempre en positivo ahí) y en la
+    // tarjeta de previsión ("Gastado hasta hoy" y "Gasto previsto",
+    // iguales entre sí al no haber ningún recurrente pendiente).
+    expect(find.text(_eur('50,00')), findsNWidgets(3));
   });
 
   group('previsión de fin de mes', () {
@@ -542,9 +577,12 @@ void main() {
 
       expect(find.text('Gastos inusuales (estimación)'), findsOneWidget);
       expect(find.textContaining('Concierto'), findsOneWidget);
-      // Aparece dos veces: en "Gastos" del balance del mes y en la fila
-      // del gasto inusual.
-      expect(find.text(_eur('-50,00')), findsNWidgets(2));
+      // Aparece cuatro veces: el balance del mes, el total de "Gastos"
+      // (con signo, igual que en movimientos — ver `_SummaryTile` de
+      // "Gastos"), la fila del gasto inusual y, en la tarjeta de
+      // previsión, el "Balance previsto" (mismo importe, sin ningún
+      // ingreso ni recurrente pendiente este mes).
+      expect(find.text(_eur('-50,00')), findsNWidgets(4));
       expect(find.textContaining(_eur('10,00')), findsOneWidget); // mediana de la categoría
     });
 

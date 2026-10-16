@@ -88,9 +88,9 @@ class _CategoryBarRow extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6),
               child: Container(
-                height: 8,
+                height: 10,
                 color: theme.colorScheme.surfaceContainerHighest,
                 alignment: Alignment.centerLeft,
                 child: FractionallySizedBox(

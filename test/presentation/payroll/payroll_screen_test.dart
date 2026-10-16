@@ -21,7 +21,7 @@ const _userId = 'user-payroll-test';
 Future<void> _pump(WidgetTester tester, ParsePayrollResult result) async {
   await tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.light(),
+      theme: AppTheme.dark(),
       home: Scaffold(
         // Con scroll, igual que `PayrollScreen` de verdad (ver su `build`):
         // sin esto, una nómina con muchas deducciones y avisos desborda el
@@ -105,7 +105,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            theme: AppTheme.light(),
+            theme: AppTheme.dark(),
             home: TransactionFormScreen(
               userId: _userId,
               initialDraft: proposal,
@@ -153,7 +153,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.light(),
+          theme: AppTheme.dark(),
           home: Scaffold(
             body: Builder(
               builder: (context) {

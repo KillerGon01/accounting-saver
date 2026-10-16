@@ -50,7 +50,7 @@ Future<void> _open(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        theme: AppTheme.light(),
+        theme: AppTheme.dark(),
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(
@@ -92,7 +92,7 @@ Future<void> _pumpMultiOpenApp(WidgetTester tester, ProviderContainer container,
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        theme: AppTheme.light(),
+        theme: AppTheme.dark(),
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(

@@ -24,9 +24,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Accounting Saver',
-      theme: AppTheme.light(),
+      // Tema oscuro forzado a propósito (ver docs/design.md, "Tema
+      // oscuro"): `AppTheme.light()` se conserva pero ningún `MaterialApp`
+      // de la app lo usa.
+      theme: AppTheme.dark(),
       darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.dark,
       home: const AuthGate(),
     );
   }

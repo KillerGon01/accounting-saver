@@ -213,7 +213,7 @@ class _EmptyGoals extends StatelessWidget {
     SavingsGoalStatus.behind => (
       icon: Icons.trending_down,
       label: 'Por detrás',
-      color: (context) => Colors.orange,
+      color: (context) => Theme.of(context).extension<FinanceColors>()!.warning,
     ),
     SavingsGoalStatus.overdue => (
       icon: Icons.event_busy_outlined,
@@ -282,12 +282,18 @@ class _SavingsGoalCard extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.s),
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: progressFraction.clamp(0, 1),
-                minHeight: 8,
+                minHeight: 12,
                 color: statusColor,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                // Antes `surfaceContainerHighest`: contra la tarjeta
+                // (`surfaceContainerLow`) daba menos de 1,1:1 de contraste,
+                // casi invisible con la meta vacía o recién creada. `outline`
+                // da ~3:1 contra la tarjeta (umbral orientativo de WCAG para
+                // componentes no textuales), y ya se usa en el resto del
+                // tema para bordes e iconos secundarios.
+                backgroundColor: theme.colorScheme.outline,
               ),
             ),
             const SizedBox(height: AppSpacing.xs),

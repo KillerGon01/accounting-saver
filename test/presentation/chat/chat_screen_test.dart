@@ -29,7 +29,7 @@ Future<void> _pump(WidgetTester tester, ProviderContainer container, String user
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        theme: AppTheme.light(),
+        theme: AppTheme.dark(),
         home: ChatScreen(userId: userId),
       ),
     ),

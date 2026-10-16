@@ -284,7 +284,7 @@ class _ReportBody extends StatelessWidget {
                   formatCents(report.balanceCents),
                   style: theme.textTheme.displaySmall?.copyWith(
                     color: balanceColor,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.m),
@@ -299,8 +299,14 @@ class _ReportBody extends StatelessWidget {
                     ),
                     Expanded(
                       child: _SummaryTile(
+                        // Con signo, igual que en la pantalla de movimientos
+                        // (`_SummaryCard`/`_SummaryItem`) y que cada
+                        // movimiento individual (`_TransactionTile`):
+                        // `report.expenseCents` es una magnitud positiva en
+                        // dominio (ver `MonthlySummary`/`MonthlyReport`), y
+                        // aquí solo se decide cómo mostrarla.
                         label: 'Gastos',
-                        value: formatCents(report.expenseCents),
+                        value: formatCents(-report.expenseCents),
                         color: finance.expense,
                       ),
                     ),
@@ -323,6 +329,10 @@ class _ReportBody extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text('Gasto por categoría', style: theme.textTheme.labelLarge),
+                Text(
+                  'Las barras se comparan con la categoría de mayor gasto; el porcentaje es sobre el gasto total.',
+                  style: theme.textTheme.bodySmall,
+                ),
                 const SizedBox(height: AppSpacing.s),
                 CategoryBarChart(categories: report.categoryBreakdown),
               ],
