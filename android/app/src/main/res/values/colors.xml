@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo del icono adaptativo (ver mipmap-anydpi-v26/ic_launcher.xml):
+         el mismo `surface` de AppTheme.dark() (lib/presentation/theme/app_theme.dart). -->
+    <color name="ic_launcher_background">#FF0B120F</color>
+</resources>

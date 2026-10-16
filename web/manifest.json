@@ -1,6 +1,6 @@
 {
-    "name": "accounting_saver",
-    "short_name": "accounting_saver",
+    "name": "Accounting Saver",
+    "short_name": "Accounting Saver",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0B120F",
