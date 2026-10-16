@@ -51,6 +51,7 @@ Detalle completo de requisitos y decisiones en `docs/analysis.md`.
 - **Flutter** (web prioritaria, Android también objetivo) con **Riverpod** para estado y providers.
 - **Firebase**: Auth (email/contraseña y Google), Firestore (datos del usuario), Hosting (despliegue de la web), AI Logic (Gemini) y App Check.
 - **Tema oscuro forzado** (`ThemeMode.dark` en `main.dart`, Material 3): sin paquetes nuevos. `AppTheme.light()` se conserva en el código pero ningún `MaterialApp` de la app lo usa. Detalle de la paleta y del contraste comprobado en `docs/design.md`, "Tema oscuro".
+- **Icono propio** (moneda con flecha ascendente, teal/menta sobre el fondo oscuro del tema), con icono adaptativo y monocromo en Android. Fuente vectorial y PNG generados por `tool/generate_icons.dart` (no es un test, no se cuenta en la suite) a partir de una sola geometría — ver `docs/design.md`, "Identidad visual: icono de la app".
 - **Clean Architecture**, cuatro capas, dependencias siempre hacia el dominio:
 
 ```

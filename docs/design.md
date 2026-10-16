@@ -60,6 +60,40 @@ Rediseño puramente visual (sin tocar lógica, reglas de Firestore ni textos): l
 - **Pulido a mano, además del tema, en las tres pantallas con más peso visual propio** (el resto hereda el tema sin cambios de código): la cifra de balance pasa de `fontWeight.w600` a `w700` en la tarjeta de movimientos y en el resumen mensual (mismo tamaño, `displaySmall`, para no arriesgar el presupuesto de alto ya documentado en `transactions_screen_test.dart`); la barra de cada categoría del resumen mensual pasa de 8 a 10 px de alto y de 4 a 6 px de radio; la barra de progreso de cada meta de ahorro pasa de 8 a 12 px de alto y de 4 a 8 px de radio.
 - **Tests que cambian de tema, sin tocar ninguna aserción.** Todo test que montaba su propio `MaterialApp(theme: AppTheme.light(), ...)` pasa a `AppTheme.dark()` (14 ocurrencias en 11 archivos), para que ejerciten el tema real de la app; ninguno comprobaba un color o un tamaño exacto (`expect(..., color: ...)`, `TextStyle(`, `fontSize`), así que el cambio no tocó ninguna aserción. El test crítico de `transactions_screen_test.dart` (360×740 y 407×904 con teclado abierto, presupuesto de alto documentado ahí mismo: 176 px de tarjeta de resumen + 64 px de `_MonthNavigator`) sigue pasando sin que se le haya tocado una línea: el cambio de peso de la cifra de balance no altera su alto.
 
+## Identidad visual: icono de la app
+
+Solo recursos y configuración — ningún cambio de lógica, de nombre visible (`android:label`), de `name` en `pubspec.yaml`, de `applicationId` ni de nada de Firebase (`google-services.json` no se toca).
+
+**Diseño: una moneda con una flecha ascendente, en un único color plano.** Símbolo propio y original (sin logos ni personajes de terceros): un círculo relleno (la moneda) con una flecha simple saliendo hacia arriba (vástago + punta triangular), siempre en teal/menta (`#4DB6AC`, el mismo `primary` de `AppTheme.dark()`) sobre el fondo oscuro casi negro con tono verdoso del tema (`#0B120F`, el mismo `surface`). Deliberadamente simple (tres formas: círculo, rectángulo, triángulo, sin detalles finos) para seguir siendo legible a 48 px y en blanco y negro (ver "Icono monocromo" más abajo).
+
+**Fuente única: `assets/branding/icon.svg`, generado, no escrito a mano.** No se añade a `pubspec.yaml` (ningún `Image.asset` lo carga en tiempo de ejecución; solo es el artefacto vectorial legible del repo). La fuente de verdad real son las coordenadas numéricas de `tool/generate_icons.dart` (un lienzo de 100×100 unidades): el script escribe tanto el SVG como todos los PNG a partir de esas mismas constantes, para que nunca se desincronicen entre sí a mano. Limitación honesta: no hay ningún rasterizador de SVG de verdad en el pipeline (no se instaló ninguna herramienta nueva — ver más abajo), así que la consistencia depende de que SVG y PNG salgan los dos de este único script, no de que uno se derive mecánicamente del otro.
+
+**Zona segura: una sola geometría para las dos exigencias, la más estricta primero.** El símbolo se diseñó para caber dentro del círculo de 66 dp sobre un lienzo de 108 dp que exige el icono adaptativo de Android (radio ≈30,5 % del lienzo, medido desde el centro); el punto más alejado del centro en esta geometría son los 23 unidades de la base de la moneda, con margen de sobra. Esa misma geometría, al cumplir la zona segura circular (más estricta), cumple también la zona segura "80 % central" (cuadrada, más laxa) que piden los iconos maskable de web — no hace falta una variante distinta por plataforma.
+
+**Cómo regenerar los PNG.** `tool/generate_icons.dart` no es un test (no hace ninguna aserción, solo escribe archivos) y vive fuera de `test/` a propósito: `flutter test` sin argumentos nunca lo recoge ni lo cuenta (sigue siendo exactamente el mismo número de tests que antes de añadirlo). Se ejecuta a mano:
+
+```bash
+flutter test tool/generate_icons.dart
+```
+
+Usa `flutter test` (en vez de `dart run`) solo porque es el único punto de entrada del proyecto con el motor de Flutter ya inicializado para poder rasterizar con `dart:ui` (`Canvas`/`Picture.toImage`/`toByteData`) — ningún paquete nuevo, ninguna herramienta externa instalada; mismo motivo por el que `lib/eval_main.dart` usa `flutter run` en vez de un script de Dart puro (ver "Por qué no puede ser un script de Dart puro ni correr en CI" en `docs/evaluation.md`). Dentro del test, la generación va envuelta en `tester.runAsync(...)`: `toImage`/`toByteData` son async de verdad (decodifican con el motor, no con el reloj falso de `flutter test`) y no resuelven dentro de una `testWidgets` normal sin eso.
+
+**Qué genera, en un único lienzo de referencia (100×100):**
+- **Web** (`web/`): `favicon.png` (16×16, legible al tamaño mínimo real de un favicon), `icons/Icon-192.png`, `icons/Icon-512.png` y las dos variantes `Icon-maskable-{192,512}.png` — las cuatro con el fondo a sangre completa (el símbolo ya cabe en la zona segura, así que no hace falta una composición distinta para las maskable).
+- **Android** (`android/app/src/main/res/`): `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png` (icono heredado, con fondo, para versiones anteriores a Android 8) y, en los mismos cinco `mipmap-*`, `ic_launcher_foreground.png` (108 dp × densidad, sin fondo) e `ic_launcher_monochrome.png` (mismo tamaño, sin fondo, en negro sólido — el sistema lo tiñe con el color que elija en Android 13+, el valor exacto no importa, solo que tenga alfa donde se vea el símbolo).
+
+**Icono adaptativo y monocromo: configuración nueva, no existía antes.** `android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` (nuevo) declara las tres capas:
+```xml
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome"/>
+</adaptive-icon>
+```
+El fondo es un color de recurso, no un PNG más: `android/app/src/main/res/values/colors.xml` (nuevo) define `ic_launcher_background` = `#FF0B120F`, el mismo tono que el fondo de los iconos "con fondo" de arriba. `AndroidManifest.xml` no cambia: ya usaba `android:icon="@mipmap/ic_launcher"`, y Android prefiere automáticamente el XML de `mipmap-anydpi-v26` en API 26+, cayendo al PNG plano de `mipmap-*/ic_launcher.png` por debajo de esa versión — ninguna referencia nueva que mantener.
+
+**Límite conocido, sin verificar en este entorno.** No hay forma de comprobar visualmente el icono adaptativo/monocromo en un launcher Android real (ni un emulador) desde aquí: solo se comprobó que `flutter build apk --debug` compila con los recursos nuevos. La geometría del símbolo dentro de la zona segura se verificó por cálculo (ver arriba), no mirándolo recortado de verdad en los distintos moldes (círculo, cuadrado redondeado, gota...) que usa cada fabricante.
+
 ## Estilo por categoría
 
 `lib/presentation/transactions/category_style.dart` añade a `Category` un icono (`icon`) y un color (`color`) mediante una extensión. Vive en presentación porque es una decisión visual: el dominio no conoce iconos ni colores. El mismo icono y color se usan en el avatar de cada movimiento y en el desplegable del formulario.
