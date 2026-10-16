@@ -7,7 +7,9 @@ import '../../app_check_config.dart';
 import '../../domain/reports/month_end_forecast.dart';
 import '../../domain/reports/monthly_report.dart';
 import '../../domain/reports/unusual_expenses.dart';
+import '../common/animated_balance_text.dart';
 import '../common/firestore_error_messages.dart';
+import '../common/staggered_entrance.dart';
 import '../theme/app_theme.dart';
 import '../transactions/formatters.dart';
 import '../transactions/transaction_providers.dart';
@@ -272,155 +274,167 @@ class _ReportBody extends StatelessWidget {
             icon: Icons.warning_amber_outlined,
             text: 'Informe parcial: se han leído los primeros 2.000 movimientos de este rango.',
           ),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.m),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Balance del mes', style: theme.textTheme.labelLarge),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  formatCents(report.balanceCents),
-                  style: theme.textTheme.displaySmall?.copyWith(
-                    color: balanceColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.m),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _SummaryTile(
-                        label: 'Ingresos',
-                        value: formatCents(report.incomeCents),
-                        color: finance.income,
-                      ),
-                    ),
-                    Expanded(
-                      child: _SummaryTile(
-                        // Con signo, igual que en la pantalla de movimientos
-                        // (`_SummaryCard`/`_SummaryItem`) y que cada
-                        // movimiento individual (`_TransactionTile`):
-                        // `report.expenseCents` es una magnitud positiva en
-                        // dominio (ver `MonthlySummary`/`MonthlyReport`), y
-                        // aquí solo se decide cómo mostrarla.
-                        label: 'Gastos',
-                        value: formatCents(-report.expenseCents),
-                        color: finance.expense,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  '${report.transactionCount} movimientos',
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.m),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.m),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Gasto por categoría', style: theme.textTheme.labelLarge),
-                const SizedBox(height: AppSpacing.s),
-                CategoryBarChart(categories: report.categoryBreakdown),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.m),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.m),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: AppSpacing.xs,
-                  children: [
-                    Text('Comparación con el mes anterior', style: theme.textTheme.labelLarge),
-                    if (report.isCurrentMonth && report.comparison != null)
-                      Text(
-                        '(parcial, mes en curso)',
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.s),
-                _ComparisonBody(comparison: report.comparison),
-              ],
-            ),
-          ),
-        ),
-        if (showAiComment) ...[
-          const SizedBox(height: AppSpacing.m),
-          Card(
+        StaggeredEntrance(
+          index: 0,
+          child: Card(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.m),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (report.transactionCount == 0)
-                    const Text('No hay movimientos este mes')
-                  else ...[
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        remainingComments <= 0
-                            ? 'Has llegado al máximo de comentarios de esta sesión'
-                            : 'Te quedan $remainingComments comentarios',
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
+                  Text('Balance del mes', style: theme.textTheme.labelLarge),
+                  const SizedBox(height: AppSpacing.xs),
+                  AnimatedBalanceText(
+                    cents: report.balanceCents,
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      color: balanceColor,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    if (comment != null) Text(comment!, style: theme.textTheme.bodyMedium),
-                    if (comment != null) const SizedBox(height: AppSpacing.s),
-                    if (isGenerating)
-                      Row(
-                        children: [
-                          const SizedBox(
-                            height: 16,
-                            width: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          const SizedBox(width: AppSpacing.s),
-                          Expanded(
-                            child: Text(
-                              progressMessage,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: AppSpacing.m),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SummaryTile(
+                          label: 'Ingresos',
+                          value: formatCents(report.incomeCents),
+                          color: finance.income,
+                        ),
+                      ),
+                      Expanded(
+                        child: _SummaryTile(
+                          // Con signo, igual que en la pantalla de movimientos
+                          // (`_SummaryCard`/`_SummaryItem`) y que cada
+                          // movimiento individual (`_TransactionTile`):
+                          // `report.expenseCents` es una magnitud positiva en
+                          // dominio (ver `MonthlySummary`/`MonthlyReport`), y
+                          // aquí solo se decide cómo mostrarla.
+                          label: 'Gastos',
+                          value: formatCents(-report.expenseCents),
+                          color: finance.expense,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    '${report.transactionCount} movimientos',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.m),
+        StaggeredEntrance(
+          index: 1,
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.m),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Gasto por categoría', style: theme.textTheme.labelLarge),
+                  const SizedBox(height: AppSpacing.s),
+                  CategoryBarChart(categories: report.categoryBreakdown),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.m),
+        StaggeredEntrance(
+          index: 2,
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.m),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppSpacing.xs,
+                    children: [
+                      Text('Comparación con el mes anterior', style: theme.textTheme.labelLarge),
+                      if (report.isCurrentMonth && report.comparison != null)
+                        Text(
+                          '(parcial, mes en curso)',
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.s),
+                  _ComparisonBody(comparison: report.comparison),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (showAiComment) ...[
+          const SizedBox(height: AppSpacing.m),
+          StaggeredEntrance(
+            index: 3,
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.m),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (report.transactionCount == 0)
+                      const Text('No hay movimientos este mes')
+                    else ...[
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          remainingComments <= 0
+                              ? 'Has llegado al máximo de comentarios de esta sesión'
+                              : 'Te quedan $remainingComments comentarios',
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      if (comment != null) Text(comment!, style: theme.textTheme.bodyMedium),
+                      if (comment != null) const SizedBox(height: AppSpacing.s),
+                      if (isGenerating)
+                        Row(
+                          children: [
+                            const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            const SizedBox(width: AppSpacing.s),
+                            Expanded(
+                              child: Text(
+                                progressMessage,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      )
-                    else
-                      FilledButton.icon(
-                        onPressed: remainingComments <= 0 ? null : onGenerateComment,
-                        icon: const Icon(Icons.auto_awesome),
-                        label: const Text('Generar comentario con IA'),
-                      ),
+                          ],
+                        )
+                      else
+                        FilledButton.icon(
+                          onPressed: remainingComments <= 0 ? null : onGenerateComment,
+                          icon: const Icon(Icons.auto_awesome),
+                          label: const Text('Generar comentario con IA'),
+                        ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
         ],
         if (forecast != null) ...[
           const SizedBox(height: AppSpacing.m),
-          _MonthEndForecastCard(forecast: forecast!),
+          StaggeredEntrance(index: 4, child: _MonthEndForecastCard(forecast: forecast!)),
         ],
         if (unusualExpenses != null) ...[
           const SizedBox(height: AppSpacing.m),
-          _UnusualExpensesCard(result: unusualExpenses!),
+          StaggeredEntrance(index: 5, child: _UnusualExpensesCard(result: unusualExpenses!)),
         ],
       ],
     );

@@ -52,6 +52,7 @@ Detalle completo de requisitos y decisiones en `docs/analysis.md`.
 - **Firebase**: Auth (email/contraseña y Google), Firestore (datos del usuario), Hosting (despliegue de la web), AI Logic (Gemini) y App Check.
 - **Tema oscuro forzado** (`ThemeMode.dark` en `main.dart`, Material 3): sin paquetes nuevos. `AppTheme.light()` se conserva en el código pero ningún `MaterialApp` de la app lo usa. Detalle de la paleta y del contraste comprobado en `docs/design.md`, "Tema oscuro".
 - **Icono propio** (moneda con flecha ascendente, teal/menta sobre el fondo oscuro del tema), con icono adaptativo y monocromo en Android. Fuente vectorial y PNG generados por `tool/generate_icons.dart` (no es un test, no se cuenta en la suite) a partir de una sola geometría — ver `docs/design.md`, "Identidad visual: icono de la app".
+- **Avisos de sesión y animaciones**: un aviso al cerrar sesión o borrar la cuenta (en memoria, nunca en disco), y animaciones con los widgets propios de Flutter (transición entre pantallas, entrada escalonada de tarjetas, cifras y barras que crecen, una pequeña celebración al cumplir una meta) — todas respetan `MediaQuery.disableAnimations` y sin paquetes nuevos. Ver `docs/design.md`, "Avisos de sesión" y "Animaciones".
 - **Clean Architecture**, cuatro capas, dependencias siempre hacia el dominio:
 
 ```

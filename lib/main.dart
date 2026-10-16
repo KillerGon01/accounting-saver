@@ -7,6 +7,7 @@ import 'firebase_options.dart';
 import 'presentation/auth/auth_providers.dart';
 import 'presentation/auth/login_screen.dart';
 import 'presentation/auth/verify_email_screen.dart';
+import 'presentation/common/motion.dart';
 import 'presentation/theme/app_theme.dart';
 import 'presentation/transactions/transactions_screen.dart';
 
@@ -42,18 +43,31 @@ class AuthGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateChangesProvider);
 
-    return authState.when(
+    // `ValueKey` por rama: sin una key propia, `AnimatedSwitcher` no
+    // detecta el cambio de pantalla (login/verificación/movimientos) y
+    // no anima nada. Puramente visual: la pantalla que se construye en
+    // cada rama es exactamente la misma de antes.
+    final child = authState.when(
       data: (user) {
-        if (user == null) return const LoginScreen();
-        if (user.needsEmailVerification) return VerifyEmailScreen(user: user);
-        return TransactionsScreen(userId: user.uid);
+        if (user == null) return const LoginScreen(key: ValueKey('login'));
+        if (user.needsEmailVerification) {
+          return VerifyEmailScreen(key: const ValueKey('verify'), user: user);
+        }
+        return TransactionsScreen(key: const ValueKey('transactions'), userId: user.uid);
       },
       loading: () => const Scaffold(
+        key: ValueKey('loading'),
         body: Center(child: CircularProgressIndicator()),
       ),
       error: (error, stackTrace) => Scaffold(
+        key: const ValueKey('error'),
         body: Center(child: Text('Error de autenticación: $error')),
       ),
+    );
+
+    return AnimatedSwitcher(
+      duration: AppMotion.of(context, AppMotion.base),
+      child: child,
     );
   }
 }

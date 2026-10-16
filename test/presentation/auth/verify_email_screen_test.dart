@@ -2,6 +2,7 @@ import 'package:accounting_saver/domain/auth/app_user.dart';
 import 'package:accounting_saver/domain/auth/auth_exception.dart';
 import 'package:accounting_saver/presentation/auth/auth_providers.dart';
 import 'package:accounting_saver/presentation/auth/verify_email_screen.dart';
+import 'package:accounting_saver/presentation/common/session_feedback_providers.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -103,7 +104,7 @@ void main() {
     );
   });
 
-  testWidgets('"Cerrar sesión / usar otro correo" cierra la sesión', (tester) async {
+  testWidgets('"Cerrar sesión / usar otro correo" cierra la sesión y deja signedOut', (tester) async {
     final repository = FakeAuthRepository(initialUser: _user);
     await _pump(tester, repository);
 
@@ -111,5 +112,9 @@ void main() {
     await tester.pump();
 
     expect(repository.currentUser, isNull);
+    expect(
+      ProviderScope.containerOf(tester.element(find.byType(VerifyEmailScreen))).read(sessionFeedbackProvider),
+      SessionFeedbackKind.signedOut,
+    );
   });
 }

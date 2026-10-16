@@ -10,7 +10,9 @@ import '../../domain/transactions/transaction_filter.dart';
 import '../../app_check_config.dart';
 import '../auth/auth_providers.dart';
 import '../chat/chat_screen.dart';
+import '../common/animated_balance_text.dart';
 import '../common/firestore_error_messages.dart';
+import '../common/staggered_entrance.dart';
 import '../payroll/payroll_screen.dart';
 import '../profile/profile_screen.dart';
 import '../reports/monthly_report_screen.dart';
@@ -190,7 +192,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   Future<void> _signOut() async {
     try {
-      await ref.read(signOutProvider)();
+      // Única función compartida por los tres botones de cerrar sesión
+      // de la app (ver docs/design.md, "Avisos de sesión"): deja
+      // `signedOut` en `sessionFeedbackProvider` solo si el cierre de
+      // sesión termina con éxito.
+      await ref.read(signOutWithFeedbackProvider)();
     } catch (error) {
       if (mounted) _showMessage('No se pudo cerrar la sesión: $error');
     }
@@ -415,8 +421,8 @@ class _SummaryCard extends StatelessWidget {
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(
-                formatCents(summary.balanceCents),
+              child: AnimatedBalanceText(
+                cents: summary.balanceCents,
                 style: theme.textTheme.displaySmall?.copyWith(
                   color: balanceColor,
                   fontWeight: FontWeight.w700,
@@ -637,6 +643,7 @@ class _TransactionList extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final groups = groupByDay(transactions);
+    var index = 0;
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 88),
@@ -652,10 +659,13 @@ class _TransactionList extends StatelessWidget {
             ),
           ),
           for (final transaction in group.transactions)
-            _TransactionTile(
-              transaction: transaction,
-              onEdit: () => onEdit(transaction),
-              onDelete: () => onDelete(transaction),
+            StaggeredEntrance(
+              index: index++,
+              child: _TransactionTile(
+                transaction: transaction,
+                onEdit: () => onEdit(transaction),
+                onDelete: () => onDelete(transaction),
+              ),
             ),
         ],
       ],
