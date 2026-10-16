@@ -4,6 +4,7 @@ import 'package:accounting_saver/domain/transactions/transaction.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
 import 'package:accounting_saver/presentation/auth/auth_providers.dart';
 import 'package:accounting_saver/presentation/common/session_feedback_providers.dart';
+import 'package:accounting_saver/presentation/common/app_localization.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:accounting_saver/presentation/transactions/formatters.dart';
 import 'package:accounting_saver/presentation/transactions/transaction_providers.dart';
@@ -23,6 +24,9 @@ Future<void> _pump(WidgetTester tester, FakeTransactionRepository repository) as
       overrides: [transactionRepositoryProvider.overrideWithValue(repository)],
       child: MaterialApp(
         theme: AppTheme.dark(),
+        locale: appLocale,
+        supportedLocales: appSupportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
         home: const TransactionsScreen(userId: _userId),
       ),
     ),
@@ -279,7 +283,13 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(theme: AppTheme.dark(), home: const TransactionsScreen(userId: _userId)),
+          child: MaterialApp(
+            theme: AppTheme.dark(),
+            locale: appLocale,
+            supportedLocales: appSupportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            home: const TransactionsScreen(userId: _userId),
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -306,7 +316,13 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(theme: AppTheme.dark(), home: const TransactionsScreen(userId: _userId)),
+          child: MaterialApp(
+            theme: AppTheme.dark(),
+            locale: appLocale,
+            supportedLocales: appSupportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            home: const TransactionsScreen(userId: _userId),
+          ),
         ),
       );
       await tester.pumpAndSettle();

@@ -287,7 +287,6 @@ Cuenta de prueba para la corrección, con datos ficticios (cargados con la opci�
 - **Detección de errores de Gemini y de App Check por texto, no por código de estado.** El paquete `firebase_ai` no expone el código HTTP ni el `status` del error como un campo propio para un modelo no encontrado, un 503 transitorio o un 403 de App Check; se reconocen buscando frases concretas en el mensaje de la excepción. Si Google cambia ese texto, la detección deja de funcionar silenciosamente (el fallo pasaría a tratarse como un error genérico, sin reintento, pero sin romper nada más ni filtrar información interna).
 - **Registro abierto.** La aplicación permite crear cuentas por correo y contraseña sin ninguna restricción adicional; pendiente de decidir si se deja así (documentado como límite conocido) o se cierra desde la consola de Firebase.
 - **`thinkingConfig` de Gemini sin confirmar** para los modelos de respaldo del fallback: existe en el paquete, pero no se ha podido probar contra el backend real en este entorno.
-- Localización completa de Material (`flutter_localizations`) pendiente.
 - CI opcional para `firestore-tests/` (hoy se ejecuta a mano contra el emulador, no en GitHub Actions).
 - **Husky, como mejora futura, no pendiente inminente.** El CI de GitHub Actions ya cubre el mismo control (`flutter analyze`, `flutter test` en cada pull request hacia `main`), aunque no evita el commit en el equipo de quien lo hace, que es lo que añadiría un hook local de git.
 

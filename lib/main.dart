@@ -7,6 +7,7 @@ import 'firebase_options.dart';
 import 'presentation/auth/auth_providers.dart';
 import 'presentation/auth/login_screen.dart';
 import 'presentation/auth/verify_email_screen.dart';
+import 'presentation/common/app_localization.dart';
 import 'presentation/common/motion.dart';
 import 'presentation/theme/app_theme.dart';
 import 'presentation/transactions/transactions_screen.dart';
@@ -31,6 +32,11 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.dark(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.dark,
+      // Widgets de Material en español, igual de forzado que el tema
+      // oscuro (ver docs/design.md, "Localización de Material (es-ES)").
+      locale: appLocale,
+      supportedLocales: appSupportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
       home: const AuthGate(),
     );
   }

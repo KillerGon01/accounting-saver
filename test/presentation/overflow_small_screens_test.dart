@@ -7,6 +7,7 @@ import 'package:accounting_saver/presentation/chat/chat_providers.dart';
 import 'package:accounting_saver/presentation/chat/chat_screen.dart';
 import 'package:accounting_saver/presentation/reports/monthly_report_screen.dart';
 import 'package:accounting_saver/presentation/reports/report_providers.dart';
+import 'package:accounting_saver/presentation/common/app_localization.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:accounting_saver/presentation/transactions/formatters.dart';
 import 'package:accounting_saver/presentation/transactions/transaction_form_screen.dart';
@@ -51,6 +52,9 @@ Future<void> _pumpAt(
 
   final app = MaterialApp(
     theme: AppTheme.dark(),
+    locale: appLocale,
+    supportedLocales: appSupportedLocales,
+    localizationsDelegates: appLocalizationsDelegates,
     builder: (context, widget) => MediaQuery(
       data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
       child: widget!,

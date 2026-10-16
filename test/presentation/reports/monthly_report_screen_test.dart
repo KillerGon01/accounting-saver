@@ -8,6 +8,7 @@ import 'package:accounting_saver/domain/transactions/transaction_repository.dart
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
 import 'package:accounting_saver/presentation/reports/monthly_report_screen.dart';
 import 'package:accounting_saver/presentation/reports/report_providers.dart';
+import 'package:accounting_saver/presentation/common/app_localization.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:accounting_saver/presentation/transactions/transaction_providers.dart';
 import 'package:flutter/material.dart';
@@ -105,6 +106,9 @@ Future<void> _pump(
       container: container,
       child: MaterialApp(
         theme: AppTheme.dark(),
+        locale: appLocale,
+        supportedLocales: appSupportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
         home: MonthlyReportScreen(userId: _userId, showAiComment: showAiComment),
       ),
     ),

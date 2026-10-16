@@ -3,6 +3,7 @@ import 'package:accounting_saver/domain/auth/auth_exception.dart';
 import 'package:accounting_saver/presentation/auth/auth_providers.dart';
 import 'package:accounting_saver/presentation/auth/verify_email_screen.dart';
 import 'package:accounting_saver/presentation/common/session_feedback_providers.dart';
+import 'package:accounting_saver/presentation/common/app_localization.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,6 +30,9 @@ Future<void> _pump(WidgetTester tester, FakeAuthRepository repository) async {
       overrides: [authRepositoryProvider.overrideWithValue(repository)],
       child: MaterialApp(
         theme: AppTheme.dark(),
+        locale: appLocale,
+        supportedLocales: appSupportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
         home: const VerifyEmailScreen(user: _user),
       ),
     ),

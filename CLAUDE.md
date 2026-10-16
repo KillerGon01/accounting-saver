@@ -50,7 +50,7 @@ redactadas listas para copiar) y `SavingsSuggestionsGateway`/`GeminiSavingsSugge
 `ExplainSavingsSuggestions` (tope de 6 por sesión, caché por meta invalidada por movimientos o
 por cambios en la propia meta, aislado por usuario). Botón "Redactar resumen con IA" en la hoja
 de sugerencias, visible solo con `effectiveEnableAi`, nunca sustituye la lista. Tests: 666.
-Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
+Pendiente: lo de antes (ajustar `_checkMonthAttribution`, registro
 abierto, App Check de producción en Android, `thinkingConfig`, CI para `firestore-tests/`,
 repetir la evaluación del chat con `transactionLines`, cuota compartida entre nóminas, chat,
 lenguaje natural, resumen mensual y ahora también sugerencias de ahorro) más los riesgos/límites

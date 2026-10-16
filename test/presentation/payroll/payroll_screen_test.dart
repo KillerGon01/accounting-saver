@@ -5,6 +5,7 @@ import 'package:accounting_saver/domain/payroll/payroll_file_exception.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
 import 'package:accounting_saver/presentation/payroll/payroll_error_messages.dart';
 import 'package:accounting_saver/presentation/payroll/payroll_screen.dart';
+import 'package:accounting_saver/presentation/common/app_localization.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:accounting_saver/presentation/transactions/transaction_form_screen.dart';
 import 'package:accounting_saver/presentation/transactions/transaction_providers.dart';
@@ -22,6 +23,9 @@ Future<void> _pump(WidgetTester tester, ParsePayrollResult result) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.dark(),
+      locale: appLocale,
+      supportedLocales: appSupportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
       home: Scaffold(
         // Con scroll, igual que `PayrollScreen` de verdad (ver su `build`):
         // sin esto, una nómina con muchas deducciones y avisos desborda el
@@ -106,6 +110,9 @@ void main() {
           container: container,
           child: MaterialApp(
             theme: AppTheme.dark(),
+            locale: appLocale,
+            supportedLocales: appSupportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
             home: TransactionFormScreen(
               userId: _userId,
               initialDraft: proposal,
@@ -154,6 +161,9 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.dark(),
+          locale: appLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
           home: Scaffold(
             body: Builder(
               builder: (context) {

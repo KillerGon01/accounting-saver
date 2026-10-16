@@ -5,6 +5,7 @@ import 'package:accounting_saver/domain/transactions/transaction.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
 import 'package:accounting_saver/presentation/savings/savings_goal_providers.dart';
 import 'package:accounting_saver/presentation/savings/savings_goals_screen.dart';
+import 'package:accounting_saver/presentation/common/app_localization.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:accounting_saver/presentation/transactions/formatters.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +37,9 @@ Future<void> _pump(
       container: container,
       child: MaterialApp(
         theme: AppTheme.dark(),
+        locale: appLocale,
+        supportedLocales: appSupportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
         home: SavingsGoalsScreen(userId: userId, clock: clock),
       ),
     ),

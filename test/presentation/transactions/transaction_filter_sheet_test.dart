@@ -1,5 +1,6 @@
 import 'package:accounting_saver/domain/transactions/category.dart';
 import 'package:accounting_saver/domain/transactions/transaction_filter.dart';
+import 'package:accounting_saver/presentation/common/app_localization.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:accounting_saver/presentation/transactions/formatters.dart';
 import 'package:accounting_saver/presentation/transactions/transaction_filter_sheet.dart';
@@ -24,6 +25,9 @@ Future<void> _pumpHost(
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.dark(),
+      locale: appLocale,
+      supportedLocales: appSupportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
         child: child!,
