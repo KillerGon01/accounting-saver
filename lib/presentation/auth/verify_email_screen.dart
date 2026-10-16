@@ -93,7 +93,11 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   }
 
   Future<void> _signOut() async {
-    await _run(() => ref.read(signOutProvider)());
+    // Única función compartida por los tres botones de cerrar sesión de
+    // la app (ver docs/design.md, "Avisos de sesión"): deja `signedOut`
+    // en `sessionFeedbackProvider` solo si el cierre de sesión termina
+    // con éxito.
+    await _run(() => ref.read(signOutWithFeedbackProvider)());
   }
 
   @override

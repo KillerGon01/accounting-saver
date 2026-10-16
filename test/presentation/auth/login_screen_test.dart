@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:accounting_saver/domain/auth/auth_exception.dart';
 import 'package:accounting_saver/presentation/auth/auth_providers.dart';
 import 'package:accounting_saver/presentation/auth/login_screen.dart';
+import 'package:accounting_saver/presentation/common/session_feedback_providers.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -304,6 +305,61 @@ void main() {
 
       expect(isObscured(tester, 'Contraseña'), isTrue);
       expect(isObscured(tester, 'Confirmar contraseña'), isFalse);
+    });
+  });
+
+  group('aviso de sesión', () {
+    // Helper propio, aparte de `_pump`: necesita sembrar el estado de
+    // `sessionFeedbackProvider` antes del primer frame, así que monta con
+    // `UncontrolledProviderScope` + un `ProviderContainer` propio en vez
+    // del `ProviderScope` normal que usa `_pump` — ningún test de arriba
+    // se toca.
+    Future<ProviderContainer> pumpWithFeedback(WidgetTester tester, SessionFeedbackKind? seeded) async {
+      final container = ProviderContainer(
+        overrides: [authRepositoryProvider.overrideWithValue(FakeAuthRepository())],
+      );
+      addTearDown(container.dispose);
+      if (seeded != null) {
+        container.read(sessionFeedbackProvider.notifier).set(seeded);
+      }
+
+      tester.view.physicalSize = const Size(900, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(theme: AppTheme.dark(), home: const LoginScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return container;
+    }
+
+    testWidgets('tras cerrar sesión, muestra "Has cerrado sesión" una vez y lo limpia', (tester) async {
+      final container = await pumpWithFeedback(tester, SessionFeedbackKind.signedOut);
+
+      expect(find.text('Has cerrado sesión'), findsOneWidget);
+      // Limpiado inmediatamente: un rebuild posterior de esta misma
+      // pantalla (o un hot reload) no vuelve a leer ningún aviso.
+      expect(container.read(sessionFeedbackProvider), isNull);
+    });
+
+    testWidgets('tras un borrado completo, muestra el aviso de cuenta eliminada una vez', (tester) async {
+      final container = await pumpWithFeedback(tester, SessionFeedbackKind.accountDeleted);
+
+      expect(
+        find.text('Tu cuenta y todos tus datos se han eliminado correctamente'),
+        findsOneWidget,
+      );
+      expect(container.read(sessionFeedbackProvider), isNull);
+    });
+
+    testWidgets('sin ningún aviso pendiente, no muestra ningún SnackBar', (tester) async {
+      await pumpWithFeedback(tester, null);
+
+      expect(find.byType(SnackBar), findsNothing);
     });
   });
 }

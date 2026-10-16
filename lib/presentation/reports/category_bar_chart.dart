@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/reports/monthly_report.dart';
+import '../common/motion.dart';
 import '../theme/app_theme.dart';
 import '../transactions/category_style.dart';
 import '../transactions/formatters.dart';
@@ -95,10 +96,15 @@ class _CategoryBarRow extends StatelessWidget {
                 height: 10,
                 color: theme.colorScheme.surfaceContainerHighest,
                 alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: widthFactor,
-                  child: Container(color: category.color),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: widthFactor),
+                  duration: AppMotion.of(context, AppMotion.base),
+                  curve: Curves.easeOut,
+                  builder: (context, value, child) => FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: value,
+                    child: Container(color: category.color),
+                  ),
                 ),
               ),
             ),

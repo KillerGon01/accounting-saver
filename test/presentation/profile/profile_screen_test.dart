@@ -4,6 +4,7 @@ import 'package:accounting_saver/domain/transactions/category.dart';
 import 'package:accounting_saver/domain/transactions/transaction.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
 import 'package:accounting_saver/presentation/auth/auth_providers.dart';
+import 'package:accounting_saver/presentation/common/session_feedback_providers.dart';
 import 'package:accounting_saver/presentation/profile/profile_providers.dart';
 import 'package:accounting_saver/presentation/profile/profile_screen.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
@@ -191,5 +192,58 @@ void main() {
     await _deleteFlow(tester, buttonLabel: 'Reintentar eliminación');
 
     expect(_auth.accountDeleted, isTrue);
+  });
+
+  group('aviso de sesión (sessionFeedbackProvider)', () {
+    // `ProviderScope.containerOf` lee el contenedor de verdad del árbol
+    // ya montado por `_pump` (que usa un `ProviderScope` normal, no
+    // `UncontrolledProviderScope`): ninguna de las pruebas de arriba
+    // necesita tocarse para esto.
+    ProviderContainer containerOf(WidgetTester tester) {
+      return ProviderScope.containerOf(tester.element(find.byType(ProfileScreen)));
+    }
+
+    testWidgets('cerrar sesión deja signedOut, y solo eso', (tester) async {
+      await _pump(tester);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Cerrar sesión'));
+      await tester.pumpAndSettle();
+
+      expect(containerOf(tester).read(sessionFeedbackProvider), SessionFeedbackKind.signedOut);
+    });
+
+    testWidgets('el borrado completo deja accountDeleted', (tester) async {
+      await _seedTransactions();
+      await _pump(tester);
+
+      await _deleteFlow(tester);
+
+      expect(containerOf(tester).read(sessionFeedbackProvider), SessionFeedbackKind.accountDeleted);
+    });
+
+    testWidgets('un fallo al borrar los movimientos (stage userData) no deja accountDeleted', (tester) async {
+      await _seedTransactions();
+      _userData.failBeforeBatch = 0;
+      await _pump(tester);
+
+      await _deleteFlow(tester);
+
+      expect(find.text('No se pudieron borrar todos tus movimientos, así que la cuenta no se ha borrado. Puedes volver a intentarlo.'), findsOneWidget);
+      expect(containerOf(tester).read(sessionFeedbackProvider), isNull);
+    });
+
+    testWidgets('un fallo al borrar la cuenta (stage account) no deja accountDeleted', (tester) async {
+      await _seedTransactions();
+      _auth.deleteAccountError = const AuthException('network-request-failed');
+      await _pump(tester);
+
+      await _deleteFlow(tester);
+
+      expect(
+        find.text('Tus movimientos se han borrado, pero la cuenta no. Vuelve a intentarlo para terminar.'),
+        findsOneWidget,
+      );
+      expect(containerOf(tester).read(sessionFeedbackProvider), isNull);
+    });
   });
 }

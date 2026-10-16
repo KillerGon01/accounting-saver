@@ -5,6 +5,8 @@ import '../../domain/common/clock.dart';
 import '../../domain/savings/savings_goal.dart';
 import '../../domain/savings/savings_goal_progress.dart';
 import '../common/firestore_error_messages.dart';
+import '../common/motion.dart';
+import '../common/staggered_entrance.dart';
 import '../theme/app_theme.dart';
 import '../transactions/formatters.dart';
 import 'savings_goal_form_screen.dart';
@@ -120,17 +122,21 @@ class SavingsGoalsScreen extends ConsumerWidget {
                 return _EmptyGoals(onCreate: () => _openForm(context));
               }
               final now = clock.now();
+              var index = 0;
               return ListView(
                 padding: const EdgeInsets.fromLTRB(AppSpacing.m, AppSpacing.m, AppSpacing.m, 88),
                 children: [
                   for (final goal in goals) ...[
-                    _SavingsGoalCard(
-                      userId: userId,
-                      goal: goal,
-                      progress: calculateSavingsGoalProgress(goal, now: now),
-                      onEdit: () => _openForm(context, goal: goal),
-                      onUpdateSaved: () => _updateSavedAmount(context, ref, goal),
-                      onDelete: () => _confirmAndDelete(context, ref, goal),
+                    StaggeredEntrance(
+                      index: index++,
+                      child: _SavingsGoalCard(
+                        userId: userId,
+                        goal: goal,
+                        progress: calculateSavingsGoalProgress(goal, now: now),
+                        onEdit: () => _openForm(context, goal: goal),
+                        onUpdateSaved: () => _updateSavedAmount(context, ref, goal),
+                        onDelete: () => _confirmAndDelete(context, ref, goal),
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.m),
                   ],
@@ -223,7 +229,7 @@ class _EmptyGoals extends StatelessWidget {
   };
 }
 
-class _SavingsGoalCard extends StatelessWidget {
+class _SavingsGoalCard extends StatefulWidget {
   const _SavingsGoalCard({
     required this.userId,
     required this.goal,
@@ -241,8 +247,65 @@ class _SavingsGoalCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
+  State<_SavingsGoalCard> createState() => _SavingsGoalCardState();
+}
+
+/// `Stateful` solo para la celebración: el resto de la tarjeta sigue
+/// siendo tan "sin estado propio" como antes (recibe `progress` ya
+/// calculado, no vuelve a calcular nada). `didUpdateWidget` compara el
+/// estado anterior con el nuevo para animar un único "rebote" del icono
+/// de estado justo cuando la meta pasa a "Cumplida" — nunca si ya entra
+/// completada (eso no es una transición) ni en ningún otro cambio.
+class _SavingsGoalCardState extends State<_SavingsGoalCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _celebrationController;
+  late final Animation<double> _celebrationScale;
+
+  @override
+  void initState() {
+    super.initState();
+    // Duración provisional: `MediaQuery.of` (vía `AppMotion.of`) no se
+    // puede leer todavía en `initState` (Flutter lo prohíbe de forma
+    // explícita — lanza si se intenta); se fija de verdad en
+    // `didChangeDependencies`, que se ejecuta justo después y sí puede.
+    _celebrationController = AnimationController(vsync: this, duration: AppMotion.slow);
+    _celebrationScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.3).chain(CurveTween(curve: Curves.easeOut)), weight: 55),
+      TweenSequenceItem(tween: Tween(begin: 1.3, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 45),
+    ]).animate(_celebrationController);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _celebrationController.duration = AppMotion.of(context, AppMotion.slow);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SavingsGoalCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final justCompleted =
+        oldWidget.progress.status != SavingsGoalStatus.completed &&
+        widget.progress.status == SavingsGoalStatus.completed;
+    if (justCompleted && _celebrationController.duration != Duration.zero) {
+      _celebrationController.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _celebrationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final goal = widget.goal;
+    final progress = widget.progress;
+    final userId = widget.userId;
+    final onEdit = widget.onEdit;
+    final onUpdateSaved = widget.onUpdateSaved;
+    final onDelete = widget.onDelete;
     final style = _statusStyle(progress.status);
     final statusColor = style.color(context);
     final progressFraction = progress.percent / 100;
@@ -268,13 +331,16 @@ class _SavingsGoalCard extends StatelessWidget {
                 Semantics(
                   label: 'Estado: ${style.label}',
                   child: ExcludeSemantics(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(style.icon, size: 18, color: statusColor),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(style.label, style: theme.textTheme.bodySmall?.copyWith(color: statusColor)),
-                      ],
+                    child: ScaleTransition(
+                      scale: _celebrationScale,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(style.icon, size: 18, color: statusColor),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(style.label, style: theme.textTheme.bodySmall?.copyWith(color: statusColor)),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -283,17 +349,22 @@ class _SavingsGoalCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.s),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: progressFraction.clamp(0, 1),
-                minHeight: 12,
-                color: statusColor,
-                // Antes `surfaceContainerHighest`: contra la tarjeta
-                // (`surfaceContainerLow`) daba menos de 1,1:1 de contraste,
-                // casi invisible con la meta vacía o recién creada. `outline`
-                // da ~3:1 contra la tarjeta (umbral orientativo de WCAG para
-                // componentes no textuales), y ya se usa en el resto del
-                // tema para bordes e iconos secundarios.
-                backgroundColor: theme.colorScheme.outline,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: progressFraction.clamp(0, 1)),
+                duration: AppMotion.of(context, AppMotion.base),
+                curve: Curves.easeOut,
+                builder: (context, value, child) => LinearProgressIndicator(
+                  value: value,
+                  minHeight: 12,
+                  color: statusColor,
+                  // Antes `surfaceContainerHighest`: contra la tarjeta
+                  // (`surfaceContainerLow`) daba menos de 1,1:1 de contraste,
+                  // casi invisible con la meta vacía o recién creada. `outline`
+                  // da ~3:1 contra la tarjeta (umbral orientativo de WCAG para
+                  // componentes no textuales), y ya se usa en el resto del
+                  // tema para bordes e iconos secundarios.
+                  backgroundColor: theme.colorScheme.outline,
+                ),
               ),
             ),
             const SizedBox(height: AppSpacing.xs),

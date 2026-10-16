@@ -12,6 +12,7 @@ class FakeAuthRepository implements AuthRepository {
     this.reloadError,
     this.reauthError,
     this.deleteAccountError,
+    this.signOutError,
   }) : currentUser = initialUser;
 
   /// Si se asigna, la operación correspondiente lanza este error.
@@ -22,6 +23,7 @@ class FakeAuthRepository implements AuthRepository {
   Object? reloadError;
   Object? reauthError;
   Object? deleteAccountError;
+  Object? signOutError;
 
   /// Si se asigna, cada operación espera a que se complete antes de responder
   /// (permite probar el estado de carga).
@@ -131,6 +133,8 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> signOut() async {
+    final error = signOutError;
+    if (error != null) throw error;
     currentUser = null;
   }
 

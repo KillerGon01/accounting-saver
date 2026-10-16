@@ -6,6 +6,7 @@ import '../../application/savings/create_savings_goal.dart';
 import '../../domain/savings/savings_goal.dart';
 import '../../domain/transactions/amount_parser.dart';
 import '../common/firestore_error_messages.dart';
+import '../common/motion.dart';
 import '../transactions/formatters.dart';
 import 'savings_goal_providers.dart';
 
@@ -29,6 +30,7 @@ class _SavingsGoalFormScreenState extends ConsumerState<SavingsGoalFormScreen> {
   late final TextEditingController _targetController;
   late DateTime _deadline;
   bool _isSaving = false;
+  bool _justSaved = false;
   String? _errorMessage;
 
   bool get _isEditing => widget.goal != null;
@@ -92,6 +94,18 @@ class _SavingsGoalFormScreenState extends ConsumerState<SavingsGoalFormScreen> {
       } else {
         await ref.read(createSavingsGoalProvider)(userId: widget.userId, goal: goal);
       }
+      if (!mounted) return;
+      // Microinteracción: un breve check antes de cerrar, en vez de
+      // volver directamente a la lista. La meta ya está guardada en este
+      // punto (el retraso es solo visual, no bloquea ningún guardado
+      // real); con `disableAnimations`, `delay` es cero y el pop ocurre
+      // en el mismo frame, como antes.
+      setState(() {
+        _isSaving = false;
+        _justSaved = true;
+      });
+      final delay = AppMotion.of(context, AppMotion.fast);
+      if (delay > Duration.zero) await Future.delayed(delay);
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
       if (!mounted) return;
@@ -176,14 +190,20 @@ class _SavingsGoalFormScreenState extends ConsumerState<SavingsGoalFormScreen> {
                   ],
                   const SizedBox(height: 24),
                   FilledButton(
-                    onPressed: _isSaving ? null : _save,
-                    child: _isSaving
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Guardar'),
+                    onPressed: _isSaving || _justSaved ? null : _save,
+                    child: AnimatedSwitcher(
+                      duration: AppMotion.of(context, AppMotion.fast),
+                      child: _justSaved
+                          ? const Icon(Icons.check, key: ValueKey('saved'))
+                          : _isSaving
+                          ? const SizedBox(
+                              key: ValueKey('saving'),
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Guardar', key: ValueKey('idle')),
+                    ),
                   ),
                 ],
               ),

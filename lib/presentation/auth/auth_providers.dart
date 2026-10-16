@@ -10,6 +10,7 @@ import '../../application/auth/sign_up_with_email_and_password.dart';
 import '../../domain/auth/app_user.dart';
 import '../../domain/auth/auth_repository.dart';
 import '../../infrastructure/auth/firebase_auth_repository.dart';
+import '../common/session_feedback_providers.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return FirebaseAuthRepository();
@@ -46,3 +47,29 @@ final refreshEmailVerificationProvider = Provider<RefreshEmailVerification>(
 final signOutProvider = Provider<SignOut>(
   (ref) => SignOut(ref.watch(authRepositoryProvider)),
 );
+
+/// Único punto de cierre de sesión de toda la app (ver docs/design.md,
+/// "Avisos de sesión"): los tres botones que cierran sesión
+/// (`ProfileScreen`, `VerifyEmailScreen`, `TransactionsScreen`) llaman a
+/// esto, nunca a `signOutProvider` directamente. Si `signOut()` falla,
+/// la excepción se propaga tal cual (cada pantalla la trata como ya
+/// hacía) y `sessionFeedbackProvider` nunca llega a escribirse — solo se
+/// marca `signedOut` si el cierre de sesión terminó de verdad.
+final signOutWithFeedbackProvider = Provider<SignOutWithFeedback>((ref) {
+  return SignOutWithFeedback(
+    signOut: ref.watch(signOutProvider),
+    feedback: ref.watch(sessionFeedbackProvider.notifier),
+  );
+});
+
+class SignOutWithFeedback {
+  SignOutWithFeedback({required this.signOut, required this.feedback});
+
+  final SignOut signOut;
+  final SessionFeedbackNotifier feedback;
+
+  Future<void> call() async {
+    await signOut();
+    feedback.set(SessionFeedbackKind.signedOut);
+  }
+}

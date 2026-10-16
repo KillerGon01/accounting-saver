@@ -87,6 +87,49 @@ void main() {
       },
     );
 
+    testWidgets('al pasar a "Cumplida", el icono de estado da un pequeño rebote, solo esa vez', (tester) async {
+      final repository = FakeSavingsGoalRepository();
+      final goal = SavingsGoal(
+        id: 'g1',
+        name: 'Vacaciones',
+        targetCents: 100000,
+        savedCents: 90000,
+        deadline: DateTime(2027, 1, 1),
+        createdAt: DateTime(2026, 1, 1),
+      );
+      await repository.add(userId: _userId, goal: goal);
+      final container = ProviderContainer(
+        overrides: [savingsGoalRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      // Localizado dentro de la tarjeta de esta meta: puede haber otros
+      // `ScaleTransition` en el árbol (p. ej. de material propio de
+      // Flutter) ajenos a la celebración.
+      Finder scaleTransitionOfCard() => find.descendant(
+        of: find.ancestor(of: find.text('Vacaciones'), matching: find.byType(Card)),
+        matching: find.byType(ScaleTransition),
+      );
+
+      await _pump(tester, container, clock: FakeClock(DateTime(2026, 1, 1)));
+      expect(find.text('En camino'), findsOneWidget);
+      expect(tester.widget<ScaleTransition>(scaleTransitionOfCard()).scale.value, 1.0);
+
+      await repository.update(userId: _userId, goal: goal.copyWith(savedCents: 100000));
+      await tester.pump(); // procesa el stream y reconstruye con el nuevo estado
+      await tester.pump(const Duration(milliseconds: 150)); // a mitad del rebote (400 ms)
+
+      expect(
+        tester.widget<ScaleTransition>(scaleTransitionOfCard()).scale.value,
+        greaterThan(1.0),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cumplida'), findsOneWidget);
+      expect(tester.widget<ScaleTransition>(scaleTransitionOfCard()).scale.value, 1.0);
+    });
+
     testWidgets('alta: crea una meta nueva desde el formulario y aparece en la lista', (tester) async {
       final repository = FakeSavingsGoalRepository();
       final container = ProviderContainer(

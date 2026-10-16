@@ -6,6 +6,7 @@ import '../../domain/transactions/activity_summary.dart';
 import '../auth/auth_error_messages.dart';
 import '../auth/auth_providers.dart';
 import '../common/firestore_error_messages.dart';
+import '../common/session_feedback_providers.dart';
 import '../theme/app_theme.dart';
 import '../transactions/formatters.dart';
 import 'account_deletion_messages.dart';
@@ -31,7 +32,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       _errorMessage = null;
     });
     try {
-      await ref.read(signOutProvider)();
+      // `SignOutWithFeedback` ya deja `signedOut` en `sessionFeedbackProvider`
+      // si el cierre de sesión termina con éxito (ver docs/design.md,
+      // "Avisos de sesión") — única función compartida por los tres
+      // botones de cerrar sesión de la app, nunca `signOutProvider` a secas.
+      await ref.read(signOutWithFeedbackProvider)();
       if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (error) {
       if (mounted) setState(() => _errorMessage = authErrorMessage(error));
@@ -57,6 +62,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     });
     try {
       await ref.read(deleteAccountProvider)(password: request.password);
+      // Solo si los tres pasos terminaron (reautenticar, borrar
+      // movimientos, borrar la cuenta de Auth): un borrado fallido o
+      // parcial entra por el `catch` de abajo y nunca llega aquí.
+      ref.read(sessionFeedbackProvider.notifier).set(SessionFeedbackKind.accountDeleted);
       // La cuenta ya no existe: AuthGate muestra el login y se cierra el perfil.
       if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (error) {

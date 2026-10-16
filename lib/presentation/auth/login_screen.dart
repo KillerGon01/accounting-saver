@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../common/session_feedback_providers.dart';
 import 'auth_error_messages.dart';
 import 'auth_providers.dart';
 import 'auth_validators.dart';
@@ -30,6 +31,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // Los iconos no toman el foco: así el campo conserva el cursor al pulsarlos.
   final _passwordToggleFocusNode = FocusNode(canRequestFocus: false, skipTraversal: true);
   final _confirmToggleFocusNode = FocusNode(canRequestFocus: false, skipTraversal: true);
+
+  @override
+  void initState() {
+    super.initState();
+    // Aviso de sesión (ver docs/design.md, "Avisos de sesión"): se lee y
+    // se limpia una sola vez, antes del primer frame — así un rebuild
+    // posterior de esta misma pantalla (o un hot reload) nunca lo repite.
+    // `addPostFrameCallback` porque `ScaffoldMessenger.of(context)`
+    // necesita que el `Scaffold` ya esté montado.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final kind = ref.read(sessionFeedbackProvider);
+      if (kind == null) return;
+      ref.read(sessionFeedbackProvider.notifier).clear();
+      if (!mounted) return;
+      final message = switch (kind) {
+        SessionFeedbackKind.signedOut => 'Has cerrado sesión',
+        SessionFeedbackKind.accountDeleted => 'Tu cuenta y todos tus datos se han eliminado correctamente',
+      };
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    });
+  }
 
   @override
   void dispose() {

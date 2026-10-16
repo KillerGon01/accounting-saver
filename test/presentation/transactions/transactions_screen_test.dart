@@ -1,6 +1,9 @@
+import 'package:accounting_saver/domain/auth/auth_exception.dart';
 import 'package:accounting_saver/domain/transactions/category.dart';
 import 'package:accounting_saver/domain/transactions/transaction.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
+import 'package:accounting_saver/presentation/auth/auth_providers.dart';
+import 'package:accounting_saver/presentation/common/session_feedback_providers.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:accounting_saver/presentation/transactions/formatters.dart';
 import 'package:accounting_saver/presentation/transactions/transaction_providers.dart';
@@ -9,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../fakes/fake_auth_repository.dart';
 import '../../fakes/fake_transaction_repository.dart';
 
 const _userId = 'user-1';
@@ -257,6 +261,61 @@ void main() {
       expect(find.text('1 de 2 movimientos'), findsNothing);
       expect(find.byTooltip('Buscar y filtrar'), findsOneWidget);
       expect(find.byTooltip('Buscar y filtrar (filtros activos)'), findsNothing);
+    });
+  });
+
+  group('cerrar sesión (icono "Cerrar sesión")', () {
+    testWidgets('con éxito, deja signedOut en sessionFeedbackProvider', (tester) async {
+      final repository = FakeTransactionRepository();
+      final authRepository = FakeAuthRepository();
+      final container = ProviderContainer(
+        overrides: [
+          transactionRepositoryProvider.overrideWithValue(repository),
+          authRepositoryProvider.overrideWithValue(authRepository),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(theme: AppTheme.dark(), home: const TransactionsScreen(userId: _userId)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Cerrar sesión'));
+      await tester.pump();
+
+      expect(container.read(sessionFeedbackProvider), SessionFeedbackKind.signedOut);
+    });
+
+    testWidgets('si falla, muestra el error y no deja ningún aviso', (tester) async {
+      final repository = FakeTransactionRepository();
+      final authRepository = FakeAuthRepository(
+        signOutError: const AuthException('network-request-failed'),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          transactionRepositoryProvider.overrideWithValue(repository),
+          authRepositoryProvider.overrideWithValue(authRepository),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(theme: AppTheme.dark(), home: const TransactionsScreen(userId: _userId)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Cerrar sesión'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('No se pudo cerrar la sesión'), findsOneWidget);
+      expect(container.read(sessionFeedbackProvider), isNull);
     });
   });
 }
