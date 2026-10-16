@@ -251,25 +251,6 @@ void main() {
     });
   });
 
-  testWidgets('la tarjeta de gasto por categoría explica cómo leer las barras y el porcentaje', (tester) async {
-    final repository = FakeTransactionRepository();
-    await repository.addAll(
-      userId: _userId,
-      transactions: [_tx(amountCents: -2000, date: DateTime(now.year, now.month, 1), category: Category.ocio)],
-    );
-    final container = ProviderContainer(
-      overrides: [transactionRepositoryProvider.overrideWithValue(repository)],
-    );
-    addTearDown(container.dispose);
-
-    await _pump(tester, container, showAiComment: false);
-
-    expect(
-      find.text('Las barras se comparan con la categoría de mayor gasto; el porcentaje es sobre el gasto total.'),
-      findsOneWidget,
-    );
-  });
-
   testWidgets('un informe truncado muestra el aviso de informe parcial', (tester) async {
     final repository = FakeTransactionRepository();
     await repository.addAll(

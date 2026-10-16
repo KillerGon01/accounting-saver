@@ -329,10 +329,6 @@ class _ReportBody extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text('Gasto por categoría', style: theme.textTheme.labelLarge),
-                Text(
-                  'Las barras se comparan con la categoría de mayor gasto; el porcentaje es sobre el gasto total.',
-                  style: theme.textTheme.bodySmall,
-                ),
                 const SizedBox(height: AppSpacing.s),
                 CategoryBarChart(categories: report.categoryBreakdown),
               ],

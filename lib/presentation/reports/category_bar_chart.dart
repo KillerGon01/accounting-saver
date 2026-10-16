@@ -6,11 +6,20 @@ import '../transactions/category_style.dart';
 import '../transactions/formatters.dart';
 import 'report_formatters.dart';
 
+/// Mínimo visible del ancho de cada barra, como fracción del carril
+/// (3 %): sin esto, una categoría muy pequeña frente al gasto total
+/// dibujaría una barra de un puñado de píxeles o invisible, aunque su
+/// importe y porcentaje de verdad (en texto, al lado) sean correctos. No
+/// afecta a ningún cálculo de dominio, solo al ancho dibujado.
+const _minBarWidthFactor = 0.03;
+
 /// Gráfico de barras horizontales del gasto por categoría, con widgets
 /// propios (sin `CustomPainter` ni ningún paquete de gráficos): cada fila
 /// es un icono, una etiqueta, el importe y el porcentaje en texto, y una
-/// barra coloreada cuyo ancho es proporcional al gasto de la categoría
-/// respecto a la de mayor gasto. Ninguna fila es solo color: el importe y
+/// barra coloreada cuyo ancho es proporcional al porcentaje de esa
+/// categoría sobre el gasto TOTAL del mes (`CategoryExpense.percentageOfExpense`,
+/// el mismo porcentaje que ya se muestra en texto, nunca relativo a la
+/// categoría de mayor gasto). Ninguna fila es solo color: el importe y
 /// el porcentaje siempre van en texto, y cada barra tiene una etiqueta
 /// semántica (`Semantics`) con esa misma información para quien use un
 /// lector de pantalla.
@@ -35,32 +44,25 @@ class CategoryBarChart extends StatelessWidget {
       );
     }
 
-    // `categories` ya viene ordenado de mayor a menor gasto (ver
-    // `BuildMonthlyReport._breakdownByCategory`), así que el primero es
-    // el de mayor importe: la referencia para el ancho de las barras.
-    final maxAmountCents = categories.first.amountCents;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final expense in categories)
-          _CategoryBarRow(expense: expense, maxAmountCents: maxAmountCents),
+        for (final expense in categories) _CategoryBarRow(expense: expense),
       ],
     );
   }
 }
 
 class _CategoryBarRow extends StatelessWidget {
-  const _CategoryBarRow({required this.expense, required this.maxAmountCents});
+  const _CategoryBarRow({required this.expense});
 
   final CategoryExpense expense;
-  final int maxAmountCents;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final category = expense.category;
-    final widthFactor = maxAmountCents == 0 ? 0.0 : expense.amountCents / maxAmountCents;
+    final widthFactor = (expense.percentageOfExpense / 100).clamp(_minBarWidthFactor, 1.0);
     final percentageText = formatPercentage(expense.percentageOfExpense);
     final amountText = formatCents(expense.amountCents);
 
@@ -95,7 +97,7 @@ class _CategoryBarRow extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: FractionallySizedBox(
                   alignment: Alignment.centerLeft,
-                  widthFactor: widthFactor.clamp(0.0, 1.0),
+                  widthFactor: widthFactor,
                   child: Container(color: category.color),
                 ),
               ),
