@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:accounting_saver/domain/auth/auth_exception.dart';
 import 'package:accounting_saver/presentation/auth/auth_providers.dart';
 import 'package:accounting_saver/presentation/auth/login_screen.dart';
+import 'package:accounting_saver/presentation/common/app_localization.dart';
 import 'package:accounting_saver/presentation/common/session_feedback_providers.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +24,9 @@ Future<void> _pump(WidgetTester tester, FakeAuthRepository repository) async {
       overrides: [authRepositoryProvider.overrideWithValue(repository)],
       child: MaterialApp(
         theme: AppTheme.dark(),
+        locale: appLocale,
+        supportedLocales: appSupportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
         home: const LoginScreen(),
       ),
     ),
@@ -330,7 +334,13 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(theme: AppTheme.dark(), home: const LoginScreen()),
+          child: MaterialApp(
+            theme: AppTheme.dark(),
+            locale: appLocale,
+            supportedLocales: appSupportedLocales,
+            localizationsDelegates: appLocalizationsDelegates,
+            home: const LoginScreen(),
+          ),
         ),
       );
       await tester.pumpAndSettle();

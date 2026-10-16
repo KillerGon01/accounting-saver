@@ -8,6 +8,7 @@ import 'package:accounting_saver/domain/transactions/transaction.dart';
 import 'package:accounting_saver/domain/transactions/transaction_source.dart';
 import 'package:accounting_saver/presentation/savings/savings_goal_providers.dart';
 import 'package:accounting_saver/presentation/savings/savings_suggestions_sheet.dart';
+import 'package:accounting_saver/presentation/common/app_localization.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -51,6 +52,9 @@ Future<void> _open(
       container: container,
       child: MaterialApp(
         theme: AppTheme.dark(),
+        locale: appLocale,
+        supportedLocales: appSupportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(
@@ -93,6 +97,9 @@ Future<void> _pumpMultiOpenApp(WidgetTester tester, ProviderContainer container,
       container: container,
       child: MaterialApp(
         theme: AppTheme.dark(),
+        locale: appLocale,
+        supportedLocales: appSupportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(

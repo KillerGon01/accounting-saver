@@ -68,7 +68,7 @@ Ejecutar ambos antes de cada PR.
 | `test/presentation/payroll/payroll_screen_test.dart` | `PayrollResultView` (el widget de resultado de `PayrollScreen`, pumpado directamente — ver más abajo): con una extracción que cuadra muestra el botón "Añadir como ingreso" y ningún aviso de discrepancia; con una que no cuadra (agosto) no muestra el botón y sí el aviso de que las cifras no cuadran. |
 | `test/no_package_web_outside_payroll_test.dart` | Recorre `lib/` y falla si algún archivo distinto de `payroll_file_picker_web.dart` contiene `package:web/` — así una futura dependencia nueva de ese paquete en otro archivo rompería el test antes que la compilación de Android. |
 
-Total: 688 tests (`flutter test`), incluidos los de `test/eval/` (la lógica de las dos baterías de evaluación contra Gemini real —chat, 42 casos, y sugerencias de ahorro, 5 casos—, sin llamar a Gemini — ver docs/evaluation.md). Aparte, `firestore-tests/` (Node, no `flutter test`) prueba `firestore.rules` contra el emulador real — ver docs/security.md.
+Total: 689 tests (`flutter test`), incluidos los de `test/eval/` (la lógica de las dos baterías de evaluación contra Gemini real —chat, 42 casos, y sugerencias de ahorro, 5 casos—, sin llamar a Gemini — ver docs/evaluation.md). Aparte, `firestore-tests/` (Node, no `flutter test`) prueba `firestore.rules` contra el emulador real — ver docs/security.md.
 
 ## Entrada en lenguaje natural
 

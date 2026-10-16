@@ -49,7 +49,7 @@ en web y Android (adaptativo + monocromo, generado por `tool/generate_icons.dart
 sesión (cierre de sesión y borrado de cuenta, en memoria vía `sessionFeedbackProvider`) y
 animaciones con `AppMotion` (respeta `disableAnimations`); y el login con Google en Android, que
 usaba `signInWithProvider` y lo bloqueaba un 403 de `identitytoolkit`, sustituido por el SDK
-nativo (`google_sign_in`, único paquete nuevo). Tests: 688.
+nativo (`google_sign_in`, único paquete nuevo). Tests: 689.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
 abierto, `thinkingConfig`, CI para `firestore-tests/`, cuota compartida entre nóminas, chat,
 lenguaje natural, resumen mensual y sugerencias de ahorro) más los riesgos/límites ya

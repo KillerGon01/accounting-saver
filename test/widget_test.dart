@@ -131,4 +131,34 @@ void main() {
       expect(find.byType(VerifyEmailScreen), findsNothing);
     },
   );
+
+  testWidgets(
+    'los widgets de Material están en español: locale es-ES y el botón de volver dice "Atrás"',
+    (tester) async {
+      const verifiedUser = AppUser(
+        uid: 'user-1',
+        email: 'ana@example.com',
+        emailVerified: true,
+        providerIds: ['password'],
+      );
+      await _pumpApp(tester, FakeAuthRepository(initialUser: verifiedUser));
+      expect(find.byType(TransactionsScreen), findsOneWidget);
+
+      final context = tester.element(find.byType(TransactionsScreen));
+      expect(Localizations.localeOf(context), const Locale('es', 'ES'));
+
+      // "Perfil" es la única pantalla que este test empuja sobre
+      // `TransactionsScreen` (la raíz): al no ser la raíz, el `AppBar` le
+      // añade un botón de volver automático, cuyo tooltip viene de
+      // `MaterialLocalizations` — "Atrás" en español, "Back" por defecto
+      // sin la localización de este cambio.
+      await tester.tap(find.byTooltip('Más opciones'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Perfil'));
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Atrás'), findsOneWidget);
+      expect(find.byTooltip('Back'), findsNothing);
+    },
+  );
 }

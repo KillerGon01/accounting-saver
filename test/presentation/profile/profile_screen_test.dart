@@ -7,6 +7,7 @@ import 'package:accounting_saver/presentation/auth/auth_providers.dart';
 import 'package:accounting_saver/presentation/common/session_feedback_providers.dart';
 import 'package:accounting_saver/presentation/profile/profile_providers.dart';
 import 'package:accounting_saver/presentation/profile/profile_screen.dart';
+import 'package:accounting_saver/presentation/common/app_localization.dart';
 import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:accounting_saver/presentation/transactions/formatters.dart';
 import 'package:accounting_saver/presentation/transactions/transaction_providers.dart';
@@ -48,6 +49,9 @@ Future<void> _pump(WidgetTester tester) async {
       ],
       child: MaterialApp(
         theme: AppTheme.dark(),
+        locale: appLocale,
+        supportedLocales: appSupportedLocales,
+        localizationsDelegates: appLocalizationsDelegates,
         home: const ProfileScreen(),
       ),
     ),
