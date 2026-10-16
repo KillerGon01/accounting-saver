@@ -21,7 +21,7 @@ Future<void> _pump(WidgetTester tester, FakeAuthRepository repository) async {
     ProviderScope(
       overrides: [authRepositoryProvider.overrideWithValue(repository)],
       child: MaterialApp(
-        theme: AppTheme.light(),
+        theme: AppTheme.dark(),
         home: const LoginScreen(),
       ),
     ),

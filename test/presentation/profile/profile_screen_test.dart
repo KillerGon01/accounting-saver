@@ -46,7 +46,7 @@ Future<void> _pump(WidgetTester tester) async {
         userDataRepositoryProvider.overrideWithValue(_userData),
       ],
       child: MaterialApp(
-        theme: AppTheme.light(),
+        theme: AppTheme.dark(),
         home: const ProfileScreen(),
       ),
     ),

@@ -50,7 +50,7 @@ Future<void> _pumpAt(
   addTearDown(tester.view.resetPhysicalSize);
 
   final app = MaterialApp(
-    theme: AppTheme.light(),
+    theme: AppTheme.dark(),
     builder: (context, widget) => MediaQuery(
       data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
       child: widget!,

@@ -35,7 +35,7 @@ Future<void> _pump(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        theme: AppTheme.light(),
+        theme: AppTheme.dark(),
         home: SavingsGoalsScreen(userId: userId, clock: clock),
       ),
     ),

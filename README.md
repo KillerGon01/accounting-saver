@@ -50,6 +50,7 @@ Detalle completo de requisitos y decisiones en `docs/analysis.md`.
 
 - **Flutter** (web prioritaria, Android también objetivo) con **Riverpod** para estado y providers.
 - **Firebase**: Auth (email/contraseña y Google), Firestore (datos del usuario), Hosting (despliegue de la web), AI Logic (Gemini) y App Check.
+- **Tema oscuro forzado** (`ThemeMode.dark` en `main.dart`, Material 3): sin paquetes nuevos. `AppTheme.light()` se conserva en el código pero ningún `MaterialApp` de la app lo usa. Detalle de la paleta y del contraste comprobado en `docs/design.md`, "Tema oscuro".
 - **Clean Architecture**, cuatro capas, dependencias siempre hacia el dominio:
 
 ```

@@ -419,7 +419,7 @@ class _SummaryCard extends StatelessWidget {
                 formatCents(summary.balanceCents),
                 style: theme.textTheme.displaySmall?.copyWith(
                   color: balanceColor,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),

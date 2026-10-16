@@ -18,7 +18,7 @@ Future<void> _pump(WidgetTester tester, FakeTransactionRepository repository) as
     ProviderScope(
       overrides: [transactionRepositoryProvider.overrideWithValue(repository)],
       child: MaterialApp(
-        theme: AppTheme.light(),
+        theme: AppTheme.dark(),
         home: const TransactionsScreen(userId: _userId),
       ),
     ),
