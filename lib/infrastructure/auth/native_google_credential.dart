@@ -9,6 +9,32 @@ import 'package:google_sign_in/google_sign_in.dart';
 /// falso (`GoogleSignInPlatform.instance`, el mecanismo oficial del
 /// propio paquete) sin necesitar ninguna instancia real de `FirebaseAuth`
 /// — ver `docs/design.md`, "Inicio de sesión con Google en Android".
+/// Crea el `NativeGoogleCredential` de [FirebaseAuthRepository] para esta
+/// plataforma, o `null` en web.
+///
+/// **Nunca** en web: el propio constructor de `GoogleSignIn()` (del
+/// paquete `google_sign_in`, no de esta app) dispara su inicialización
+/// asíncrona en cuanto se crea la instancia si `kIsWeb` es cierto —  antes
+/// incluso de llamar a ningún método — y esa inicialización falla con
+/// "ClientID not set" porque la app no configura ningún client ID de
+/// Google Sign-In para la web (no lo necesita: usa
+/// `signInWithPopup`/`reauthenticateWithPopup`, nunca este selector
+/// nativo). El fallo ocurría antes con solo construir `FirebaseAuthRepository`
+/// (en el arranque de la app), dejando la web en blanco — ver
+/// `docs/design.md`, "Bug: `GoogleSignIn` se instanciaba también en web".
+///
+/// [isWeb] es un parámetro aparte (no se lee `kIsWeb` aquí dentro) para
+/// que se pueda probar esta decisión sin depender de la plataforma real
+/// en la que corren los tests (`flutter test` corre siempre en la VM,
+/// donde `kIsWeb` es `false`).
+NativeGoogleCredential? createNativeGoogleCredential({
+  required bool isWeb,
+  GoogleSignIn? googleSignIn,
+}) {
+  if (isWeb) return null;
+  return NativeGoogleCredential(googleSignIn ?? GoogleSignIn());
+}
+
 class NativeGoogleCredential {
   NativeGoogleCredential(this._googleSignIn);
 
