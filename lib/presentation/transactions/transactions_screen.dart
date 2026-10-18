@@ -13,6 +13,8 @@ import '../chat/chat_screen.dart';
 import '../common/animated_balance_text.dart';
 import '../common/firestore_error_messages.dart';
 import '../common/staggered_entrance.dart';
+import '../help/help_sheet.dart';
+import '../help/help_topic.dart';
 import '../payroll/payroll_screen.dart';
 import '../profile/profile_screen.dart';
 import '../reports/monthly_report_screen.dart';
@@ -30,7 +32,7 @@ import 'transaction_providers.dart';
 /// `_TransactionsScreenState._handleMoreMenuSelection`): un único icono en
 /// vez de uno por destino, para no sumar un séptimo icono a la barra (ver
 /// docs/design.md, "Metas de ahorro").
-enum _MoreMenuEntry { profile, savingsGoals }
+enum _MoreMenuEntry { help, profile, savingsGoals }
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key, required this.userId});
@@ -80,7 +82,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// Oculta el aviso actual antes de navegar a otra pantalla (ver
+  /// docs/design.md, "Aviso estable al navegar"): un `SnackBar` flotante se
+  /// posiciona por encima del `FloatingActionButton` cuando lo hay, así que
+  /// si sigue visible al entrar en una pantalla sin FAB, el `Scaffold`
+  /// recalcula su posición vertical y da la sensación de que "sube" o
+  /// cambia de tamaño a mitad de la transición.
+  void _hideSnackBar() => ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
   Future<void> _openForm([Transaction? transaction]) {
+    _hideSnackBar();
     return Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TransactionFormScreen(
@@ -92,6 +103,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Future<void> _openFormWithDraft(ParsedTransaction draft) {
+    _hideSnackBar();
     return Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TransactionFormScreen(
@@ -152,30 +164,35 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   void _openChat() {
+    _hideSnackBar();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ChatScreen(userId: widget.userId)),
     );
   }
 
   void _openPayroll() {
+    _hideSnackBar();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => PayrollScreen(userId: widget.userId)),
     );
   }
 
   void _openMonthlyReport() {
+    _hideSnackBar();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => MonthlyReportScreen(userId: widget.userId)),
     );
   }
 
   void _openProfile() {
+    _hideSnackBar();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const ProfileScreen()),
     );
   }
 
   void _openSavingsGoals() {
+    _hideSnackBar();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => SavingsGoalsScreen(userId: widget.userId)),
     );
@@ -183,6 +200,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   void _handleMoreMenuSelection(_MoreMenuEntry entry) {
     switch (entry) {
+      case _MoreMenuEntry.help:
+        showHelpSheet(context, HelpTopic.transactions);
       case _MoreMenuEntry.profile:
         _openProfile();
       case _MoreMenuEntry.savingsGoals:
@@ -290,6 +309,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             tooltip: 'Más opciones',
             onSelected: _handleMoreMenuSelection,
             itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _MoreMenuEntry.help,
+                child: ListTile(
+                  leading: Icon(Icons.help_outline),
+                  title: Text('Ayuda'),
+                ),
+              ),
               PopupMenuItem(
                 value: _MoreMenuEntry.profile,
                 child: ListTile(

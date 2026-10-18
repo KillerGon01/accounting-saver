@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/chat/send_chat_message.dart';
 import '../../domain/chat/chat_message.dart';
+import '../help/help_sheet.dart';
+import '../help/help_topic.dart';
 import '../theme/app_theme.dart';
 import 'chat_error_messages.dart';
 import 'chat_providers.dart';
@@ -154,7 +156,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final limitReached = remaining <= 0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Chat')),
+      appBar: AppBar(
+        title: const Text('Chat'),
+        actions: const [HelpButton(topic: HelpTopic.chat)],
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),

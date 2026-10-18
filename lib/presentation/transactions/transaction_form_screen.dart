@@ -7,6 +7,8 @@ import '../../domain/transactions/category.dart';
 import '../../domain/transactions/parsed_transaction.dart';
 import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_source.dart';
+import '../help/help_sheet.dart';
+import '../help/help_topic.dart';
 import '../theme/app_theme.dart';
 import 'category_style.dart';
 import 'formatters.dart';
@@ -139,6 +141,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
           (false, true) => 'Confirmar movimiento',
           (false, false) => 'Nuevo movimiento',
         }),
+        actions: const [HelpButton(topic: HelpTopic.transactionForm)],
       ),
       body: Center(
         child: ConstrainedBox(

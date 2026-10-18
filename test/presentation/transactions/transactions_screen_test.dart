@@ -334,4 +334,21 @@ void main() {
       expect(container.read(sessionFeedbackProvider), isNull);
     });
   });
+
+  testWidgets('al pulsar "Nuevo" con un aviso visible, oculta el SnackBar antes de navegar', (tester) async {
+    await _pump(tester, FakeTransactionRepository());
+
+    // "Cargar datos de ejemplo" deja un SnackBar visible (ver `_showMessage`
+    // en `TransactionsScreen`), con comportamiento flotante anclado por
+    // encima del FAB "Nuevo" (ver docs/design.md, "Aviso estable al
+    // navegar").
+    await tester.tap(find.widgetWithText(FilledButton, 'Cargar datos de ejemplo'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SnackBar), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FloatingActionButton, 'Nuevo'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SnackBar), findsNothing);
+  });
 }
