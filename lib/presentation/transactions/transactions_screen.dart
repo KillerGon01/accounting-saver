@@ -10,9 +10,7 @@ import '../../domain/transactions/transaction_filter.dart';
 import '../../app_check_config.dart';
 import '../auth/auth_providers.dart';
 import '../chat/chat_screen.dart';
-import '../common/animated_balance_text.dart';
 import '../common/firestore_error_messages.dart';
-import '../common/staggered_entrance.dart';
 import '../help/help_sheet.dart';
 import '../help/help_topic.dart';
 import '../payroll/payroll_screen.dart';
@@ -20,13 +18,15 @@ import '../profile/profile_screen.dart';
 import '../reports/monthly_report_screen.dart';
 import '../savings/savings_goals_screen.dart';
 import '../theme/app_theme.dart';
-import 'category_style.dart';
-import 'day_groups.dart';
-import 'formatters.dart';
 import 'natural_language_input.dart';
 import 'transaction_filter_sheet.dart';
 import 'transaction_form_screen.dart';
 import 'transaction_providers.dart';
+import 'widgets/empty_states.dart';
+import 'widgets/filter_status_bar.dart';
+import 'widgets/month_navigator.dart';
+import 'widgets/summary_card.dart';
+import 'widgets/transaction_list.dart';
 
 /// The `AppBar`'s "Más opciones" menu entries (see
 /// `_TransactionsScreenState._handleMoreMenuSelection`): a single
@@ -222,7 +222,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
   }
 
-  /// The summary (`_SummaryCard`) always keeps seeing unfiltered
+  /// The summary (`SummaryCard`) always keeps seeing unfiltered
   /// [transactions] (the summary is for the whole month); only the
   /// list below uses the filtered version, computed right here with
   /// `filterTransactions` (no new query, it only trims in memory the
@@ -233,24 +233,24 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     return Expanded(
       child: Column(
         children: [
-          _SummaryCard(
+          SummaryCard(
             summary: MonthlySummary.fromTransactions(transactions),
           ),
           if (_filter.isActive)
-            _FilterStatusBar(
+            FilterStatusBar(
               matchCount: filtered.length,
               totalCount: transactions.length,
               onClear: _clearFilters,
             ),
           Expanded(
             child: transactions.isEmpty
-                ? _EmptyMonth(
+                ? EmptyMonth(
                     isLoadingDemo: _isLoadingDemo,
                     onLoadDemo: _loadDemoData,
                   )
                 : filtered.isEmpty
-                    ? _FilteredEmptyState(onClearFilters: _clearFilters)
-                    : _TransactionList(
+                    ? FilteredEmptyState(onClearFilters: _clearFilters)
+                    : TransactionList(
                         transactions: filtered,
                         onEdit: _openForm,
                         onDelete: _confirmAndDelete,
@@ -351,7 +351,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           constraints: const BoxConstraints(maxWidth: 720),
           child: Column(
             children: [
-              _MonthNavigator(
+              MonthNavigator(
                 month: _selectedMonth,
                 onPrevious: () => _changeMonth(-1),
                 onNext: () => _changeMonth(1),
@@ -380,370 +380,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _MonthNavigator extends StatelessWidget {
-  const _MonthNavigator({
-    required this.month,
-    required this.onPrevious,
-    required this.onNext,
-  });
-
-  final DateTime month;
-  final VoidCallback onPrevious;
-  final VoidCallback onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s, vertical: AppSpacing.s),
-      child: Row(
-        children: [
-          IconButton(
-            tooltip: 'Mes anterior',
-            onPressed: onPrevious,
-            icon: const Icon(Icons.chevron_left),
-          ),
-          Expanded(
-            child: Text(
-              formatMonth(month),
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Mes siguiente',
-            onPressed: onNext,
-            icon: const Icon(Icons.chevron_right),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.summary});
-
-  final MonthlySummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final finance = theme.extension<FinanceColors>()!;
-    final balanceColor = summary.balanceCents < 0 ? finance.expense : finance.income;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.m, vertical: AppSpacing.s),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.m),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Balance del mes', style: theme.textTheme.labelLarge),
-            const SizedBox(height: AppSpacing.xs),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: AnimatedBalanceText(
-                cents: summary.balanceCents,
-                style: theme.textTheme.displaySmall?.copyWith(
-                  color: balanceColor,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.m),
-            Row(
-              children: [
-                Expanded(
-                  child: _SummaryItem(
-                    label: 'Ingresos',
-                    value: formatCents(summary.incomeCents),
-                    color: finance.income,
-                  ),
-                ),
-                Expanded(
-                  child: _SummaryItem(
-                    label: 'Gastos',
-                    value: formatCents(-summary.expenseCents),
-                    color: finance.expense,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryItem extends StatelessWidget {
-  const _SummaryItem({required this.label, required this.value, required this.color});
-
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: theme.textTheme.bodySmall),
-        const SizedBox(height: AppSpacing.xs),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(color: color),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Row with "N de M movimientos" and a button to clear the filters,
-/// only visible when some criterion is set (`TransactionFilter.isActive`).
-/// The text is the main notice (it doesn't rely solely on the icon's
-/// badge, which is color-based, to know a filter is active).
-class _FilterStatusBar extends StatelessWidget {
-  const _FilterStatusBar({
-    required this.matchCount,
-    required this.totalCount,
-    required this.onClear,
-  });
-
-  final int matchCount;
-  final int totalCount;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.m, 0, AppSpacing.s, AppSpacing.s),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              '$matchCount de $totalCount movimientos',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: onClear,
-            child: const Text('Quitar filtros'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Empty state when the month has transactions but none match the
-/// active search or filters — distinct from `_EmptyMonth` (which is
-/// when the month has no transactions at all, with or without a
-/// filter).
-class _FilteredEmptyState extends StatelessWidget {
-  const _FilteredEmptyState({required this.onClearFilters});
-
-  final VoidCallback onClearFilters;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.l),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.search_off,
-                      size: 56,
-                      color: theme.colorScheme.outline,
-                    ),
-                    const SizedBox(height: AppSpacing.m),
-                    Text(
-                      'Ningún movimiento coincide con la búsqueda o los filtros',
-                      style: theme.textTheme.titleMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.l),
-                    OutlinedButton(
-                      onPressed: onClearFilters,
-                      child: const Text('Quitar filtros'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _EmptyMonth extends StatelessWidget {
-  const _EmptyMonth({required this.isLoadingDemo, required this.onLoadDemo});
-
-  final bool isLoadingDemo;
-  final VoidCallback onLoadDemo;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.l),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.receipt_long_outlined,
-                      size: 56,
-                      color: theme.colorScheme.outline,
-                    ),
-                    const SizedBox(height: AppSpacing.m),
-                    Text(
-                      'No hay movimientos este mes',
-                      style: theme.textTheme.titleMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Añade uno con el botón Nuevo o carga datos de ejemplo para probar la app.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.l),
-                    FilledButton.tonalIcon(
-                      onPressed: isLoadingDemo ? null : onLoadDemo,
-                      icon: const Icon(Icons.dataset_outlined),
-                      label: const Text('Cargar datos de ejemplo'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _TransactionList extends StatelessWidget {
-  const _TransactionList({
-    required this.transactions,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final List<Transaction> transactions;
-  final void Function([Transaction? transaction]) onEdit;
-  final void Function(Transaction transaction) onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final groups = groupByDay(transactions);
-    var index = 0;
-
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 88),
-      children: [
-        for (final group in groups) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.m, AppSpacing.m, AppSpacing.m, AppSpacing.xs),
-            child: Text(
-              formatDayHeader(group.day),
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          for (final transaction in group.transactions)
-            StaggeredEntrance(
-              index: index++,
-              child: _TransactionTile(
-                transaction: transaction,
-                onEdit: () => onEdit(transaction),
-                onDelete: () => onDelete(transaction),
-              ),
-            ),
-        ],
-      ],
-    );
-  }
-}
-
-class _TransactionTile extends StatelessWidget {
-  const _TransactionTile({
-    required this.transaction,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final Transaction transaction;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final finance = theme.extension<FinanceColors>()!;
-    final category = transaction.categoryId;
-    final amountColor = transaction.isExpense ? finance.expense : finance.income;
-
-    return ListTile(
-      onTap: onEdit,
-      leading: CircleAvatar(
-        backgroundColor: category.color.withValues(alpha: 0.15),
-        child: Icon(category.icon, color: category.color, size: 20),
-      ),
-      title: Text(transaction.description, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(category.label),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 96,
-            child: Text(
-              formatCents(transaction.amountCents),
-              textAlign: TextAlign.end,
-              style: theme.textTheme.titleSmall?.copyWith(color: amountColor),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Eliminar',
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline),
-          ),
-        ],
       ),
     );
   }

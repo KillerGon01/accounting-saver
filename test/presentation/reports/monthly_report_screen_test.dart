@@ -86,7 +86,7 @@ Future<void> _pump(
   ProviderContainer container, {
   bool? showAiComment,
 }) async {
-  // Taller viewport than the default test size (800x600): `_ReportBody`
+  // Taller viewport than the default test size (800x600): `ReportBody`
   // is a `ListView(children: [...])` (lazy sliver list), and with all
   // its cards — including the new explanatory line under "Gasto por
   // categoría" — the content no longer fits in 600px of height; cards
@@ -308,7 +308,7 @@ void main() {
 
     // "-50,00 €" appears three times: the month's balance, the total
     // expenses (with sign, same as on the transactions screen — see
-    // `monthly_report_screen.dart`, "Gastos" `_SummaryTile`) and, since
+    // `widgets/report_body.dart`, "Gastos" `SummaryTile`) and, since
     // there's no pending recurring expense, the same amount as
     // "Balance previsto" in the month-end forecast card.
     expect(find.text(_eur('-50,00')), findsNWidgets(3));
@@ -564,7 +564,7 @@ void main() {
       expect(find.textContaining('Concierto'), findsOneWidget);
       // Appears four times: the month's balance, the "Gastos" total
       // (with sign, same as on transactions — see "Gastos"
-      // `_SummaryTile`), the unusual expense row and, in the forecast
+      // `SummaryTile`), the unusual expense row and, in the forecast
       // card, the "Balance previsto" (same amount, with no income or
       // pending recurring expense this month).
       expect(find.text(_eur('-50,00')), findsNWidgets(4));
