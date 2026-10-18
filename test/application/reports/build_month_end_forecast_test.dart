@@ -53,8 +53,9 @@ void main() {
       expect(spotify.amountCentsAbs, 1099);
       expect(spotify.usualDay, 12);
 
-      // El gasto previsto es lo acumulado hasta hoy (incluye ya Alquiler y
-      // Gimnasio, del día 1) más los dos pendientes (Netflix y Spotify).
+      // The forecast expense is what's accumulated so far today (already
+      // includes Rent and Gym, from day 1) plus the two pending ones
+      // (Netflix and Spotify).
       final octoberTransactions = await repository.findByDateRange(
         userId: userId,
         start: DateTime(2026, 10, 1),
@@ -72,9 +73,9 @@ void main() {
 
   test('un día posterior a todos los días habituales: ninguno pendiente', () async {
     final repository = FakeTransactionRepository();
-    // Día 20: para ese día, `LoadDemoData` ya ha generado también Netflix
-    // (día 5) y Spotify (día 12) de octubre, así que los 4 cargos fijos
-    // ya están registrados este mes.
+    // Day 20: by that day, `LoadDemoData` has already also generated
+    // Netflix (day 5) and Spotify (day 12) for October, so the 4 fixed
+    // charges are already registered this month.
     final clock = FakeClock(DateTime(2026, 10, 20));
     await LoadDemoData(repository)(userId: userId, now: clock.now());
 
@@ -95,7 +96,7 @@ void main() {
         tx(amountCents: -1299, date: DateTime(2026, 7, 5)),
         tx(amountCents: -1299, date: DateTime(2026, 8, 5)),
         tx(amountCents: -1299, date: DateTime(2026, 9, 5)),
-        // Ya registrado este mes, con el mismo concepto e importe.
+        // Already registered this month, with the same concept and amount.
         tx(amountCents: -1299, date: DateTime(2026, 10, 5)),
       ],
     );
@@ -106,8 +107,8 @@ void main() {
     expect(forecast, isNotNull);
     expect(forecast!.pendingRecurringExpenses, isEmpty);
     expect(forecast.overdueUnregisteredExpenses, isEmpty);
-    // El cargo de octubre ya está en lo acumulado; no se añade una segunda
-    // vez al gasto previsto.
+    // The October charge is already in the accumulated amount; it's not
+    // added a second time to the forecast expense.
     expect(forecast.accumulatedExpenseCents, 1299);
     expect(forecast.forecastExpenseCents, 1299);
   });
@@ -120,8 +121,8 @@ void main() {
         tx(amountCents: -1299, date: DateTime(2026, 7, 5)),
         tx(amountCents: -1299, date: DateTime(2026, 8, 5)),
         tx(amountCents: -1299, date: DateTime(2026, 9, 5)),
-        // Ninguna transacción de octubre: el día 5 ya pasó (ahora es 10) y
-        // no ha entrado.
+        // No October transaction: day 5 already passed (now it's day 10)
+        // and it hasn't come in.
       ],
     );
     final useCase = BuildMonthEndForecast(repository, FakeClock(DateTime(2026, 10, 10)));
@@ -133,7 +134,7 @@ void main() {
     expect(forecast.overdueUnregisteredExpenses, hasLength(1));
     expect(forecast.overdueUnregisteredExpenses.single.description, 'netflix');
     expect(forecast.overdueUnregisteredExpenses.single.usualDay, 5);
-    // No se suma al gasto previsto: no hay garantía de que vaya a llegar.
+    // Not added to the forecast expense: there's no guarantee it will arrive.
     expect(forecast.accumulatedExpenseCents, 0);
     expect(forecast.forecastExpenseCents, 0);
   });
@@ -162,8 +163,8 @@ void main() {
       await repository.addAll(
         userId: userId,
         transactions: [
-          // Ventana de los 3 meses anteriores a febrero de 2026:
-          // noviembre y diciembre de 2025, y enero de 2026.
+          // Window of the 3 months before February 2026:
+          // November and December 2025, and January 2026.
           tx(amountCents: -1299, date: DateTime(2025, 12, 31)),
           tx(amountCents: -1299, date: DateTime(2026, 1, 31)),
         ],
@@ -174,7 +175,7 @@ void main() {
 
       expect(forecast, isNotNull);
       expect(forecast!.pendingRecurringExpenses, hasLength(1));
-      // Febrero de 2026 no es bisiesto (28 días).
+      // February 2026 is not a leap year (28 days).
       expect(forecast.pendingRecurringExpenses.single.usualDay, 28);
     });
 
@@ -193,7 +194,7 @@ void main() {
 
       expect(forecast, isNotNull);
       expect(forecast!.pendingRecurringExpenses, hasLength(1));
-      // 2028 es bisiesto (divisible por 4): febrero tiene 29 días.
+      // 2028 is a leap year (divisible by 4): February has 29 days.
       expect(forecast.pendingRecurringExpenses.single.usualDay, 29);
     });
   });

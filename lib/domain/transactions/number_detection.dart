@@ -8,11 +8,11 @@ const _spanishNumberWords = [
   'mil', 'millon', 'millones',
 ];
 
-/// Indica si [text] menciona alguna cifra o alguna palabra de número en
-/// español ("doce", "veinte", "cien", "mil"...). Sirve de contraste
-/// determinista antes de aceptar un importe: si el texto no menciona
-/// ningún número, de ninguna forma puede describir un movimiento con
-/// importe, por mucho que la IA diga lo contrario.
+/// Indicates whether [text] mentions any digit or any Spanish number
+/// word ("doce", "veinte", "cien", "mil"...). Serves as a deterministic
+/// check before accepting an amount: if the text doesn't mention any
+/// number, it can't possibly describe a transaction with an amount, no
+/// matter what the AI claims.
 bool textContainsNumber(String text) {
   if (RegExp(r'\d').hasMatch(text)) return true;
 

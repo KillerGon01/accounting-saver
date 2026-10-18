@@ -24,22 +24,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _errorMessage;
   String? _infoMessage;
 
-  // Visibilidad local de cada campo. Por defecto, oculta.
+  // Each field's local visibility. Hidden by default.
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  // Los iconos no toman el foco: así el campo conserva el cursor al pulsarlos.
+  // The icons don't take focus: this way the field keeps the cursor when pressed.
   final _passwordToggleFocusNode = FocusNode(canRequestFocus: false, skipTraversal: true);
   final _confirmToggleFocusNode = FocusNode(canRequestFocus: false, skipTraversal: true);
 
   @override
   void initState() {
     super.initState();
-    // Aviso de sesión (ver docs/design.md, "Avisos de sesión"): se lee y
-    // se limpia una sola vez, antes del primer frame — así un rebuild
-    // posterior de esta misma pantalla (o un hot reload) nunca lo repite.
-    // `addPostFrameCallback` porque `ScaffoldMessenger.of(context)`
-    // necesita que el `Scaffold` ya esté montado.
+    // Session notice (see docs/design.md, "Avisos de sesión"): read
+    // and cleared only once, before the first frame — this way a
+    // later rebuild of this same screen (or a hot reload) never
+    // repeats it. `addPostFrameCallback` because
+    // `ScaffoldMessenger.of(context)` needs the `Scaffold` to already
+    // be mounted.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final kind = ref.read(sessionFeedbackProvider);
       if (kind == null) return;

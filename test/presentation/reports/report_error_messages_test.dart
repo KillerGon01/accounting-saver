@@ -45,10 +45,10 @@ void main() {
     });
 
     test('un "service-error" sin clasificar cae en el mensaje genérico, nunca en el texto crudo del error', () {
-      // El mismo "message" que de verdad devolvió Gemini para un modelo
-      // retirado para proyectos nuevos, antes de clasificarlo (ver
-      // `isModelNotFoundError`): aquí se comprueba que, aunque llegara sin
-      // clasificar, `reportErrorMessage` nunca lo traslada a la interfaz.
+      // The same "message" Gemini actually returned for a model retired
+      // for new projects, before classifying it (see
+      // `isModelNotFoundError`): this checks that, even if it arrived
+      // unclassified, `reportErrorMessage` never passes it through to the UI.
       final message = reportErrorMessage(
         const LlmGatewayException(
           'service-error',

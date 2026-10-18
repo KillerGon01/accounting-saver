@@ -5,9 +5,9 @@ import '../../domain/savings/savings_goal.dart';
 import '../../domain/transactions/amount_parser.dart';
 import '../transactions/formatters.dart';
 
-/// Diálogo para actualizar lo ahorrado de [goal] a un importe nuevo (no
-/// un incremento: el valor absoluto). Devuelve los céntimos nuevos, o
-/// `null` si se cancela.
+/// Dialog to update [goal]'s saved amount to a new value (not an
+/// increment: the absolute value). Returns the new cents, or `null`
+/// if cancelled.
 Future<int?> showUpdateSavedAmountDialog(BuildContext context, SavingsGoal goal) {
   return showDialog<int>(
     context: context,

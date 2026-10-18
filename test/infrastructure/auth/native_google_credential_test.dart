@@ -1,5 +1,5 @@
-// Ver el comentario de `fake_google_sign_in_platform.dart` sobre
-// `google_sign_in_platform_interface` (dependencia transitiva).
+// See the comment in `fake_google_sign_in_platform.dart` about
+// `google_sign_in_platform_interface` (transitive dependency).
 // ignore_for_file: depend_on_referenced_packages
 import 'package:accounting_saver/infrastructure/auth/native_google_credential.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,15 +10,15 @@ import 'package:google_sign_in_platform_interface/google_sign_in_platform_interf
 
 import '../../fakes/fake_google_sign_in_platform.dart';
 
-/// `NativeGoogleCredential` es el único punto de la app que habla con
-/// `google_sign_in` (ver `docs/design.md`, "Inicio de sesión con Google
-/// en Android"). Se prueba aquí con el backend falso del propio paquete
-/// (`GoogleSignInPlatform.instance`), sin tocar el plugin real ni
-/// `FirebaseAuth` — `FirebaseAuthRepository` en sí (cómo conecta esta
-/// credencial con `signInWithCredential`/`reauthenticateWithCredential`)
-/// sigue sin tests automatizados, igual que el resto de ese archivo
-/// (requeriría una instancia de `FirebaseAuth` real; se ha comprobado a
-/// mano y con `flutter build apk --debug`).
+/// `NativeGoogleCredential` is the app's only point of contact with
+/// `google_sign_in` (see `docs/design.md`, "Inicio de sesión con Google
+/// en Android"). It's tested here with the package's own fake backend
+/// (`GoogleSignInPlatform.instance`), without touching the real plugin or
+/// `FirebaseAuth` — `FirebaseAuthRepository` itself (how it connects
+/// this credential with `signInWithCredential`/`reauthenticateWithCredential`)
+/// still has no automated tests, same as the rest of that file
+/// (it would need a real `FirebaseAuth` instance; it's been verified by
+/// hand and with `flutter build apk --debug`).
 void main() {
   late FakeGoogleSignInPlatform fakePlatform;
   late NativeGoogleCredential nativeGoogle;
@@ -47,7 +47,7 @@ void main() {
   });
 
   test('cancelación: el selector devuelve null, no es un error sin traducir', () async {
-    fakePlatform.userToReturn = null; // cancelado, como ya hace GoogleSignIn de verdad
+    fakePlatform.userToReturn = null; // cancelled, same as the real GoogleSignIn already does
 
     await expectLater(
       nativeGoogle(),

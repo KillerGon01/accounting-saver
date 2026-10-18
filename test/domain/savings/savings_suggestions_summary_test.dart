@@ -69,9 +69,9 @@ void main() {
 
       final summary = summarizeSavingsSuggestions(goal: maliciousGoal, progress: progress, suggestions: suggestions);
 
-      // El tipo no tiene ningún campo para el nombre de la meta ni para
-      // una descripción: lo confirmamos buscando los textos plantados en
-      // todos los campos de texto que sí expone.
+      // The type has no field for the goal's name or for a
+      // description: we confirm this by searching for the planted
+      // texts in every text field it does expose.
       final allText = [
         summary.targetFormatted,
         summary.savedFormatted,

@@ -35,12 +35,12 @@ void main() {
     await repository.addAll(
       userId: userId,
       transactions: [
-        // 4 gastos de "ocio" en el histórico (jul/ago/sep): mediana 1.000.
+        // 4 "leisure" expenses in the history (jul/aug/sep): median 1,000.
         tx(amountCents: -800, date: DateTime(2026, 7, 10)),
         tx(amountCents: -900, date: DateTime(2026, 8, 10)),
         tx(amountCents: -1100, date: DateTime(2026, 9, 10)),
         tx(amountCents: -1200, date: DateTime(2026, 9, 20)),
-        // Gasto de octubre, muy por encima del doble de la mediana (2.000).
+        // October expense, well above double the median (2,000).
         tx(amountCents: -5000, date: DateTime(2026, 10, 5), description: 'Concierto'),
       ],
     );
@@ -64,7 +64,7 @@ void main() {
         tx(amountCents: -1000, date: DateTime(2026, 8, 10)),
         tx(amountCents: -1000, date: DateTime(2026, 9, 10)),
         tx(amountCents: -1000, date: DateTime(2026, 9, 20)),
-        // Alquiler recurrente, caro pero esperado (2 meses del histórico).
+        // Recurring rent, expensive but expected (2 months of history).
         tx(amountCents: -85000, date: DateTime(2026, 8, 1), description: 'Alquiler', category: Category.hogar),
         tx(amountCents: -85000, date: DateTime(2026, 9, 1), description: 'Alquiler', category: Category.hogar),
         tx(amountCents: -85000, date: DateTime(2026, 10, 1), description: 'Alquiler', category: Category.hogar),

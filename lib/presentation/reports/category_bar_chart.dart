@@ -7,27 +7,29 @@ import '../transactions/category_style.dart';
 import '../transactions/formatters.dart';
 import 'report_formatters.dart';
 
-/// Mínimo visible del ancho de cada barra, como fracción del carril
-/// (3 %): sin esto, una categoría muy pequeña frente al gasto total
-/// dibujaría una barra de un puñado de píxeles o invisible, aunque su
-/// importe y porcentaje de verdad (en texto, al lado) sean correctos. No
-/// afecta a ningún cálculo de dominio, solo al ancho dibujado.
+/// Minimum visible width for each bar, as a fraction of the track
+/// (3%): without this, a category very small compared to the total
+/// expense would draw a bar a handful of pixels wide or invisible,
+/// even though its real amount and percentage (in text, next to it)
+/// are correct. Doesn't affect any domain calculation, only the
+/// drawn width.
 const _minBarWidthFactor = 0.03;
 
-/// Gráfico de barras horizontales del gasto por categoría, con widgets
-/// propios (sin `CustomPainter` ni ningún paquete de gráficos): cada fila
-/// es un icono, una etiqueta, el importe y el porcentaje en texto, y una
-/// barra coloreada cuyo ancho es proporcional al porcentaje de esa
-/// categoría sobre el gasto TOTAL del mes (`CategoryExpense.percentageOfExpense`,
-/// el mismo porcentaje que ya se muestra en texto, nunca relativo a la
-/// categoría de mayor gasto). Ninguna fila es solo color: el importe y
-/// el porcentaje siempre van en texto, y cada barra tiene una etiqueta
-/// semántica (`Semantics`) con esa misma información para quien use un
-/// lector de pantalla.
+/// Horizontal bar chart of expense by category, with the app's own
+/// widgets (no `CustomPainter` or any charting package): each row is
+/// an icon, a label, the amount and percentage in text, and a
+/// colored bar whose width is proportional to that category's
+/// percentage of the month's TOTAL expense
+/// (`CategoryExpense.percentageOfExpense`, the same percentage
+/// already shown in text, never relative to the highest-spending
+/// category). No row is color alone: the amount and the percentage
+/// always go in text, and each bar has a semantic label
+/// (`Semantics`) with that same information for whoever uses a
+/// screen reader.
 ///
-/// No muestra ninguna fila de "Total: 100 %": cada porcentaje ya es por
-/// categoría, y sumar uno aparte sería redundante (siempre ~100 %, salvo
-/// el margen de redondeo de `formatPercentage`).
+/// Doesn't show any "Total: 100%" row: each percentage is already
+/// per category, and adding a separate one would be redundant
+/// (always ~100%, aside from `formatPercentage`'s rounding margin).
 class CategoryBarChart extends StatelessWidget {
   const CategoryBarChart({super.key, required this.categories});
 

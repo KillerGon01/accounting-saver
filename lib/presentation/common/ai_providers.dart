@@ -3,29 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/common/transactions_change_notifier.dart';
 import '../../infrastructure/common/gemini_model_fallback.dart';
 
-/// Una sola instancia por app, compartida entre el chat y la entrada en
-/// lenguaje natural: las dos gastan la misma cuota diaria de Gemini, así
-/// que deben recordar juntas qué modelo está agotado.
+/// A single instance per app, shared between the chat and natural
+/// language input: both spend Gemini's same daily quota, so they
+/// must remember together which model is exhausted.
 final geminiModelAvailabilityProvider = Provider<GeminiModelAvailability>(
   (ref) => GeminiModelAvailability(),
 );
 
-/// Una sola instancia por app: el chat la consulta para saber si su caché
-/// en memoria sigue siendo válida, y los casos de uso de movimientos la
-/// avisan cuando crean, editan o borran uno.
+/// A single instance per app: the chat checks it to know whether its
+/// in-memory cache is still valid, and the transaction use cases
+/// notify it when they create, edit, or delete one.
 final transactionsChangeNotifierProvider = Provider<TransactionsChangeNotifier>(
   (ref) => TransactionsChangeNotifier(),
 );
 
-/// Versión actual de los movimientos (`TransactionsChangeNotifier.version`),
-/// pero como estado observable de Riverpod: a diferencia de
-/// `transactionsChangeNotifierProvider` (una instancia fija, que solo se
-/// puede *consultar* más tarde, como hace `SendChatMessage`), observar
-/// este provider con `ref.watch` fuerza a recalcular a quien dependa de
-/// él en cuanto cambien los movimientos — por ejemplo,
-/// `monthlyReportProvider`, para que el resumen mensual se actualice sin
-/// recargar la pantalla al crear, editar o borrar un movimiento, o al
-/// cargar o borrar los datos de ejemplo.
+/// Current version of the transactions (`TransactionsChangeNotifier.version`),
+/// but as observable Riverpod state: unlike
+/// `transactionsChangeNotifierProvider` (a fixed instance, which can
+/// only be *checked* later, as `SendChatMessage` does), watching this
+/// provider with `ref.watch` forces whoever depends on it to
+/// recompute as soon as the transactions change — for example,
+/// `monthlyReportProvider`, so the monthly report updates without
+/// reloading the screen when a transaction is created, edited, or
+/// deleted, or when the demo data is loaded or deleted.
 final transactionsVersionProvider = NotifierProvider<TransactionsVersionNotifier, int>(
   TransactionsVersionNotifier.new,
 );

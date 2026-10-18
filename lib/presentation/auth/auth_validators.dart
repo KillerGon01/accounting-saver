@@ -11,8 +11,8 @@ String? validateEmail(String? value) {
   return null;
 }
 
-/// En el inicio de sesión solo se exige que haya algo escrito: las cuentas
-/// antiguas pueden tener contraseñas más cortas que el mínimo actual.
+/// At login, only something being typed is required: older accounts
+/// may have passwords shorter than the current minimum.
 String? validateLoginPassword(String? value) {
   if (value == null || value.isEmpty) return 'Introduce tu contraseña';
   return null;

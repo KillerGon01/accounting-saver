@@ -18,22 +18,22 @@ const _slowReplyWarningDelay = Duration(seconds: 10);
 const _verySlowReplyWarningDelay = Duration(seconds: 45);
 const _extremelySlowReplyWarningDelay = Duration(seconds: 120);
 
-/// Hoja modal con las opciones de ahorro de [goal] (ver
-/// `BuildSavingsSuggestions`/`calculateSavingsSuggestions`). Se calcula al
-/// abrirse (bajo demanda, no al abrir la pantalla de metas): 2 consultas a
-/// Firestore por apertura (ver docs/design.md).
+/// Modal sheet with [goal]'s savings options (see
+/// `BuildSavingsSuggestions`/`calculateSavingsSuggestions`). Computed
+/// on opening (on demand, not when opening the goals screen): 2
+/// queries to Firestore per opening (see docs/design.md).
 ///
-/// Si el cálculo falla, muestra un mensaje genérico dentro de la propia
-/// hoja: el resto de la pantalla de metas sigue funcionando (el `Future`
-/// vive solo aquí, no en ningún provider que pueda arrastrar el error a
-/// otro sitio).
+/// If the calculation fails, shows a generic message inside the
+/// sheet itself: the rest of the goals screen keeps working (the
+/// `Future` lives only here, not in any provider that could drag the
+/// error elsewhere).
 ///
-/// Si [showAiButton] lo permite (por defecto [effectiveEnableAi], igual
-/// que `MonthlyReportScreen.showAiComment`: solo existe como parámetro
-/// para poder probar la hoja con y sin IA sin depender de con qué
-/// `--dart-define=ENABLE_AI` se haya lanzado `flutter test`), debajo de
-/// la lista aparece un botón para redactar con IA un resumen en prosa de
-/// esas mismas opciones (nunca las sustituye).
+/// If [showAiButton] allows it (defaulting to [effectiveEnableAi],
+/// same as `MonthlyReportScreen.showAiComment`: it only exists as a
+/// parameter so the sheet can be tested with and without AI without
+/// depending on which `--dart-define=ENABLE_AI` `flutter test` was
+/// launched with), a button appears below the list to write up an AI
+/// prose summary of those same options (never replacing them).
 class SavingsSuggestionsSheet extends ConsumerStatefulWidget {
   SavingsSuggestionsSheet({
     super.key,
@@ -107,8 +107,8 @@ class _SavingsSuggestionsSheetState extends ConsumerState<SavingsSuggestionsShee
       _isExtremelySlowReply = false;
     });
 
-    // Timers, no un `Future.delayed` esperado: no bloquean nada (mismo
-    // patrón que `MonthlyReportScreen`).
+    // Timers, not an awaited `Future.delayed`: they block nothing
+    // (same pattern as `MonthlyReportScreen`).
     _slowReplyTimer = Timer(_slowReplyWarningDelay, () {
       if (!mounted || !_isGeneratingAi) return;
       setState(() => _isSlowReply = true);
@@ -197,12 +197,12 @@ class _SavingsSuggestionsSheetState extends ConsumerState<SavingsSuggestionsShee
                       );
                     }
                     final result = snapshot.requireData;
-                    // Todo en un único `SingleChildScrollView` (sugerencias
-                    // + sección de IA), no un `ListView` más una sección
-                    // fija aparte: así el texto generado por la IA, que
-                    // puede ocupar varias líneas con texto grande, nunca
-                    // desborda — simplemente hace que el conjunto scrollee
-                    // un poco más.
+                    // Everything in a single `SingleChildScrollView`
+                    // (suggestions + AI section), not a `ListView`
+                    // plus a separate fixed section: this way the
+                    // AI-generated text, which can take several
+                    // lines with large text, never overflows — it
+                    // simply makes the whole thing scroll a bit more.
                     return SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -339,8 +339,8 @@ List<Widget> _suggestionsSectionChildren(
   ];
 }
 
-/// Icono, texto (nunca solo el icono) y, si procede, categoría de
-/// [suggestion] (ver [SavingsSuggestionType]).
+/// Icon, text (never the icon alone), and, if applicable,
+/// [suggestion]'s category (see [SavingsSuggestionType]).
 class _SuggestionTile extends StatelessWidget {
   const _SuggestionTile({required this.suggestion});
 
@@ -375,9 +375,10 @@ IconData _icon(SavingsSuggestion suggestion) {
 
 String _title(SavingsSuggestion suggestion) {
   return switch (suggestion.type) {
-    // El concepto de un recurrente ya viene normalizado (en minúsculas, ver
-    // `normalizeExpenseDescription`): aquí solo se capitaliza para mostrarlo,
-    // sin tocar el dato que se usa para comparar.
+    // A recurring expense's description already comes normalized
+    // (lowercase, see `normalizeExpenseDescription`): here it's only
+    // capitalized for display, without touching the data used for
+    // comparison.
     SavingsSuggestionType.recurring => _capitalize(suggestion.description) ?? 'Gasto recurrente',
     SavingsSuggestionType.categoryCut =>
       'Recorte del $savingsSuggestionCutPercent % en ${suggestion.categoryId?.label ?? 'una categoría'}',

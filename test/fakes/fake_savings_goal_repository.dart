@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:accounting_saver/domain/savings/savings_goal.dart';
 import 'package:accounting_saver/domain/savings/savings_goal_repository.dart';
 
-/// A diferencia de `FakeTransactionRepository` (que solo emite una vez,
-/// al suscribirse: ninguna pantalla depende de que su stream se actualice
-/// sola tras escribir, porque usan el patrón `FutureProvider` +
-/// `TransactionsChangeNotifier`), aquí **sí** hay que reemitir tras cada
-/// `add`/`update`/`delete`: las metas no tienen ningún notifier aparte
-/// (ver `docs/design.md`, "Metas de ahorro") — la pantalla depende de que
-/// este stream se comporte como el `.snapshots()` real de Firestore.
+/// Unlike `FakeTransactionRepository` (which only emits once, on
+/// subscription: no screen depends on its stream updating on its own
+/// after a write, because they use the `FutureProvider` +
+/// `TransactionsChangeNotifier` pattern), here it **does** need to
+/// re-emit after every `add`/`update`/`delete`: goals have no separate
+/// notifier (see `docs/design.md`, "Metas de ahorro") — the screen
+/// depends on this stream behaving like Firestore's real `.snapshots()`.
 class FakeSavingsGoalRepository implements SavingsGoalRepository {
   final Map<String, Map<String, SavingsGoal>> _goalsByUser = {};
   final Map<String, StreamController<List<SavingsGoal>>> _controllers = {};

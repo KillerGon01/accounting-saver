@@ -9,11 +9,11 @@ import '../common/app_check_error.dart';
 import '../common/gemini_model_fallback.dart';
 import '../common/gemini_transient_retry.dart';
 
-/// Implementación de [MonthlyReportGateway] con Gemini (Firebase AI Logic,
-/// Gemini Developer API): una sola llamada, sin function calling. Mismos
-/// modelos, fallback, reintento y timeout que el chat y la entrada en
-/// lenguaje natural (ver [geminiModelFallbacks], [withGeminiModelFallback],
-/// [withTransientRetry]): comparten la misma cuota gratuita.
+/// [MonthlyReportGateway] implementation with Gemini (Firebase AI
+/// Logic, Gemini Developer API): a single call, no function calling.
+/// Same models, fallback, retry and timeout as the chat and natural
+/// language input (see [geminiModelFallbacks], [withGeminiModelFallback],
+/// [withTransientRetry]): they share the same free quota.
 class GeminiMonthlyReportGateway implements MonthlyReportGateway {
   GeminiMonthlyReportGateway({GeminiModelAvailability? availability})
     : _availability = availability ?? GeminiModelAvailability();
@@ -23,8 +23,8 @@ class GeminiMonthlyReportGateway implements MonthlyReportGateway {
   static GenerativeModel _buildModel(String model) {
     return FirebaseAI.googleAI().generativeModel(
       model: model,
-      // Temperatura baja: es un comentario sobre cifras ya calculadas, no
-      // redacción creativa.
+      // Low temperature: this is a comment on already-computed
+      // figures, not creative writing.
       generationConfig: GenerationConfig(temperature: 0.2),
     );
   }
@@ -51,9 +51,9 @@ class GeminiMonthlyReportGateway implements MonthlyReportGateway {
         message: 'Se ha agotado la cuota gratuita de la IA por ahora. Inténtalo más tarde.',
       );
     } on TimeoutException {
-      // Igual que en `GeminiChatGateway`/`GeminiLlmGateway`: un timeout
-      // nunca se reintenta (ver `gemini_transient_retry.dart`), así que
-      // esto sale tras un único intento de `geminiRequestTimeout` (150 s).
+      // Same as in `GeminiChatGateway`/`GeminiLlmGateway`: a timeout is
+      // never retried (see `gemini_transient_retry.dart`), so this
+      // comes out after a single `geminiRequestTimeout` (150 s) attempt.
       throw const LlmGatewayException(
         'timeout',
         message: 'La IA no está disponible ahora mismo.',
@@ -89,15 +89,16 @@ class GeminiMonthlyReportGateway implements MonthlyReportGateway {
   }
 }
 
-/// Construye el prompt que se envía a Gemini para comentar [report].
+/// Builds the prompt sent to Gemini to comment on [report].
 ///
-/// Función pura (sin `firebase_ai` ni red), así se prueba sin ningún
-/// proyecto de Firebase: ver `test/infrastructure/reports/`.
+/// Pure function (no `firebase_ai`, no network), so it's tested
+/// without any Firebase project: see `test/infrastructure/reports/`.
 ///
-/// Solo recibe cifras agregadas, nunca movimientos: [MonthlyReport] no
-/// tiene ningún campo para una descripción o un concepto, así que es
-/// imposible que uno se filtre aquí por accidente (no es un filtrado que
-/// pueda fallar, es un tipo que no transporta ese dato).
+/// Only receives aggregated figures, never transactions:
+/// [MonthlyReport] has no field for a description or a concept, so
+/// it's impossible for one to leak in here by accident (it's not a
+/// filtering step that could fail, it's a type that doesn't carry
+/// that data).
 String buildMonthlyReportExplanationPrompt(MonthlyReport report) {
   final buffer = StringBuffer()
     ..writeln(

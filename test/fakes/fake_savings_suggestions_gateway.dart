@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:accounting_saver/domain/savings/savings_suggestions_gateway.dart';
 import 'package:accounting_saver/domain/savings/savings_suggestions_summary.dart';
 
-/// Fake configurable para probar [ExplainSavingsSuggestions] y la hoja de
-/// sugerencias sin llamar a Gemini. Mismo patrón que
+/// Configurable fake for testing [ExplainSavingsSuggestions] and the
+/// suggestions sheet without calling Gemini. Same pattern as
 /// `FakeMonthlyReportGateway`.
 class FakeSavingsSuggestionsGateway implements SavingsSuggestionsGateway {
   FakeSavingsSuggestionsGateway.returning(this._result)

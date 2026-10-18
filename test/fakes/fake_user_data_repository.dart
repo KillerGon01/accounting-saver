@@ -3,23 +3,23 @@ import 'package:accounting_saver/domain/user_data/user_data_repository.dart';
 import 'fake_savings_goal_repository.dart';
 import 'fake_transaction_repository.dart';
 
-/// Borra los movimientos (y, si se pasa [goals], las metas de ahorro) del
-/// usuario en lotes, como el repositorio real (`FirestoreUserDataRepository`,
-/// que recorre `userDataCollections` — ver ese test de que la lista
-/// incluye `'goals'`). Puede fallar a mitad para probar el reintento.
+/// Deletes the user's transactions (and, if [goals] is passed, savings
+/// goals) in batches, like the real repository (`FirestoreUserDataRepository`,
+/// which iterates `userDataCollections` — see that test confirming the list
+/// includes `'goals'`). Can fail midway to test the retry.
 class FakeUserDataRepository implements UserDataRepository {
   FakeUserDataRepository(this.transactions, {this.goals, this.batchSize = 2});
 
   final FakeTransactionRepository transactions;
 
-  /// `null` en los tests que no necesitan metas (todo el comportamiento
-  /// de siempre, sin tocarlo): sin repositorio de metas, no hay nada que
-  /// borrar de esa colección.
+  /// `null` in tests that don't need goals (all the usual behavior,
+  /// untouched): with no goals repository, there's nothing to delete
+  /// from that collection.
   final FakeSavingsGoalRepository? goals;
   final int batchSize;
 
-  /// Si se asigna N, la operación falla justo antes del lote N+1, una sola vez.
-  /// Con N = 0 falla antes del primer lote.
+  /// If set to N, the operation fails right before batch N+1, once only.
+  /// With N = 0 it fails before the first batch.
   int? failBeforeBatch;
 
   int deletedBatches = 0;

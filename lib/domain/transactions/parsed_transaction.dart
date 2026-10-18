@@ -2,9 +2,9 @@ import 'amount_limits.dart';
 import 'category.dart';
 import 'transaction.dart';
 
-/// Propuesta de movimiento ya validada, extraída de un texto en lenguaje
-/// natural. No se guarda nada hasta que el usuario la confirma desde el
-/// formulario.
+/// Already-validated transaction draft, extracted from natural
+/// language text. Nothing is saved until the user confirms it from the
+/// form.
 class ParsedTransaction {
   ParsedTransaction({
     required this.amountCents,
@@ -42,7 +42,7 @@ class ParsedTransaction {
     }
   }
 
-  /// Negativo = gasto.
+  /// Negative = expense.
   final int amountCents;
   final DateTime date;
   final String description;

@@ -2,24 +2,25 @@ import '../transactions/category.dart';
 import '../transactions/recurring_expenses.dart';
 import '../transactions/transaction.dart';
 
-/// Factor por el que el importe de un gasto debe superar la mediana de su
-/// categoría para considerarse inusual (ver [detectUnusualExpenses]):
-/// estrictamente superior al doble, no igual.
+/// Factor by which an expense's amount must exceed its category's
+/// median to count as unusual (see [detectUnusualExpenses]): strictly
+/// more than double, not equal to it.
 const unusualExpenseFactor = 2;
 
-/// Gastos mínimos que debe tener una categoría en el histórico analizado
-/// para que se le pueda calcular una mediana fiable y avisar de algo. Con
-/// menos, cualquier gasto "parecería" inusual solo por tener poca muestra
-/// (ver "Límites" en docs/design.md).
+/// Minimum number of expenses a category needs in the analyzed history
+/// for a reliable median to be computed and something flagged. With
+/// fewer, any expense would "look" unusual just from having a small
+/// sample (see "Límites" in docs/design.md).
 const unusualExpenseMinHistoryCount = 4;
 
-/// Meses anteriores completos que se analizan como histórico, igual que
-/// `BuildMonthEndForecast.recurringExpensesMonths` (mismo criterio, otro
-/// nombre porque son dos casos de uso distintos que no comparten clase).
+/// Full previous months analyzed as history, same as
+/// `BuildMonthEndForecast.recurringExpensesMonths` (same criterion,
+/// different name because they're two separate use cases that don't
+/// share a class).
 const unusualExpenseHistoryMonths = 3;
 
-/// Un gasto del mes en curso que destaca frente al historial de su propia
-/// categoría (ver [detectUnusualExpenses]).
+/// An expense in the current month that stands out against its own
+/// category's history (see [detectUnusualExpenses]).
 class UnusualExpense {
   const UnusualExpense({
     required this.description,
@@ -30,27 +31,28 @@ class UnusualExpense {
     required this.categoryHistoryCount,
   });
 
-  /// Tal cual la escribió el usuario (sin normalizar: es para mostrar, no
-  /// para comparar — la comparación ya se hizo en [detectUnusualExpenses]).
+  /// Exactly as the user wrote it (not normalized: it's for display,
+  /// not for comparing — the comparison already happened in
+  /// [detectUnusualExpenses]).
   final String description;
   final Category categoryId;
 
-  /// Magnitud positiva.
+  /// Positive magnitude.
   final int amountCentsAbs;
   final DateTime date;
 
-  /// La mediana (ver [_median]) de los importes (magnitud positiva) de
-  /// los gastos individuales de [categoryId] en el histórico analizado.
+  /// The median (see [_median]) of the amounts (positive magnitude) of
+  /// [categoryId]'s individual expenses in the analyzed history.
   final int categoryMedianCentsAbs;
 
-  /// Cuántos gastos individuales de [categoryId] había en ese histórico
-  /// (para que la tarjeta pueda explicar de dónde sale la comparación).
+  /// How many individual expenses of [categoryId] were in that history
+  /// (so the card can explain where the comparison comes from).
   final int categoryHistoryCount;
 }
 
-/// Resultado de [detectUnusualExpenses] a través de un caso de uso que sí
-/// consulta Firestore (ver `BuildUnusualExpenses`): la lista, más si
-/// alguna de sus consultas llegó al tope de seguridad.
+/// Result of [detectUnusualExpenses] through a use case that does query
+/// Firestore (see `BuildUnusualExpenses`): the list, plus whether any
+/// of its queries hit the safety cap.
 class UnusualExpensesResult {
   const UnusualExpensesResult({required this.expenses, required this.truncated});
 
@@ -58,25 +60,26 @@ class UnusualExpensesResult {
   final bool truncated;
 }
 
-/// Un gasto de [currentMonthTransactions] se considera inusual si:
-/// - Su categoría tiene al menos [minHistoryCount] gastos individuales en
-///   [historyTransactions] (normalmente los 3 meses anteriores completos,
-///   ver `BuildUnusualExpenses`/`BuildMonthEndForecast`): con menos, no
-///   hay muestra suficiente para calcular una mediana fiable, así que no
-///   se avisa de nada para esa categoría.
-/// - Su importe (magnitud) supera **estrictamente** [factor] veces la
-///   mediana de los importes de esos gastos históricos de su misma
-///   categoría — el doble exacto no cuenta como inusual.
+/// An expense in [currentMonthTransactions] counts as unusual if:
+/// - Its category has at least [minHistoryCount] individual expenses in
+///   [historyTransactions] (normally the previous 3 full months, see
+///   `BuildUnusualExpenses`/`BuildMonthEndForecast`): with fewer,
+///   there's no sample big enough to compute a reliable median, so
+///   nothing is flagged for that category.
+/// - Its amount (magnitude) **strictly** exceeds [factor] times the
+///   median of the amounts of those historical expenses in its same
+///   category — exactly double doesn't count as unusual.
 ///
-/// Se excluyen los gastos que coinciden con un recurrente de
-/// [historyTransactions] (mismo concepto normalizado e importe exacto que
-/// usa [findRecurringExpenses], llamada aquí con su `minMonths` por
-/// defecto, sin cambiar su comportamiento ni su contrato): un recurrente
-/// caro (el alquiler, por ejemplo) no es "inusual", es esperado.
+/// Expenses that match a recurring one from [historyTransactions]
+/// (same normalized description and exact amount that
+/// [findRecurringExpenses] uses, called here with its default
+/// `minMonths`, without changing its behavior or its contract) are
+/// excluded: an expensive recurring expense (rent, for example) isn't
+/// "unusual", it's expected.
 ///
-/// Dart puro, sin fecha ni repositorio: decidir qué mes es "el mes en
-/// curso" y qué transacciones pertenecen al histórico es cosa de quien
-/// llama (ver `BuildUnusualExpenses`).
+/// Pure Dart, with no date or repository: deciding which month is "the
+/// current month" and which transactions belong to the history is the
+/// caller's job (see `BuildUnusualExpenses`).
 List<UnusualExpense> detectUnusualExpenses({
   required List<Transaction> currentMonthTransactions,
   required List<Transaction> historyTransactions,
@@ -131,13 +134,14 @@ List<UnusualExpense> detectUnusualExpenses({
   return unusual;
 }
 
-/// Mediana de [values] (no vacío, ya en céntimos, sin ningún `double`). Con
-/// un número impar de elementos, el del centro tras ordenar; con uno par,
-/// la media entera de los dos centrales, **redondeada hacia abajo**
-/// (`~/`, división entera): con 6.200 y 6.201, la mediana real es 6.200,5
-/// y esto da 6.200, nunca 6.201 — documentado así en docs/design.md por
-/// el efecto que tiene en el borde de [detectUnusualExpenses] (el doble de
-/// 6.200 es 12.400: un gasto de 12.400 no es inusual, uno de 12.401 sí).
+/// Median of [values] (non-empty, already in cents, no `double`). With
+/// an odd number of elements, the middle one after sorting; with an
+/// even number, the integer average of the two middle ones, **rounded
+/// down** (`~/`, integer division): with 6,200 and 6,201, the real
+/// median is 6,200.5 and this gives 6,200, never 6,201 — documented
+/// this way in docs/design.md because of the effect it has on the edge
+/// of [detectUnusualExpenses] (double of 6,200 is 12,400: an expense of
+/// 12,400 isn't unusual, one of 12,401 is).
 int _median(List<int> values) {
   final sorted = [...values]..sort();
   final middle = sorted.length ~/ 2;

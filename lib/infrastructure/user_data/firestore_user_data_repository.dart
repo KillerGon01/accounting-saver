@@ -2,14 +2,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/user_data/user_data_repository.dart';
 
-/// Colecciones bajo `users/{uid}` que contienen datos del usuario.
+/// Collections under `users/{uid}` that hold the user's data.
 ///
-/// IMPORTANTE: cualquier colección nueva con datos del usuario debe añadirse
-/// aquí. El borrado de cuenta recorre esta lista; si una colección no aparece,
-/// sus documentos quedarían huérfanos al eliminar la cuenta de Auth.
+/// IMPORTANT: any new collection with user data must be added here.
+/// Account deletion walks this list; if a collection doesn't appear,
+/// its documents would be left orphaned when the Auth account is
+/// deleted.
 const userDataCollections = ['transactions', 'goals'];
 
-/// Límite de Firestore para un `WriteBatch` es 500 operaciones; 400 deja margen.
+/// Firestore's limit for a `WriteBatch` is 500 operations; 400 leaves margin.
 const _batchSize = 400;
 
 class FirestoreUserDataRepository implements UserDataRepository {
@@ -26,9 +27,9 @@ class FirestoreUserDataRepository implements UserDataRepository {
     }
   }
 
-  /// Borra en lotes hasta que la colección queda vacía. Si se interrumpe, los
-  /// documentos ya borrados no vuelven a aparecer y la siguiente llamada
-  /// continúa con los que quedan.
+  /// Deletes in batches until the collection is empty. If interrupted,
+  /// the documents already deleted don't come back and the next call
+  /// continues with the ones left.
   Future<void> _deleteCollection(CollectionReference<Map<String, dynamic>> collection) async {
     while (true) {
       final snapshot = await collection.limit(_batchSize).get();

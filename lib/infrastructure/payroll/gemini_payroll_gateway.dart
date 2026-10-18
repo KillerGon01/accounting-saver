@@ -11,13 +11,14 @@ import '../common/app_check_error.dart';
 import '../common/gemini_model_fallback.dart';
 import '../common/gemini_transient_retry.dart';
 
-/// Implementación de [PayrollGateway] contra Gemini Developer API (Firebase
-/// AI Logic, nivel gratuito), con el PDF como [InlineDataPart] y la
-/// respuesta forzada a un JSON con [GenerationConfig.responseSchema] — el
-/// mismo enfoque validado en la prueba de viabilidad desechable de la
-/// rama original (ver docs/evaluation.md), ahora con fallback entre
-/// modelos y reintento ante fallo transitorio, igual que
-/// [GeminiLlmGateway] (`lib/infrastructure/transactions/gemini_llm_gateway.dart`).
+/// [PayrollGateway] implementation against the Gemini Developer API
+/// (Firebase AI Logic, free tier), with the PDF as an [InlineDataPart]
+/// and the response forced into JSON with
+/// [GenerationConfig.responseSchema] — the same approach validated in
+/// the original branch's disposable feasibility spike (see
+/// docs/evaluation.md), now with fallback between models and retry on
+/// transient failure, same as [GeminiLlmGateway]
+/// (`lib/infrastructure/transactions/gemini_llm_gateway.dart`).
 class GeminiPayrollGateway implements PayrollGateway {
   GeminiPayrollGateway({GeminiModelAvailability? availability})
     : _availability = availability ?? GeminiModelAvailability();
@@ -29,8 +30,8 @@ class GeminiPayrollGateway implements PayrollGateway {
       model: model,
       generationConfig: GenerationConfig(
         responseMimeType: 'application/json',
-        // Extracción literal, no redacción ni cálculo: temperatura 0, como
-        // en GeminiLlmGateway.
+        // Literal extraction, no drafting or calculation: temperature
+        // 0, same as in GeminiLlmGateway.
         temperature: 0,
         responseSchema: Schema.object(
           properties: {

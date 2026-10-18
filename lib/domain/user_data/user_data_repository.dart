@@ -1,6 +1,7 @@
-/// Borra los datos del usuario en almacenamiento. No borra la cuenta de
-/// autenticación: eso lo hace `AuthRepository.deleteAccount`.
+/// Deletes the user's data in storage. Doesn't delete the
+/// authentication account: `AuthRepository.deleteAccount` does that.
 abstract class UserDataRepository {
-  /// Idempotente: si se interrumpe, volver a llamarlo termina el borrado.
+  /// Idempotent: if interrupted, calling it again finishes the
+  /// deletion.
   Future<void> deleteAllForUser({required String userId});
 }

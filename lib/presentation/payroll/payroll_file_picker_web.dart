@@ -4,10 +4,11 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
-/// Abre el selector de archivos del navegador filtrado a PDF y devuelve
-/// los bytes del primero que se elija, o `null` si no se elige ninguno.
-/// Nunca escribe el archivo en ningún sitio: solo vive en memoria mientras
-/// dura esta llamada y lo que haga quien la invoque con el resultado.
+/// Opens the browser's file picker filtered to PDF and returns the
+/// bytes of the first one chosen, or `null` if none is chosen. Never
+/// writes the file anywhere: it only lives in memory for the
+/// duration of this call and whatever the caller does with the
+/// result.
 Future<Uint8List?> pickPayrollPdfBytes() async {
   final input = web.HTMLInputElement()
     ..type = 'file'

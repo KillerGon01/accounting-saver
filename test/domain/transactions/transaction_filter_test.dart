@@ -159,21 +159,21 @@ void main() {
           categoryId: Category.restaurantes,
           amountCents: -2500,
         ),
-        // Mismo texto y categoría, pero gasto fuera del rango de importe.
+        // Same text and category, but expense outside the amount range.
         _tx(
           id: 'importe-fuera-de-rango',
           description: 'Cena de empresa',
           categoryId: Category.restaurantes,
           amountCents: -9000,
         ),
-        // Mismo texto e importe, pero otra categoría.
+        // Same text and amount, but a different category.
         _tx(
           id: 'categoria-distinta',
           description: 'Cena',
           categoryId: Category.ocio,
           amountCents: -2000,
         ),
-        // Mismo texto, categoría e importe, pero es un ingreso.
+        // Same text, category, and amount, but it's income.
         _tx(
           id: 'tipo-distinto',
           description: 'Cena devuelta',

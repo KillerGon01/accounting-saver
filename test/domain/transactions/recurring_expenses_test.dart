@@ -32,8 +32,8 @@ void main() {
     expect(netflix.description, 'netflix');
     expect(netflix.amountCentsAbs, 1299);
     expect(netflix.occurrences.map((o) => o.isoMonth), ['2026-07', '2026-08', '2026-09']);
-    // El día más reciente es el de septiembre (7), aunque julio y agosto
-    // fueran el día 5: "si cambia, el más reciente".
+    // The most recent day is September's (7), even though July and
+    // August were on day 5: "if it changes, the most recent one".
     expect(netflix.mostRecentDay, 7);
   });
 

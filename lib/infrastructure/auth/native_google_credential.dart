@@ -1,32 +1,34 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:google_sign_in/google_sign_in.dart';
 
-/// Selector de cuenta nativo de Google → credencial de Firebase, para
-/// Android (y el resto de plataformas nativas) — nunca para web, que
-/// sigue usando `signInWithPopup`/`reauthenticateWithPopup` sin cambios.
-/// Aislado de `FirebaseAuthRepository` en su propia clase, con un único
-/// método público (`call`), para poder probarlo con un `GoogleSignIn`
-/// falso (`GoogleSignInPlatform.instance`, el mecanismo oficial del
-/// propio paquete) sin necesitar ninguna instancia real de `FirebaseAuth`
-/// — ver `docs/design.md`, "Inicio de sesión con Google en Android".
-/// Crea el `NativeGoogleCredential` de [FirebaseAuthRepository] para esta
-/// plataforma, o `null` en web.
+/// Google's native account selector → Firebase credential, for
+/// Android (and the rest of native platforms) — never for web, which
+/// keeps using `signInWithPopup`/`reauthenticateWithPopup` unchanged.
+/// Isolated from `FirebaseAuthRepository` in its own class, with a
+/// single public method (`call`), so it can be tested with a fake
+/// `GoogleSignIn` (`GoogleSignInPlatform.instance`, the package's own
+/// official mechanism) without needing any real `FirebaseAuth`
+/// instance — see `docs/design.md`, "Inicio de sesión con Google en
+/// Android".
+/// Creates [FirebaseAuthRepository]'s `NativeGoogleCredential` for
+/// this platform, or `null` on web.
 ///
-/// **Nunca** en web: el propio constructor de `GoogleSignIn()` (del
-/// paquete `google_sign_in`, no de esta app) dispara su inicialización
-/// asíncrona en cuanto se crea la instancia si `kIsWeb` es cierto —  antes
-/// incluso de llamar a ningún método — y esa inicialización falla con
-/// "ClientID not set" porque la app no configura ningún client ID de
-/// Google Sign-In para la web (no lo necesita: usa
-/// `signInWithPopup`/`reauthenticateWithPopup`, nunca este selector
-/// nativo). El fallo ocurría antes con solo construir `FirebaseAuthRepository`
-/// (en el arranque de la app), dejando la web en blanco — ver
-/// `docs/design.md`, "Bug: `GoogleSignIn` se instanciaba también en web".
+/// **Never** on web: `GoogleSignIn()`'s own constructor (from the
+/// `google_sign_in` package, not from this app) triggers its async
+/// initialization as soon as the instance is created if `kIsWeb` is
+/// true — even before calling any method — and that initialization
+/// fails with "ClientID not set" because the app configures no Google
+/// Sign-In client ID for the web (it doesn't need one: it uses
+/// `signInWithPopup`/`reauthenticateWithPopup`, never this native
+/// selector). The failure used to happen just by constructing
+/// `FirebaseAuthRepository` (at app startup), leaving the web blank —
+/// see `docs/design.md`, "Bug: `GoogleSignIn` se instanciaba también
+/// en web".
 ///
-/// [isWeb] es un parámetro aparte (no se lee `kIsWeb` aquí dentro) para
-/// que se pueda probar esta decisión sin depender de la plataforma real
-/// en la que corren los tests (`flutter test` corre siempre en la VM,
-/// donde `kIsWeb` es `false`).
+/// [isWeb] is a separate parameter (`kIsWeb` isn't read in here) so
+/// this decision can be tested without depending on the real platform
+/// the tests run on (`flutter test` always runs on the VM, where
+/// `kIsWeb` is `false`).
 NativeGoogleCredential? createNativeGoogleCredential({
   required bool isWeb,
   GoogleSignIn? googleSignIn,
@@ -40,16 +42,18 @@ class NativeGoogleCredential {
 
   final GoogleSignIn _googleSignIn;
 
-  /// Abre el selector de cuenta nativo y devuelve la credencial de
-  /// Firebase correspondiente.
+  /// Opens the native account selector and returns the matching
+  /// Firebase credential.
   ///
-  /// `GoogleSignIn.signIn()` ya convierte la cancelación del selector en
-  /// `null` (no lanza): aquí se traduce a una `FirebaseAuthException`
-  /// propia (`sign_in_canceled`), con el mismo patrón que
-  /// `FirebaseAuthRepository._currentUserOrThrow`, para que quien llame
-  /// la pase por `_mapErrors` y salga como un `AuthException` neutro,
-  /// nunca como un error sin traducir. Un error real del selector (p. ej.
-  /// de red) llega como `PlatformException`, sin modificar.
+  /// `GoogleSignIn.signIn()` already turns the selector's
+  /// cancellation into `null` (it doesn't throw): here it's translated
+  /// into a `FirebaseAuthException` of its own (`sign_in_canceled`),
+  /// with the same pattern as
+  /// `FirebaseAuthRepository._currentUserOrThrow`, so the caller runs
+  /// it through `_mapErrors` and it comes out as a neutral
+  /// `AuthException`, never as an untranslated error. A real error
+  /// from the selector (e.g. network) arrives as a `PlatformException`,
+  /// unmodified.
   Future<firebase_auth.OAuthCredential> call() async {
     final account = await _googleSignIn.signIn();
     if (account == null) {
@@ -65,8 +69,8 @@ class NativeGoogleCredential {
     );
   }
 
-  /// Cierra la sesión de Google guardada por el selector nativo. Sin
-  /// esto, `GoogleSignIn.signIn()` podría devolver la misma cuenta
-  /// cacheada en el siguiente inicio de sesión, sin mostrar el selector.
+  /// Signs out of the Google session saved by the native selector.
+  /// Without this, `GoogleSignIn.signIn()` could return the same
+  /// cached account on the next sign-in, without showing the selector.
   Future<void> signOut() => _googleSignIn.signOut();
 }

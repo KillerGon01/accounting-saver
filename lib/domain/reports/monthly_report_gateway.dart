@@ -1,12 +1,11 @@
 import 'monthly_report.dart';
 
-/// Puerto para pedir a una IA un comentario en prosa sobre un
-/// [MonthlyReport] ya calculado. A diferencia de [ChatGateway], esto es
-/// una sola llamada, sin function calling: el [MonthlyReport] que recibe
-/// solo tiene cifras agregadas (totales, por categoría, comparación), sin
-/// ningún campo para una descripción o un concepto de movimiento — así
-/// que ninguna implementación puede filtrar al prompt algo que el tipo ni
-/// siquiera transporta.
+/// Port for asking an AI for a prose comment on an already-computed
+/// [MonthlyReport]. Unlike [ChatGateway], this is a single call, no
+/// function calling: the [MonthlyReport] it receives only has
+/// aggregated figures (totals, by category, comparison), with no field
+/// for a transaction's description or concept — so no implementation
+/// can leak into the prompt something the type doesn't even carry.
 abstract class MonthlyReportGateway {
   Future<String> explain(MonthlyReport report);
 }

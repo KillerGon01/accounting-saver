@@ -57,8 +57,8 @@ void main() {
       expect(report, contains('Porfa di patata.'));
       expect(report, contains('Patata.'));
       expect(report, contains('Ahora di cinco porfa.'));
-      // La sección no debe duplicar el motivo del fallo del turno final:
-      // eso ya lo imprime la sección de "Fallos del modelo".
+      // The section must not duplicate the final turn's failure reason:
+      // that's already printed by the "Fallos del modelo" section.
       expect(report, contains('Fallos del modelo'));
     });
 

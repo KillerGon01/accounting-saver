@@ -106,11 +106,11 @@ void main() {
       await expectLater(
         withTransientRetry(() async {
           attempts++;
-          // Nunca completa dentro del `timeout` de este intento: lo que
-          // fuerza el `TimeoutException`, que `withTransientRetry` debe
-          // relanzar de inmediato, sin un segundo intento (a diferencia de
-          // un 503, el cliente no sabe si el servidor seguirá procesando
-          // esta misma petición).
+          // Never completes within this attempt's `timeout`: which
+          // forces the `TimeoutException`, which `withTransientRetry`
+          // must rethrow immediately, without a second attempt (unlike
+          // a 503, the client doesn't know whether the server will keep
+          // processing this same request).
           return Completer<String>().future;
         }, delay: Duration.zero, timeout: const Duration(milliseconds: 10)),
         throwsA(isA<TimeoutException>()),
@@ -135,8 +135,8 @@ void main() {
         throwsA(isA<TimeoutException>()),
       );
 
-      // Un solo intento, con un solo modelo: ni el reintento transitorio
-      // ni el fallback de modelo llegan a intervenir ante un timeout.
+      // A single attempt, with a single model: neither the transient
+      // retry nor the model fallback end up intervening on a timeout.
       expect(attempts, 1);
       expect(availability.isAvailable('gemini-3.8-flash'), isTrue);
       expect(availability.isAvailable('gemini-2.5-flash'), isTrue);
@@ -157,8 +157,8 @@ void main() {
       );
 
       expect(result, 'ok');
-      // El reintento ocurrió con el mismo modelo (gemini-3.8-flash): el
-      // fallback de modelo nunca llegó a intervenir.
+      // The retry happened with the same model (gemini-3.8-flash): the
+      // model fallback never got to intervene.
       expect(attempts, 2);
       expect(availability.isAvailable('gemini-3.8-flash'), isTrue);
       expect(availability.isAvailable('gemini-2.5-flash'), isTrue);

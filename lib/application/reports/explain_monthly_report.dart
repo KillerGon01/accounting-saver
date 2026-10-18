@@ -3,29 +3,30 @@ import '../../domain/reports/monthly_report.dart';
 import '../../domain/reports/monthly_report_gateway.dart';
 import '../../domain/transactions/llm_gateway_exception.dart';
 
-/// Pide a la IA un comentario sobre un [MonthlyReport] ya calculado, con
-/// el mismo tope de cuota que `SendChatMessage`: como mucho
-/// [maxCommentsPerSession] llamadas con éxito por sesión (una instancia),
-/// caché en memoria por mes (invalidada si cambian los movimientos) y
-/// ninguna llamada simultánea.
+/// Asks the AI for a comment on an already-computed [MonthlyReport],
+/// with the same quota cap as `SendChatMessage`: at most
+/// [maxCommentsPerSession] successful calls per session (one
+/// instance), an in-memory cache per month (invalidated if the
+/// transactions change), and no simultaneous calls.
 ///
-/// No decide aquí qué hacer si el mes no tiene movimientos ("No hay
-/// movimientos este mes"): eso ya lo sabe la pantalla a partir del
-/// `MonthlyReport` que ya tiene, así que no necesita llamar a este caso
-/// de uso para mostrarlo.
+/// Doesn't decide here what to do if the month has no transactions
+/// ("No hay movimientos este mes"): the screen already knows that from
+/// the `MonthlyReport` it already has, so it doesn't need to call this
+/// use case to show it.
 class ExplainMonthlyReport {
   ExplainMonthlyReport(this._gateway, [TransactionsChangeNotifier? changeNotifier])
     : _changeNotifier = changeNotifier ?? TransactionsChangeNotifier();
 
-  /// Tope de comentarios generados con éxito por sesión (una instancia;
-  /// ver el provider que la crea). Igual que en el chat, ni una respuesta
-  /// servida desde la caché ni una que acaba en error (red, cuota, 503,
-  /// timeout...) gastan una de las 6, porque ninguna de las dos cuesta
-  /// cuota de verdad.
+  /// Cap on successfully generated comments per session (one
+  /// instance; see the provider that creates it). Same as in the
+  /// chat, neither an answer served from the cache nor one that ends
+  /// in error (network, quota, 503, timeout...) spends one of the 6,
+  /// because neither one really costs quota.
   ///
-  /// 6, no 3: mismo motivo que `SendChatMessage.maxQuestionsPerSession`
-  /// (cupo diario de 500 peticiones/día observado el 11/10/2026 con
-  /// `gemini-3.5-flash-lite`). Ver docs/design.md.
+  /// 6, not 3: same reason as
+  /// `SendChatMessage.maxQuestionsPerSession` (daily quota of 500
+  /// requests/day observed on 11/10/2026 with `gemini-3.5-flash-lite`).
+  /// See docs/design.md.
   static const maxCommentsPerSession = 6;
 
   final MonthlyReportGateway _gateway;
@@ -35,8 +36,8 @@ class ExplainMonthlyReport {
   bool _isGenerating = false;
   int _commentsGenerated = 0;
 
-  /// Comentarios que quedan en esta sesión antes de llegar a
-  /// [maxCommentsPerSession]. Nunca negativo.
+  /// Comments left in this session before reaching
+  /// [maxCommentsPerSession]. Never negative.
   int get remainingComments => (maxCommentsPerSession - _commentsGenerated).clamp(0, maxCommentsPerSession);
 
   Future<String> call({required MonthlyReport report}) async {
@@ -60,9 +61,9 @@ class ExplainMonthlyReport {
 
       final comment = await _gateway.explain(report);
 
-      // Solo se cuenta aquí, tras una llamada al modelo que ha terminado
-      // con éxito: ni el acierto de caché de arriba ni un error más abajo
-      // (que se propaga sin pasar por esta línea) gastan un comentario.
+      // Only counted here, after a model call that has succeeded:
+      // neither the cache hit above nor an error below (which
+      // propagates without passing through this line) spend a comment.
       _commentsGenerated++;
       _cache[key] = _CachedComment(comment, _changeNotifier.version);
       return comment;

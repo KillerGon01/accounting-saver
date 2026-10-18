@@ -26,14 +26,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Accounting Saver',
-      // Tema oscuro forzado a propósito (ver docs/design.md, "Tema
-      // oscuro"): `AppTheme.light()` se conserva pero ningún `MaterialApp`
-      // de la app lo usa.
+      // Dark theme forced on purpose (see docs/design.md, "Tema
+      // oscuro"): `AppTheme.light()` is kept but no `MaterialApp` in
+      // the app uses it.
       theme: AppTheme.dark(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.dark,
-      // Widgets de Material en español, igual de forzado que el tema
-      // oscuro (ver docs/design.md, "Localización de Material (es-ES)").
+      // Material widgets in Spanish, just as forced as the dark
+      // theme (see docs/design.md, "Localización de Material (es-ES)").
       locale: appLocale,
       supportedLocales: appSupportedLocales,
       localizationsDelegates: appLocalizationsDelegates,
@@ -49,10 +49,10 @@ class AuthGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateChangesProvider);
 
-    // `ValueKey` por rama: sin una key propia, `AnimatedSwitcher` no
-    // detecta el cambio de pantalla (login/verificación/movimientos) y
-    // no anima nada. Puramente visual: la pantalla que se construye en
-    // cada rama es exactamente la misma de antes.
+    // `ValueKey` per branch: without its own key, `AnimatedSwitcher`
+    // doesn't detect the screen change (login/verification/transactions)
+    // and animates nothing. Purely visual: the screen built in each
+    // branch is exactly the same as before.
     final child = authState.when(
       data: (user) {
         if (user == null) return const LoginScreen(key: ValueKey('login'));

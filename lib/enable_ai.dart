@@ -1,19 +1,19 @@
-/// La interfaz de IA (entrada en lenguaje natural, y lo que venga después)
-/// solo se activa si se compila con `--dart-define=ENABLE_AI=true`. Por
-/// defecto está desactivada, para no exigir que cada persona que clona el
-/// repositorio configure Firebase AI Logic y App Check solo para poder
-/// compilar la app.
+/// The AI interface (natural language input, and whatever comes
+/// after) is only enabled if compiled with
+/// `--dart-define=ENABLE_AI=true`. Disabled by default, so as not to
+/// require everyone who clones the repository to set up Firebase AI
+/// Logic and App Check just to be able to compile the app.
 ///
-/// Esta es la petición ("se quiere activar la IA"), no si la IA está
-/// realmente disponible en esta build: para eso, ver `effectiveEnableAi`
-/// en `app_check_config.dart`, que además exige una clave de reCAPTCHA en
-/// release. `main.dart` usa esta constante solo para decidir el proveedor
-/// de depuración en builds que no son de release.
+/// This is the request ("AI is wanted"), not whether the AI is
+/// actually available in this build: for that, see
+/// `effectiveEnableAi` in `app_check_config.dart`, which also
+/// requires a reCAPTCHA key in release. `main.dart` uses this
+/// constant only to decide the debug provider in non-release builds.
 const enableAi = bool.fromEnvironment('ENABLE_AI');
 
-/// Clave de sitio de reCAPTCHA Enterprise para App Check en producción
-/// (web), pasada con `--dart-define=RECAPTCHA_SITE_KEY=...` al compilar.
-/// Nunca se escribe en el repositorio: vacía por defecto, y solo tiene
-/// valor en el entorno de compilación de quien hace el build de
-/// producción (ver docs/security.md).
+/// reCAPTCHA Enterprise site key for App Check in production (web),
+/// passed with `--dart-define=RECAPTCHA_SITE_KEY=...` at compile
+/// time. Never written into the repository: empty by default, and
+/// only has a value in the build environment of whoever does the
+/// production build (see docs/security.md).
 const recaptchaSiteKey = String.fromEnvironment('RECAPTCHA_SITE_KEY');

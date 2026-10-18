@@ -58,8 +58,8 @@ void main() {
       final gateway = FakeSavingsSuggestionsGateway.returning('ok');
       final useCase = ExplainSavingsSuggestions(gateway);
 
-      // Una meta distinta por llamada: cada una es una entrada de caché
-      // distinta, así que ninguna llamada acierta en caché.
+      // A different goal per call: each one is a different cache entry,
+      // so no call hits the cache.
       for (var i = 0; i < ExplainSavingsSuggestions.maxExplanationsPerSession; i++) {
         final goal = goalOf(id: 'g$i');
         await useCase(goal: goal, progress: progressOf(goal), suggestions: emptySuggestions);
@@ -208,7 +208,7 @@ void main() {
       final goal = goalOf();
 
       await useCase(goal: goal, progress: progressOf(goal), suggestions: emptySuggestions);
-      // Misma meta (mismos campos), sin tocar `changeNotifier`.
+      // Same goal (same fields), without touching `changeNotifier`.
       await useCase(goal: goalOf(), progress: progressOf(goal), suggestions: emptySuggestions);
 
       expect(gateway.callCount, 1);

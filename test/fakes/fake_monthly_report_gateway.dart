@@ -3,14 +3,14 @@ import 'dart:async';
 import 'package:accounting_saver/domain/reports/monthly_report.dart';
 import 'package:accounting_saver/domain/reports/monthly_report_gateway.dart';
 
-/// Fake configurable para probar [ExplainMonthlyReport] y la pantalla de
-/// resumen sin llamar a Gemini.
+/// Configurable fake for testing [ExplainMonthlyReport] and the
+/// report screen without calling Gemini.
 ///
-/// - `.returning(...)` devuelve un comentario fijo.
-/// - `.throwing(...)` simula un error del gateway.
-/// - `.pending()` no responde hasta que el test llama a `complete`/
-///   `completeWithError`, para probar el indicador de progreso sin
-///   esperar tiempo real (mismo patrón que `FakeChatGateway.pending()`).
+/// - `.returning(...)` returns a fixed comment.
+/// - `.throwing(...)` simulates a gateway error.
+/// - `.pending()` doesn't respond until the test calls `complete`/
+///   `completeWithError`, to test the progress indicator without
+///   waiting real time (same pattern as `FakeChatGateway.pending()`).
 class FakeMonthlyReportGateway implements MonthlyReportGateway {
   FakeMonthlyReportGateway.returning(this._result)
     : _error = null,

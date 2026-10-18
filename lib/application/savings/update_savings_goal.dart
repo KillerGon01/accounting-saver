@@ -1,10 +1,10 @@
 import '../../domain/savings/savings_goal.dart';
 import '../../domain/savings/savings_goal_repository.dart';
 
-/// Edita una meta ya existente (nombre, importe objetivo o fecha límite).
-/// Quien llama construye el [SavingsGoal] actualizado (p. ej. con
-/// `existing.copyWith(...)`, que ya valida al reconstruirlo); este caso de
-/// uso solo lo persiste.
+/// Edits an already-existing goal (name, target amount, or deadline).
+/// The caller builds the updated [SavingsGoal] (e.g. with
+/// `existing.copyWith(...)`, which already validates when rebuilding
+/// it); this use case only persists it.
 class UpdateSavingsGoal {
   UpdateSavingsGoal(this._repository);
 

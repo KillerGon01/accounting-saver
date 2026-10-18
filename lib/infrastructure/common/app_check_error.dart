@@ -1,15 +1,16 @@
 import 'package:firebase_ai/firebase_ai.dart';
 
-/// Si [error] señala que el backend de Gemini ha rechazado la petición
-/// porque el token de App Check no es válido: 403, `PERMISSION_DENIED`,
-/// "App attestation failed" — visto de verdad probando el chat el 8 de
-/// octubre de 2026, al activar App Check. No es un problema de cuota ni
-/// un fallo transitorio del servidor: no debe reintentarse
-/// ([withTransientRetry] no lo reintenta porque su mensaje no contiene
-/// `UNAVAILABLE`, `Deadline expired` ni `Server Error [503]`) ni marcar el
-/// modelo como agotado ([withGeminiModelFallback] solo actúa sobre
-/// [QuotaExceeded], y este error no lo es). Solo hay que traducirlo al
-/// mensaje de siempre, nunca mostrar el JSON crudo del error al usuario.
+/// Whether [error] indicates that Gemini's backend rejected the
+/// request because the App Check token isn't valid: 403,
+/// `PERMISSION_DENIED`, "App attestation failed" — actually seen
+/// while testing the chat on October 8, 2026, when enabling App
+/// Check. It's not a quota problem nor a transient server failure: it
+/// shouldn't be retried ([withTransientRetry] doesn't retry it because
+/// its message doesn't contain `UNAVAILABLE`, `Deadline expired` or
+/// `Server Error [503]`) nor should the model be marked as exhausted
+/// ([withGeminiModelFallback] only acts on [QuotaExceeded], and this
+/// error isn't that). It just needs to be translated to the usual
+/// message, never showing the error's raw JSON to the user.
 bool isAppCheckAttestationError(Object error) {
   if (error is QuotaExceeded) return false;
   if (error is! FirebaseAIException) return false;

@@ -5,15 +5,15 @@ import '../domain/savings/savings_suggestions_summary.dart';
 import '../domain/transactions/category.dart';
 import 'eval_cases.dart' show evalNow;
 
-/// Un caso de evaluación de `GeminiSavingsSuggestionsGateway`: un
-/// [SavingsSuggestionsSummary] ya construido (nunca texto escrito a mano)
-/// y una [description] solo para el informe.
+/// A `GeminiSavingsSuggestionsGateway` evaluation case: an
+/// already-built [SavingsSuggestionsSummary] (never hand-written
+/// text) and a [description] only for the report.
 ///
-/// A diferencia de `EvalCase` (chat), aquí no hace falta ninguna cuenta,
-/// ningún movimiento en Firestore ni ninguna conversación: el gateway es
-/// una sola llamada sin function calling sobre un resumen ya calculado en
-/// memoria (ver `GeminiSavingsSuggestionsGateway`), así que el caso de
-/// evaluación es, directamente, ese resumen.
+/// Unlike `EvalCase` (chat), no account, no Firestore transaction,
+/// and no conversation are needed here: the gateway is a single
+/// call with no function calling over a summary already computed in
+/// memory (see `GeminiSavingsSuggestionsGateway`), so the evaluation
+/// case is, directly, that summary.
 class SavingsSuggestionsEvalCase {
   const SavingsSuggestionsEvalCase({required this.id, required this.description, required this.summary});
 
@@ -22,8 +22,9 @@ class SavingsSuggestionsEvalCase {
   final SavingsSuggestionsSummary summary;
 }
 
-/// Construye el resumen de [goal]/[suggestions] con [summarizeSavingsSuggestions],
-/// igual que hace la hoja de sugerencias de verdad — nunca a mano.
+/// Builds [goal]/[suggestions]'s summary with
+/// [summarizeSavingsSuggestions], the same as the real suggestions
+/// sheet does — never by hand.
 SavingsSuggestionsSummary _summaryOf({required SavingsGoal goal, required List<SavingsSuggestion> suggestions}) {
   final progress = calculateSavingsGoalProgress(goal, now: evalNow);
   final result = SavingsSuggestionsResult(
@@ -51,22 +52,23 @@ SavingsGoal _goal({
   );
 }
 
-/// Los 5 casos de evaluación (ver docs/evaluation.md, "Sugerencias de
-/// ahorro con IA"). Las descripciones de los recurrentes/excesos
-/// puntuales fabricados ("Netflix", "Spotify", "Gimnasio") son, a
-/// propósito, los mismos conceptos que
-/// `savingsSuggestionsForbiddenConcepts` prohíbe en la respuesta (ver
-/// `savings_suggestions_eval_grading.dart`): así queda probado en código,
-/// no solo supuesto, que esos conceptos nunca llegan al resumen que ve el
-/// modelo (`SavingsSuggestionsSummary` no tiene ningún campo para ellos —
-/// ver `test/eval/savings_suggestions_eval_cases_test.dart`), aunque sí
-/// existan en los datos de partida.
+/// The 5 evaluation cases (see docs/evaluation.md, "Sugerencias de
+/// ahorro con IA"). The descriptions of the fabricated recurring
+/// expenses/one-off excesses ("Netflix", "Spotify", "Gimnasio") are,
+/// on purpose, the same concepts
+/// `savingsSuggestionsForbiddenConcepts` forbids in the response
+/// (see `savings_suggestions_eval_grading.dart`): this way it's
+/// proven in code, not just assumed, that those concepts never
+/// reach the summary the model sees (`SavingsSuggestionsSummary`
+/// has no field for them — see
+/// `test/eval/savings_suggestions_eval_cases_test.dart`), even
+/// though they do exist in the source data.
 List<SavingsSuggestionsEvalCase> buildSavingsSuggestionsEvalCases() {
   return [
-    // (a) Meta exigente, cobertura parcial: 3.000 € en 6 meses (aportación
-    // necesaria 500,00 €/mes), opciones que cubren 74,64 €/mes (58,98 €
-    // de recurrentes + 15,66 € de recorte) y un exceso puntual de 141,00 €
-    // (no cuenta para la cobertura).
+    // (a) Demanding goal, partial coverage: €3,000 in 6 months
+    // (required contribution €500.00/month), options that cover
+    // €74.64/month (€58.98 recurring + €15.66 cut) and a one-off
+    // excess of €141.00 (doesn't count toward coverage).
     SavingsSuggestionsEvalCase(
       id: 'savings-a-parcial-exigente',
       description: 'Meta exigente (3.000 €/6 meses) con cobertura parcial y un exceso puntual',
@@ -102,9 +104,9 @@ List<SavingsSuggestionsEvalCase> buildSavingsSuggestionsEvalCases() {
       ),
     ),
 
-    // (b) Meta pequeña, cobertura suficiente: 100 € en 11 meses
-    // (aportación necesaria 9,10 €/mes), una opción de 15,00 €/mes. Sin
-    // exceso puntual.
+    // (b) Small goal, sufficient coverage: €100 in 11 months
+    // (required contribution €9.10/month), one option of
+    // €15.00/month. No one-off excess.
     SavingsSuggestionsEvalCase(
       id: 'savings-b-suficiente-pequena',
       description: 'Meta pequeña (100 €/11 meses) con cobertura suficiente, sin exceso puntual',
@@ -121,8 +123,8 @@ List<SavingsSuggestionsEvalCase> buildSavingsSuggestionsEvalCases() {
       ),
     ),
 
-    // (c) Cobertura cero: sin ninguna opción calculada (ni recurrentes,
-    // ni recortes, ni excesos puntuales).
+    // (c) Zero coverage: no option computed at all (no recurring,
+    // no cuts, no one-off excesses).
     SavingsSuggestionsEvalCase(
       id: 'savings-c-sin-opciones',
       description: 'Meta sin ninguna opción de ahorro calculada',
@@ -132,8 +134,8 @@ List<SavingsSuggestionsEvalCase> buildSavingsSuggestionsEvalCases() {
       ),
     ),
 
-    // (d) Sin exceso puntual: recurrente y recorte presentes (cobertura
-    // parcial), pero ningún exceso puntual este mes.
+    // (d) No one-off excess: recurring and cut present (partial
+    // coverage), but no one-off excess this month.
     SavingsSuggestionsEvalCase(
       id: 'savings-d-sin-exceso-puntual',
       description: 'Recurrente y recorte presentes, cobertura parcial, sin exceso puntual',
@@ -151,8 +153,8 @@ List<SavingsSuggestionsEvalCase> buildSavingsSuggestionsEvalCases() {
       ),
     ),
 
-    // (e) Las tres opciones a la vez, en categorías distintas, con
-    // cobertura suficiente.
+    // (e) All three options at once, in different categories, with
+    // sufficient coverage.
     SavingsSuggestionsEvalCase(
       id: 'savings-e-mezcla-completa',
       description: 'Recurrentes, recortes y exceso puntual a la vez, cobertura suficiente',

@@ -4,39 +4,39 @@ import '../../domain/common/transactions_change_notifier.dart';
 import '../../domain/transactions/llm_gateway_exception.dart';
 import 'transaction_chat_functions.dart';
 
-/// Envía un mensaje de chat y, si el modelo lo pide, ejecuta funciones
-/// sobre los movimientos del usuario (validadas por
-/// [TransactionChatFunctions]) hasta obtener una respuesta de texto.
+/// Sends a chat message and, if the model asks for it, runs functions
+/// over the user's transactions (validated by
+/// [TransactionChatFunctions]) until getting a text response.
 ///
-/// Solo admite una petición en curso a la vez: una segunda llamada mientras
-/// la primera no ha terminado lanza [StateError] en vez de encolarse o
-/// solaparse. La conversación solo existe en memoria: este caso de uso no
-/// la guarda en ningún sitio.
+/// Only allows one request in flight at a time: a second call while
+/// the first hasn't finished throws [StateError] instead of queueing
+/// or overlapping. The conversation only exists in memory: this use
+/// case doesn't save it anywhere.
 ///
-/// Para no agotar la cuota gratuita de Gemini, limita las preguntas por
-/// sesión (ver [maxQuestionsPerSession]) y cachea en memoria la respuesta a
-/// una pregunta repetida (normalizada) mientras los movimientos no hayan
-/// cambiado (ver [TransactionsChangeNotifier]).
+/// To avoid exhausting Gemini's free quota, it caps questions per
+/// session (see [maxQuestionsPerSession]) and caches in memory the
+/// answer to a repeated (normalized) question while the transactions
+/// haven't changed (see [TransactionsChangeNotifier]).
 class SendChatMessage {
   SendChatMessage(this._chatGateway, this._functions, [TransactionsChangeNotifier? changeNotifier])
     : _changeNotifier = changeNotifier ?? TransactionsChangeNotifier();
 
-  /// Solo se envían los últimos 10 mensajes como contexto, para no hacer
-  /// crecer sin límite cada petición a la IA.
+  /// Only the last 10 messages are sent as context, so each AI
+  /// request doesn't keep growing without limit.
   static const maxHistoryLength = 10;
 
-  /// Tope de preguntas por sesión (una instancia de esta clase; ver el
-  /// provider que la crea), para acotar cuánta cuota gratuita puede gastar
-  /// una sola sesión de chat. Solo cuenta una llamada al modelo que termina
-  /// con éxito: ni una respuesta servida desde la caché ni una que acaba en
-  /// error (red, cuota, 503, respuesta malformada...) gastan una de las 20,
-  /// porque ninguna de las dos gasta cuota de verdad.
+  /// Cap on questions per session (one instance of this class; see
+  /// the provider that creates it), to bound how much free quota a
+  /// single chat session can spend. Only a model call that succeeds
+  /// counts: neither an answer served from the cache nor one that ends
+  /// in error (network, quota, 503, malformed response...) spends one
+  /// of the 20, because neither one really spends quota.
   ///
-  /// 20, no 8: con `gemini-3.5-flash-lite` como primer modelo del
-  /// fallback (ver `geminiModelFallbacks`), el cupo diario observado de
-  /// verdad el 11/10/2026 es 500 peticiones/día (y 15/min), muy por encima
-  /// de lo que una sola sesión de chat puede gastar; 8 era conservador
-  /// para el cupo mucho más bajo de `gemini-3.8-flash` (20/día). Ver
+  /// 20, not 8: with `gemini-3.5-flash-lite` as the fallback's first
+  /// model (see `geminiModelFallbacks`), the daily quota actually
+  /// observed on 11/10/2026 is 500 requests/day (and 15/min), well
+  /// above what a single chat session can spend; 8 was conservative
+  /// for `gemini-3.8-flash`'s much lower quota (20/day). See
   /// docs/design.md.
   static const maxQuestionsPerSession = 20;
 
@@ -48,8 +48,8 @@ class SendChatMessage {
   bool _isSending = false;
   int _questionsAsked = 0;
 
-  /// Preguntas que quedan en esta sesión antes de llegar a
-  /// [maxQuestionsPerSession]. Nunca negativo.
+  /// Questions left in this session before reaching
+  /// [maxQuestionsPerSession]. Never negative.
   int get remainingQuestions => (maxQuestionsPerSession - _questionsAsked).clamp(0, maxQuestionsPerSession);
 
   Future<String> call({
@@ -92,9 +92,9 @@ class SendChatMessage {
         },
       );
 
-      // Solo se cuenta aquí, tras una llamada al modelo que ha terminado
-      // con éxito: ni el acierto de caché de arriba ni un error más abajo
-      // (que se propaga sin pasar por esta línea) gastan una pregunta.
+      // Only counted here, after a model call that has succeeded:
+      // neither the cache hit above nor an error below (which
+      // propagates without passing through this line) spend a question.
       _questionsAsked++;
       _cache[normalizedMessage] = _CachedAnswer(reply, _changeNotifier.version);
       return reply;

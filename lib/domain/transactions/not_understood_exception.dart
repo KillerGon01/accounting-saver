@@ -1,6 +1,7 @@
-/// El texto en lenguaje natural no describe un movimiento con un importe
-/// claro: ni la IA ha podido extraerlo, ni el propio texto menciona ningún
-/// número. No se abre el formulario con una propuesta inventada.
+/// The natural language text doesn't describe a transaction with a
+/// clear amount: neither has the AI been able to extract one, nor does
+/// the text itself mention any number. The form isn't opened with a
+/// made-up draft.
 class NotUnderstoodException implements Exception {
   const NotUnderstoodException([
     this.message = 'No he encontrado un importe en el texto. Prueba con algo '

@@ -2,25 +2,26 @@ import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 
 import 'enable_ai.dart';
 
-/// Qué proveedor de App Check usar para web, sin depender del SDK de
-/// Firebase: un resultado puro que `main.dart` traduce al `WebProvider`
-/// concreto (`WebDebugProvider` o `ReCaptchaEnterpriseProvider`).
+/// Which App Check provider to use for web, without depending on the
+/// Firebase SDK: a pure result `main.dart` translates into the
+/// concrete `WebProvider` (`WebDebugProvider` or
+/// `ReCaptchaEnterpriseProvider`).
 enum WebAppCheckProviderChoice { none, debug, recaptchaEnterprise }
 
-/// Qué proveedor de App Check usar para Android, igual de puro. No hay un
-/// valor de producción: no hay ningún proveedor de App Check de
-/// producción configurado para Android (Play Integrity exigiría vincular
-/// la app en Play Console, sin hacer, ver docs/security.md), así que un
-/// release de Android nunca llega a activar App Check (ver
-/// `chooseAppCheckConfig`): `debug` solo se usa en debug/profile.
+/// Which App Check provider to use for Android, just as pure. No
+/// production value: there's no production App Check provider
+/// configured for Android (Play Integrity would require linking the
+/// app in Play Console, not done, see docs/security.md), so an
+/// Android release never gets to activate App Check (see
+/// `chooseAppCheckConfig`): `debug` is only used in debug/profile.
 enum AndroidAppCheckProviderChoice { none, debug }
 
-/// Resultado de decidir, a partir de las variables de compilación, qué
-/// proveedores de App Check activar y si la IA debe mostrarse de verdad en
-/// esta build. Lógica pura (sin Firebase, y el único símbolo de Flutter
-/// que usa `kReleaseMode` se resuelve antes de llegar aquí) para poder
-/// probarla con `chooseAppCheckConfig` y fakes, sin ningún proyecto de
-/// Firebase real.
+/// Result of deciding, from the build variables, which App Check
+/// providers to activate and whether the AI should really be shown
+/// in this build. Pure logic (no Firebase, and the only Flutter
+/// symbol it uses, `kReleaseMode`, is resolved before reaching here)
+/// so it can be tested with `chooseAppCheckConfig` and fakes, without
+/// any real Firebase project.
 class AppCheckConfig {
   const AppCheckConfig({
     required this.effectiveEnableAi,
@@ -28,26 +29,27 @@ class AppCheckConfig {
     required this.androidProvider,
   });
 
-  /// Si la IA debe mostrarse y usarse de verdad en esta build. En una
-  /// build que no es de release, coincide con `enableAi` (el proveedor de
-  /// depuración no necesita ninguna clave, en web ni en Android). En
-  /// release, solo es verdadero en **web** y con una clave de reCAPTCHA
-  /// Enterprise no vacía: no hay ningún proveedor de App Check de
-  /// producción para Android (Play Integrity exigiría vincular la app en
-  /// Play Console, sin hacer), así que un release de Android oculta la IA
-  /// en vez de dejarla fallar con un 403 de App Check (ver
-  /// `TransactionsScreen` y `docs/security.md`).
+  /// Whether the AI should really be shown and used in this build.
+  /// In a non-release build, it matches `enableAi` (the debug
+  /// provider needs no key, neither on web nor on Android). In
+  /// release, it's only true on **web** and with a non-empty
+  /// reCAPTCHA Enterprise key: there's no production App Check
+  /// provider for Android (Play Integrity would require linking the
+  /// app in Play Console, not done), so an Android release hides the
+  /// AI instead of letting it fail with an App Check 403 (see
+  /// `TransactionsScreen` and `docs/security.md`).
   final bool effectiveEnableAi;
 
   final WebAppCheckProviderChoice webProvider;
   final AndroidAppCheckProviderChoice androidProvider;
 }
 
-/// Decide la configuración de App Check. [isRelease] e [isWeb] se pasan
-/// como parámetros (normalmente `kReleaseMode` y `kIsWeb`) en vez de
-/// leerse aquí dentro, para que esta función no dependa de Flutter y se
-/// pueda probar con cualquier combinación, incluidas las que no se dan
-/// nunca juntas en una build real (como `isRelease: true` en un test).
+/// Decides the App Check configuration. [isRelease] and [isWeb] are
+/// passed as parameters (normally `kReleaseMode` and `kIsWeb`)
+/// instead of being read in here, so this function doesn't depend on
+/// Flutter and can be tested with any combination, including ones
+/// that never occur together in a real build (like `isRelease: true`
+/// in a test).
 AppCheckConfig chooseAppCheckConfig({
   required bool enableAi,
   required bool isRelease,
@@ -63,8 +65,8 @@ AppCheckConfig chooseAppCheckConfig({
   }
 
   if (!isRelease) {
-    // Debug y profile: proveedor de depuración, en web y en Android por
-    // igual, sin necesitar ninguna clave.
+    // Debug and profile: debug provider, on web and Android alike,
+    // needing no key.
     return const AppCheckConfig(
       effectiveEnableAi: true,
       webProvider: WebAppCheckProviderChoice.debug,
@@ -72,9 +74,9 @@ AppCheckConfig chooseAppCheckConfig({
     );
   }
 
-  // Release en cualquier plataforma que no sea web: no hay ningún
-  // proveedor de App Check de producción para Android, así que la IA se
-  // oculta igual que con `enableAi: false`, sin activar App Check.
+  // Release on any platform that isn't web: there's no production
+  // App Check provider for Android, so the AI is hidden just as
+  // with `enableAi: false`, without activating App Check.
   if (!isWeb) {
     return const AppCheckConfig(
       effectiveEnableAi: false,
@@ -83,9 +85,9 @@ AppCheckConfig chooseAppCheckConfig({
     );
   }
 
-  // Release en web: nunca el proveedor de depuración; exige una clave de
-  // reCAPTCHA Enterprise no vacía, o la IA se oculta en vez de dejarla
-  // fallar.
+  // Release on web: never the debug provider; requires a non-empty
+  // reCAPTCHA Enterprise key, or the AI is hidden instead of letting
+  // it fail.
   final hasSiteKey = recaptchaSiteKey.isNotEmpty;
   return AppCheckConfig(
     effectiveEnableAi: hasSiteKey,
@@ -94,12 +96,11 @@ AppCheckConfig chooseAppCheckConfig({
   );
 }
 
-/// Configuración de App Check para esta build, calculada una sola vez a
-/// partir de las constantes de compilación (`enable_ai.dart`), de
-/// `kReleaseMode` y de `kIsWeb`. `main.dart` la usa para decidir qué
-/// activar; `effectiveEnableAi` es lo que deben consultar las pantallas
-/// para mostrar u ocultar los controles de IA (en vez de `enableAi` a
-/// secas).
+/// App Check configuration for this build, computed once from the
+/// build constants (`enable_ai.dart`), from `kReleaseMode`, and from
+/// `kIsWeb`. `main.dart` uses it to decide what to activate;
+/// `effectiveEnableAi` is what screens should check to show or hide
+/// the AI controls (instead of `enableAi` on its own).
 final appCheckConfig = chooseAppCheckConfig(
   enableAi: enableAi,
   isRelease: kReleaseMode,
@@ -107,8 +108,8 @@ final appCheckConfig = chooseAppCheckConfig(
   recaptchaSiteKey: recaptchaSiteKey,
 );
 
-/// Si la IA debe mostrarse de verdad en esta build (ver
-/// [AppCheckConfig.effectiveEnableAi]). Las pantallas importan este
-/// símbolo en vez de `enableAi` para decidir si muestran el chat o la
-/// entrada en lenguaje natural.
+/// Whether the AI should really be shown in this build (see
+/// [AppCheckConfig.effectiveEnableAi]). Screens import this symbol
+/// instead of `enableAi` to decide whether to show the chat or
+/// natural language input.
 final effectiveEnableAi = appCheckConfig.effectiveEnableAi;

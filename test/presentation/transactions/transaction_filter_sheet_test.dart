@@ -7,10 +7,11 @@ import 'package:accounting_saver/presentation/transactions/transaction_filter_sh
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Pumpa un `Scaffold` con un botón que abre la hoja (`showTransactionFilterSheet`
-/// necesita un `Navigator`/`Overlay` de verdad, no se puede pumpar la hoja
-/// sola). [onResult] recibe lo que devuelva la hoja al cerrarse (`null` si
-/// se descarta sin pulsar "Aplicar" ni "Limpiar").
+/// Pumps a `Scaffold` with a button that opens the sheet
+/// (`showTransactionFilterSheet` needs a real `Navigator`/`Overlay`, the
+/// sheet can't be pumped on its own). [onResult] receives whatever the
+/// sheet returns on close (`null` if dismissed without pressing
+/// "Aplicar" or "Limpiar").
 Future<void> _pumpHost(
   WidgetTester tester, {
   Size size = const Size(400, 800),
@@ -119,10 +120,10 @@ void main() {
         );
         await _open(tester);
 
-        // "abc" no sirve aquí: los `inputFormatters` del campo ya lo
-        // filtrarían a vacío antes de llegar al validador. "12,345" pasa
-        // el formato de caracteres permitidos pero no el de
-        // `parseEurosToCents` (como mucho 2 decimales).
+        // "abc" doesn't work here: the field's `inputFormatters` would
+        // already filter it down to empty before reaching the
+        // validator. "12,345" passes the allowed-character format but
+        // not `parseEurosToCents`'s (at most 2 decimals).
         await tester.enterText(find.widgetWithText(TextFormField, 'Mínimo'), '12,345');
         await tester.tap(find.widgetWithText(FilledButton, 'Aplicar'));
         await tester.pumpAndSettle();
@@ -163,12 +164,11 @@ void main() {
       expect(result!.isActive, isFalse);
     });
 
-    // Ajuste pedido: 360x640 (la pantalla principal usa 360x740, ver
-    // transactions_screen_test.dart; esta hoja es una ruta de interacción
-    // distinta, con su propio margen, así que se prueba aparte, no
-    // reutilizando ese fixture) con el teclado simulado (300 px de inset)
-    // y la escala de texto del sistema a 1.3 — sin ninguna excepción de
-    // desbordamiento.
+    // Requested adjustment: 360x640 (the main screen uses 360x740, see
+    // transactions_screen_test.dart; this sheet is a different
+    // interaction path, with its own margin, so it's tested separately
+    // instead of reusing that fixture) with the simulated keyboard (300
+    // px inset) and the system text scale at 1.3 — no overflow exception.
     testWidgets(
       'sin excepciones de desbordamiento a 360x640, teclado de 300px y texto a escala 1.3',
       (tester) async {

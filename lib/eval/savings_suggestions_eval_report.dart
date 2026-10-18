@@ -1,10 +1,10 @@
 import 'savings_suggestions_eval_grading.dart';
 
-/// Construye el bloque Markdown listo para pegar en `docs/evaluation.md`
-/// (ver ese documento, "Sugerencias de ahorro con IA"): evalúa
-/// `GeminiSavingsSuggestionsGateway` directamente, sobre resúmenes ya
-/// construidos en memoria — sin ninguna cuenta, sin Firestore y sin
-/// conversación de por medio.
+/// Builds the Markdown block ready to paste into `docs/evaluation.md`
+/// (see that document, "Sugerencias de ahorro con IA"): evaluates
+/// `GeminiSavingsSuggestionsGateway` directly, over summaries
+/// already built in memory — with no account, no Firestore, and no
+/// conversation involved.
 String buildSavingsSuggestionsEvalReportMarkdown({
   required DateTime runDate,
   required List<SavingsSuggestionsEvalResult> results,

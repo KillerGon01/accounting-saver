@@ -23,9 +23,10 @@ Transaction _tx({
   );
 }
 
-/// 4 gastos de `category` en el histórico, con los importes dados (nunca
-/// menos de [unusualExpenseMinHistoryCount], para que la categoría tenga
-/// muestra suficiente salvo que el propio test pida lo contrario).
+/// 4 expenses of `category` in the history, with the given amounts
+/// (never fewer than [unusualExpenseMinHistoryCount], so the
+/// category has enough sample unless the test itself asks
+/// otherwise).
 List<Transaction> _history(List<int> amountsCentsAbs, {Category category = Category.ocio}) {
   var counter = 0;
   return [
@@ -42,7 +43,7 @@ List<Transaction> _history(List<int> amountsCentsAbs, {Category category = Categ
 void main() {
   group('detectUnusualExpenses', () {
     test('detecta un gasto que supera el doble de la mediana de su categoría', () {
-      // Mediana del histórico (4 gastos, par): (6.000+6.400)/2 = 6.200.
+      // History's median (4 expenses, even): (6,000+6,400)/2 = 6,200.
       final history = _history([5000, 6000, 6400, 7000]);
       final current = [_tx(id: 'actual', amountCents: -13000, category: Category.ocio)];
 
@@ -75,7 +76,7 @@ void main() {
     );
 
     test('una categoría con menos de 4 gastos en el histórico no avisa, aunque el importe sea alto', () {
-      final history = _history([1000, 1000, 1000]); // solo 3
+      final history = _history([1000, 1000, 1000]); // only 3
       final current = [_tx(id: 'caro', amountCents: -1000000, category: Category.ocio)];
 
       expect(
@@ -85,9 +86,9 @@ void main() {
     });
 
     test('excluye un gasto que coincide con un recurrente (mismo concepto e importe)', () {
-      // "Alquiler" de 85.000 en 2 meses del histórico → recurrente.
+      // "Alquiler" of 85,000 in 2 history months → recurring.
       final history = [
-        ..._history([1000, 1000, 1000, 1000]), // ocio, para que no sea el histórico vacío
+        ..._history([1000, 1000, 1000, 1000]), // ocio, so the history isn't empty
         for (final month in [6, 7, 8, 9])
           _tx(
             id: 'alq-$month',
@@ -108,7 +109,7 @@ void main() {
     });
 
     test('mediana con número impar de datos: el del centro tras ordenar', () {
-      // 5 datos (impar): ordenados 1000, 3000, 5000, 9000, 20000 → centro 5000.
+      // 5 values (odd): sorted 1000, 3000, 5000, 9000, 20000 → middle 5000.
       final oddHistory = [
         for (final amount in [1000, 3000, 5000, 9000, 20000])
           _tx(id: 'odd-$amount', amountCents: -amount, date: DateTime(2026, 9, 1)),
@@ -121,7 +122,7 @@ void main() {
     });
 
     test('mediana con número par de datos: la media entera de los dos centrales, redondeada hacia abajo', () {
-      // Ordenados: 5000, 6000, 6400, 7000 → centrales 6000 y 6400 → (6000+6400)/2 = 6200.
+      // Sorted: 5000, 6000, 6400, 7000 → middle 6000 and 6400 → (6000+6400)/2 = 6200.
       final history = _history([7000, 5000, 6400, 6000]);
       final current = [_tx(id: 'actual', amountCents: -12401)];
 
@@ -154,8 +155,8 @@ void main() {
         ..._history([100000, 100000, 100000, 100000], category: Category.hogar),
         ..._history([1000, 1000, 1000, 1000], category: Category.ocio),
       ];
-      // 2.500 en ocio no es inusual para el histórico de ocio (mediana 1.000,
-      // el doble es 2.000, pero sí lo sería si comparase contra hogar).
+      // 2,500 in ocio isn't unusual for ocio's history (median
+      // 1,000, double is 2,000, but it would be if compared against hogar).
       final current = [_tx(id: 'ocio-caro', amountCents: -2500, category: Category.ocio)];
 
       final result = detectUnusualExpenses(currentMonthTransactions: current, historyTransactions: history);

@@ -1,9 +1,10 @@
 import '../transactions/category.dart';
 
-/// Resumen mensual calculado a partir de los movimientos del usuario:
-/// totales, gasto por categoría y comparación con el mes anterior. Dart
-/// puro (sin Firebase ni Flutter); lo calcula `BuildMonthlyReport`
-/// (aplicación) y lo consume la pantalla de resumen (presentación).
+/// Monthly report computed from the user's transactions: totals,
+/// expense by category, and comparison with the previous month. Pure
+/// Dart (no Firebase, no Flutter); `BuildMonthlyReport` (application
+/// layer) computes it and the report screen (presentation layer)
+/// consumes it.
 class MonthlyReport {
   const MonthlyReport({
     required this.year,
@@ -22,7 +23,7 @@ class MonthlyReport {
   final int month;
   final int incomeCents;
 
-  /// Magnitud positiva: el total gastado, sin signo (igual que
+  /// Positive magnitude: the total spent, unsigned (same as
   /// `MonthlySummary.expenseCents`).
   final int expenseCents;
 
@@ -30,38 +31,40 @@ class MonthlyReport {
 
   int get balanceCents => incomeCents - expenseCents;
 
-  /// Gasto por categoría del mes, ordenado de mayor a menor importe. Solo
-  /// incluye categorías con gasto (> 0 céntimos) en el mes.
+  /// Expense by category for the month, sorted from highest to lowest
+  /// amount. Only includes categories with spending (> 0 cents) in the
+  /// month.
   final List<CategoryExpense> categoryBreakdown;
 
-  /// Las 3 categorías de mayor gasto (o menos, si hay menos de 3 con
-  /// gasto). Derivado de [categoryBreakdown], no se guarda aparte.
+  /// The top 3 categories by spending (or fewer, if there are fewer
+  /// than 3 with spending). Derived from [categoryBreakdown], not
+  /// stored separately.
   List<CategoryExpense> get topCategories => categoryBreakdown.take(3).toList();
 
-  /// `null` si el mes anterior no tiene ningún movimiento: no hay nada con
-  /// qué comparar, y no se inventa una cifra (por ejemplo, un descenso del
-  /// 100 % que no refleja la ausencia de datos).
+  /// `null` if the previous month has no transactions: there's nothing
+  /// to compare against, and no figure is made up (for example, a 100%
+  /// drop that doesn't reflect the lack of data).
   final MonthlyComparison? comparison;
 
-  /// `true` si alguna de las dos consultas (este mes o el anterior) llegó
-  /// al tope de `BuildMonthlyReport.maxFetchLimit` movimientos leídos: las
-  /// cifras pueden no reflejar el mes completo.
+  /// `true` if either of the two queries (this month or the previous
+  /// one) hit `BuildMonthlyReport.maxFetchLimit` transactions read: the
+  /// figures may not reflect the full month.
   final bool truncated;
 
-  /// `true` si este informe es del mes en curso (según el `Clock` de
-  /// `BuildMonthlyReport`), no de un mes ya cerrado.
+  /// `true` if this report is for the current month (according to
+  /// `BuildMonthlyReport`'s `Clock`), not an already-closed month.
   final bool isCurrentMonth;
 
-  /// Día del mes hasta el que llegan los datos, solo si [isCurrentMonth]
-  /// es `true` (si no, `null`): un mes en curso nunca tiene todos sus
-  /// días, así que compararlo con un mes anterior completo como si
-  /// fueran equivalentes sería engañoso.
+  /// Day of the month the data reaches up to, only if [isCurrentMonth]
+  /// is `true` (otherwise `null`): a current month never has all its
+  /// days yet, so comparing it with a full previous month as if they
+  /// were equivalent would be misleading.
   final int? elapsedDays;
 }
 
-/// Gasto de una categoría en el mes, con su porcentaje sobre el total
-/// gastado. El porcentaje se guarda con toda su precisión (sin redondear):
-/// solo se redondea al mostrarlo (ver `report_formatters.dart`).
+/// A category's expense for the month, with its percentage of the total
+/// spent. The percentage is stored at full precision (not rounded):
+/// it's only rounded when displayed (see `report_formatters.dart`).
 class CategoryExpense {
   const CategoryExpense({
     required this.category,
@@ -71,17 +74,18 @@ class CategoryExpense {
 
   final Category category;
 
-  /// Magnitud positiva.
+  /// Positive magnitude.
   final int amountCents;
 
-  /// Porcentaje (0-100) de [amountCents] sobre el total gastado en el mes.
+  /// Percentage (0-100) of [amountCents] over the total spent in the
+  /// month.
   final double percentageOfExpense;
 }
 
-/// Comparación del gasto total y por categoría entre este mes y el
-/// anterior. Las diferencias porcentuales son `null` cuando la base de
-/// comparación (el importe del mes anterior) es cero: no hay un
-/// porcentaje que no sea inventado para "de 0 € a X €".
+/// Comparison of total and per-category spending between this month
+/// and the previous one. Percentage differences are `null` when the
+/// comparison base (the previous month's amount) is zero: there's no
+/// percentage that isn't made up for "from €0 to €X".
 class MonthlyComparison {
   const MonthlyComparison({
     required this.previousExpenseCents,
@@ -92,14 +96,14 @@ class MonthlyComparison {
 
   final int previousExpenseCents;
 
-  /// Gasto de este mes menos el del mes anterior: positivo si se ha
-  /// gastado más.
+  /// This month's expense minus the previous month's: positive if more
+  /// was spent.
   final int expenseDeltaCents;
 
   final double? expenseDeltaPercent;
 
-  /// Solo incluye categorías con gasto en este mes, en el anterior, o en
-  /// los dos.
+  /// Only includes categories with spending this month, the previous
+  /// one, or both.
   final Map<Category, CategoryComparison> perCategoryDeltas;
 }
 
@@ -117,18 +121,19 @@ class CategoryComparison {
   final double? deltaPercent;
 }
 
-/// Compara el gasto por categoría de dos meses ya calculados (por
-/// [BuildMonthlyReport] o equivalente): `currentBreakdown` es el mes que se
-/// evalúa, `previousBreakdown` el mes base de la comparación (el que
-/// aparece como "antes" o "frente a" en el resultado).
+/// Compares the expense by category of two already-computed months
+/// (by [BuildMonthlyReport] or equivalent): `currentBreakdown` is the
+/// month being evaluated, `previousBreakdown` the comparison's base
+/// month (the one that shows up as "before" or "versus" in the
+/// result).
 ///
-/// Pura: solo depende del desglose y el total ya agregados de cada mes, no
-/// de las transacciones originales. Así una sola función sirve tanto para
-/// "este mes contra el anterior" (la comparación que ya incluye
-/// [BuildMonthlyReport] en cada informe) como para comparar dos meses
-/// cualesquiera (ver `CompareMonths` del chat, en
-/// `TransactionChatFunctions`), sin duplicar la aritmética de céntimos en
-/// dos sitios.
+/// Pure: only depends on each month's already-aggregated breakdown and
+/// total, not on the original transactions. That way a single function
+/// serves both "this month against the previous one" (the comparison
+/// [BuildMonthlyReport] already includes in every report) and comparing
+/// any two months (see the chat's `CompareMonths`, in
+/// `TransactionChatFunctions`), without duplicating the cents
+/// arithmetic in two places.
 MonthlyComparison compareCategoryBreakdowns({
   required List<CategoryExpense> currentBreakdown,
   required int currentExpenseCents,

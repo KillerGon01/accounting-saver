@@ -58,8 +58,8 @@ void main() {
 
       expect(prompt, isNot(contains('IGNORA')));
       expect(prompt, isNot(contains('RICO')));
-      // El propio tipo no transporta descripciones: lo confirmamos aquí
-      // para que quede explícito, no solo implícito en el tipo.
+      // The type itself doesn't carry descriptions: we confirm it here
+      // so it's explicit, not just implicit in the type.
       expect(report.categoryBreakdown.single.amountCents, 3000);
     });
 

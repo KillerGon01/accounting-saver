@@ -1,22 +1,22 @@
 import '../transactions/amount_limits.dart';
 import 'extracted_payroll.dart';
 
-/// Años entre los que se considera razonable el periodo de una nómina (ni
-/// una fecha claramente mal reconocida del documento, como el año 1 o el
-/// año 9999, ni una del futuro lejano). No es una validación de negocio
-/// real (no existe tal cosa para una nómina), solo un filtro de cordura
-/// sobre lo que ha copiado el modelo.
+/// Years between which a payroll's period is considered reasonable
+/// (neither a clearly misread date from the document, like the year 1
+/// or the year 9999, nor one in the far future). Not a real business
+/// validation (there's no such thing for a payroll), just a sanity
+/// filter over what the model copied.
 const minReasonablePayrollYear = 2000;
 const maxReasonablePayrollYear = 2100;
 
-/// Cuántos días, como mucho, puede durar el periodo de una nómina. Una
-/// nómina cubre normalmente un mes; se deja margen (una nómina podría
-/// cubrir, por ejemplo, un trimestre) sin llegar a aceptar un periodo que
-/// claramente no es el de una sola nómina.
+/// How many days, at most, a payroll's period can last. A payroll
+/// normally covers a month; some margin is left (a payroll could cover,
+/// say, a quarter) without going so far as to accept a period that
+/// clearly isn't a single payroll's.
 const maxReasonablePayrollPeriodDays = 95;
 
-/// El porcentaje de una deducción sobre el bruto, calculado en código (no
-/// por el modelo): `cents / grossCents * 100`.
+/// A deduction's percentage of the gross amount, computed in code (not
+/// by the model): `cents / grossCents * 100`.
 class PayrollDeductionBreakdown {
   const PayrollDeductionBreakdown({
     required this.concept,
@@ -29,11 +29,11 @@ class PayrollDeductionBreakdown {
   final double percentOfGross;
 }
 
-/// Validación en código de una [ExtractedPayroll], calculada a partir de
-/// sus cifras tal y como las ha copiado el modelo. Nunca se fía de ningún
-/// cálculo que el modelo diga haber hecho (ni de `anomalies`, que es solo
-/// informativo): todo lo de aquí se recalcula desde cero a partir de
-/// [ExtractedPayroll.grossCents], [ExtractedPayroll.deductions] y
+/// Code-side validation of an [ExtractedPayroll], computed from its
+/// figures exactly as the model copied them. Never trusts any
+/// calculation the model claims to have done (nor `anomalies`, which is
+/// only informative): everything here is recomputed from scratch from
+/// [ExtractedPayroll.grossCents], [ExtractedPayroll.deductions] and
 /// [ExtractedPayroll.netAsStatedCents].
 class PayrollValidation {
   const PayrollValidation({
@@ -78,29 +78,30 @@ class PayrollValidation {
     );
   }
 
-  /// Suma de todas las deducciones, en céntimos.
+  /// Sum of all deductions, in cents.
   final int deductionsTotalCents;
 
-  /// `grossCents - deductionsTotalCents - netAsStatedCents`. Cero si el
-  /// líquido declarado cuadra exactamente con bruto menos deducciones.
+  /// `grossCents - deductionsTotalCents - netAsStatedCents`. Zero if the
+  /// stated net pay matches gross pay minus deductions exactly.
   final int discrepancyCents;
 
   final List<PayrollDeductionBreakdown> deductionBreakdown;
 
-  /// `false` si el bruto, el líquido o alguna deducción es cero, negativo,
-  /// o supera `maxAbsoluteAmountCents` (la misma constante del dominio que
-  /// limita cualquier movimiento, ver `amount_limits.dart`).
+  /// `false` if the gross amount, the net amount, or any deduction is
+  /// zero, negative, or exceeds `maxAbsoluteAmountCents` (the same
+  /// domain constant that limits any transaction, see
+  /// `amount_limits.dart`).
   final bool amountsAreValid;
 
-  /// `false` si el fin del periodo es anterior a su inicio, el periodo
-  /// dura más de [maxReasonablePayrollPeriodDays], o alguna de las dos
-  /// fechas cae fuera de [minReasonablePayrollYear]..[maxReasonablePayrollYear].
+  /// `false` if the period's end is before its start, the period lasts
+  /// longer than [maxReasonablePayrollPeriodDays], or either date falls
+  /// outside [minReasonablePayrollYear]..[maxReasonablePayrollYear].
   final bool datesAreCoherent;
 
-  /// `true` solo si el líquido declarado cuadra exactamente con bruto
-  /// menos deducciones, los importes son válidos y las fechas son
-  /// coherentes. Es la única condición que decide si se propone un
-  /// ingreso (ver `ParsePayroll`).
+  /// `true` only if the stated net pay matches gross pay minus
+  /// deductions exactly, the amounts are valid, and the dates are
+  /// coherent. The only condition that decides whether an income is
+  /// proposed (see `ParsePayroll`).
   bool get matches => discrepancyCents == 0 && amountsAreValid && datesAreCoherent;
 
   static bool _isPositiveAndWithinLimit(int cents) => cents > 0 && cents <= maxAbsoluteAmountCents;

@@ -26,24 +26,24 @@ abstract class TransactionRepository {
 
   Future<void> delete({required String userId, required String transactionId});
 
-  /// Resumen de todo el histórico. Las implementaciones deben calcularlo sin
-  /// descargar todos los movimientos.
+  /// Summary of the entire history. Implementations must compute it
+  /// without downloading every transaction.
   Future<ActivitySummary> getActivitySummary({required String userId});
 
-  /// Movimientos entre [start] (incluido) y [end] (excluido), ordenados por
-  /// fecha descendente y limitados a [limit] resultados.
+  /// Transactions between [start] (included) and [end] (excluded),
+  /// sorted by descending date and capped at [limit] results.
   ///
-  /// Las implementaciones solo filtran por este rango de fechas en el
-  /// servidor (y ordenan por esa misma fecha); no añaden ningún otro `where`
-  /// (ni por importe, ni por categoría, ni por nada más), para no depender
-  /// de índices compuestos de Firestore. Cualquier otro filtrado —
-  /// categoría, signo del importe, sumas, etc.— lo hace quien llama, en
-  /// código, sobre la lista ya descargada.
+  /// Implementations only filter by this date range on the server
+  /// (and sort by that same date); they add no other `where` (not by
+  /// amount, not by category, nor anything else), so as not to depend
+  /// on Firestore composite indexes. Any other filtering — category,
+  /// amount sign, sums, etc. — is done by the caller, in code, over
+  /// the already-downloaded list.
   ///
-  /// Quien llama decide [limit] según lo que necesite: un tope de seguridad
-  /// alto para calcular sumas sobre (casi) todo el rango, o un número
-  /// pequeño si solo quiere detectar que hay más resultados de los que
-  /// quiere mostrar pidiendo uno de más.
+  /// The caller decides [limit] based on what it needs: a high safety
+  /// cap to compute sums over (almost) the whole range, or a small
+  /// number if it only wants to detect there are more results than it
+  /// wants to show by asking for one extra.
   Future<List<Transaction>> findByDateRange({
     required String userId,
     required DateTime start,

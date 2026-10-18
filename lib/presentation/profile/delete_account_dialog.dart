@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Resultado del diálogo cuando el usuario confirma. [password] solo viene
-/// informado con correo y contraseña.
+/// Result of the dialog when the user confirms. [password] is only
+/// filled in with email and password.
 class DeleteAccountRequest {
   const DeleteAccountRequest({this.password});
 
@@ -42,7 +42,7 @@ class _DeleteAccountDialogState extends State<DeleteAccountDialog> {
 
   void _refresh() => setState(() {});
 
-  /// El correo debe coincidir exactamente, sin recortar ni ignorar mayúsculas.
+  /// The email must match exactly, with no trimming or case-insensitivity.
   bool get _canConfirm {
     if (widget.email.isEmpty || _emailController.text != widget.email) return false;
     return !widget.requiresPassword || _passwordController.text.isNotEmpty;

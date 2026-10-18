@@ -13,13 +13,14 @@ class DeleteAccount {
   final UserDataRepository _userDataRepository;
   final TransactionsChangeNotifier? _changeNotifier;
 
-  /// Orden fijo: (1) reautenticar, (2) borrar los movimientos, (3) borrar la
-  /// cuenta de Auth. Si la reautenticación falla, no se borra nada. Si falla
-  /// el paso 2 o el 3, se lanza [AccountDeletionException] indicando la etapa,
-  /// y volver a llamar a este caso de uso completa el borrado.
+  /// Fixed order: (1) reauthenticate, (2) delete the transactions, (3)
+  /// delete the Auth account. If reauthentication fails, nothing is
+  /// deleted. If step 2 or 3 fails, [AccountDeletionException] is
+  /// thrown stating the stage, and calling this use case again
+  /// completes the deletion.
   ///
-  /// [password] solo se usa con correo y contraseña; con Google se abre el
-  /// popup de reautenticación.
+  /// [password] is only used with email and password; with Google, the
+  /// reauthentication popup opens.
   Future<void> call({String? password}) async {
     final user = _authRepository.currentUser;
     if (user == null) throw const AuthException('no-current-user');

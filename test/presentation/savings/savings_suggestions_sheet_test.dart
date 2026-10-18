@@ -76,12 +76,12 @@ Future<void> _open(
   await tester.pumpAndSettle();
 }
 
-/// Mutable: el botón "abrir" de [_openMultiple] lee sus campos en el
-/// momento de pulsar, no al construirse, así que se puede reabrir la hoja
-/// para otro usuario/meta sobre el mismo árbol de widgets sin volver a
-/// `pumpWidget` uno nuevo (necesario porque un `showModalBottomSheet`
-/// sigue siendo parte de la ruta actual: hay que cerrarlo tocando fuera
-/// antes de poder reabrirlo).
+/// Mutable: [_openMultiple]'s "open" button reads its fields at the
+/// moment it's pressed, not when it's built, so the sheet can be
+/// reopened for another user/goal on the same widget tree without
+/// `pumpWidget`-ing a new one (necessary because a
+/// `showModalBottomSheet` is still part of the current route: it has
+/// to be closed by tapping outside before it can be reopened).
 class _OpenParams {
   _OpenParams({required this.userId, required this.goal, required this.progress, this.showAiButton});
 
@@ -119,9 +119,9 @@ Future<void> _pumpMultiOpenApp(WidgetTester tester, ProviderContainer container,
   );
 }
 
-/// Cierra la hoja actualmente abierta (toca fuera, en la zona oscurecida)
-/// y abre otra para los parámetros ya actualizados en [params], sobre el
-/// mismo árbol de widgets (ver [_OpenParams]).
+/// Closes the currently open sheet (taps outside, in the darkened area)
+/// and opens another one for the parameters already updated in
+/// [params], on the same widget tree (see [_OpenParams]).
 Future<void> _reopen(WidgetTester tester) async {
   await tester.tapAt(const Offset(10, 10));
   await tester.pumpAndSettle();
@@ -177,9 +177,9 @@ void main() {
         final repository = FakeTransactionRepository();
         await repository.addAll(
           userId: _userId,
-          // Mayúsculas distintas entre apariciones: solo importa que el
-          // concepto normalizado (minúsculas, espacios colapsados) coincida
-          // para que se detecte como recurrente.
+          // Different capitalization between occurrences: all that
+          // matters is that the normalized concept (lowercase,
+          // collapsed spaces) matches for it to be detected as recurring.
           transactions: [
             _tx(amountCents: -1500, date: DateTime(2025, 10, 5), description: 'NETFLIX PREMIUM'),
             _tx(amountCents: -1500, date: DateTime(2025, 11, 5), description: 'netflix premium'),
@@ -198,9 +198,9 @@ void main() {
 
         await _open(tester, container, goal: goal, progress: progress);
 
-        // Solo la primera letra en mayúscula, el resto del concepto
-        // normalizado (en minúsculas) se deja tal cual: "Netflix premium",
-        // no "Netflix Premium" ni "netflix premium".
+        // Only the first letter capitalized, the rest of the
+        // normalized concept (lowercase) is left as-is: "Netflix premium",
+        // not "Netflix Premium" or "netflix premium".
         expect(find.text('Netflix premium'), findsOneWidget);
         expect(find.text('netflix premium'), findsNothing);
         expect(find.text('Netflix Premium'), findsNothing);
@@ -225,7 +225,7 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
-      // Objetivo 1.000 €, nada ahorrado, 1 mes: aportación necesaria = 100.000.
+      // Goal 1,000 €, nothing saved, 1 month: required contribution = 100,000.
       final progress = calculateSavingsGoalProgress(goal, now: DateTime(2026, 1, 1));
 
       await _open(tester, container, goal: goal, progress: progress);
@@ -482,12 +482,12 @@ void main() {
       final progress = calculateSavingsGoalProgress(goal, now: DateTime(2026, 1, 1));
       final suggestions = await container.read(buildSavingsSuggestionsProvider)(userId: _userId);
 
-      // Gasta todos los resúmenes menos 1 llamando directamente al caso de
-      // uso ya resuelto por el provider (sin pasar por la interfaz): es lo
-      // mismo que pulsaría el botón repetidas veces, pero sin la
-      // fragilidad de abrir y cerrar la hoja modal en bucle. Una meta
-      // distinta (mismo `id` cambiado) en cada vuelta para que ninguna
-      // acierte en caché y todas cuenten cupo.
+      // Spends all summaries but 1 by calling the use case already
+      // resolved by the provider directly (without going through the
+      // UI): it's the same as pressing the button repeatedly, but
+      // without the fragility of opening and closing the modal sheet
+      // in a loop. A different goal (same `id` changed) on each round
+      // so none of them hit the cache and all of them count toward the quota.
       final explain = container.read(explainSavingsSuggestionsProvider(_userId));
       for (var i = 0; i < ExplainSavingsSuggestions.maxExplanationsPerSession - 1; i++) {
         await explain(goal: goal.copyWith(id: 'g$i'), progress: progress, suggestions: suggestions);
@@ -527,8 +527,8 @@ void main() {
           findsOneWidget,
         );
 
-        // Cierra la hoja de A y abre una para B, sobre el mismo árbol de
-        // widgets (ver `_OpenParams`/`_reopen`).
+        // Closes A's sheet and opens one for B, on the same widget
+        // tree (see `_OpenParams`/`_reopen`).
         params.userId = 'user-B';
         await _reopen(tester);
 

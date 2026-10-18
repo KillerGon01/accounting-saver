@@ -19,11 +19,11 @@ import '../../fakes/fake_clock.dart';
 import '../../fakes/fake_monthly_report_gateway.dart';
 import '../../fakes/fake_transaction_repository.dart';
 
-/// Repositorio que falla solo en la consulta "extra" que hace
-/// `BuildMonthEndForecast` sobre los 3 meses anteriores (un rango de más
-/// de 31 días; ninguna otra consulta de la app pide un rango tan largo de
-/// una vez), para comprobar que un fallo ahí no rompe el resto del
-/// resumen mensual (ver docs/design.md, "Riesgos").
+/// Repository that fails only on the "extra" query that
+/// `BuildMonthEndForecast` makes over the previous 3 months (a range of
+/// more than 31 days; no other query in the app asks for such a long
+/// range at once), to check that a failure there doesn't break the rest
+/// of the monthly report (see docs/design.md, "Riesgos").
 class _ForecastQueryFailingRepository implements TransactionRepository {
   _ForecastQueryFailingRepository(this._delegate);
 
@@ -75,10 +75,10 @@ class _ForecastQueryFailingRepository implements TransactionRepository {
 
 const _userId = 'u1';
 
-/// `formatCents` (`lib/presentation/transactions/formatters.dart`) separa
-/// los euros del símbolo con un espacio NO separable (` `), no un
-/// espacio normal: hay que reproducirlo aquí para que `find.text` acierte
-/// con el texto exacto que renderiza la pantalla.
+/// `formatCents` (`lib/presentation/transactions/formatters.dart`)
+/// separates the euro amount from the symbol with a non-breaking space
+/// (` `), not a regular space: it has to be reproduced here so
+/// `find.text` matches the exact text the screen renders.
 String _eur(String amount) => '$amount €';
 
 Future<void> _pump(
@@ -86,16 +86,15 @@ Future<void> _pump(
   ProviderContainer container, {
   bool? showAiComment,
 }) async {
-  // Viewport más alto que el tamaño de prueba por defecto (800x600):
-  // `_ReportBody` es un `ListView(children: [...])` (lista de slivers
-  // perezosa), y con todas sus tarjetas —incluida la nueva línea
-  // explicativa bajo "Gasto por categoría"— el contenido ya no cabe en
-  // 600px de alto; las tarjetas que quedan fuera del rango ya construido
-  // (p. ej. "Previsión de fin de mes") no se encuentran con `find.text`
-  // sin dar antes una pantalla con sitio de sobra. 2200px da margen para
-  // cualquier combinación de tarjetas que prueba este archivo, incluida
-  // la combinación más larga (previsión de fin de mes + gastos inusuales
-  // + comentario de IA a la vez).
+  // Taller viewport than the default test size (800x600): `_ReportBody`
+  // is a `ListView(children: [...])` (lazy sliver list), and with all
+  // its cards — including the new explanatory line under "Gasto por
+  // categoría" — the content no longer fits in 600px of height; cards
+  // that fall outside the already-built range (e.g. "Previsión de fin
+  // de mes") aren't found by `find.text` unless a screen with plenty of
+  // room is given first. 2200px leaves margin for any combination of
+  // cards this file tests, including the longest one (month-end
+  // forecast + unusual expenses + AI comment all at once).
   tester.view.physicalSize = const Size(800, 2200);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -299,7 +298,7 @@ void main() {
 
     await _pump(tester, container, showAiComment: false);
 
-    expect(find.text(_eur('0,00')), findsWidgets); // ingresos y gastos a cero
+    expect(find.text(_eur('0,00')), findsWidgets); // income and expenses at zero
 
     await container.read(addTransactionProvider)(
       userId: _userId,
@@ -307,25 +306,25 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // "-50,00 €" aparece tres veces: el balance del mes, el total de
-    // gastos (con signo, igual que en la pantalla de movimientos — ver
-    // `monthly_report_screen.dart`, `_SummaryTile` de "Gastos") y, al no
-    // haber ningún gasto recurrente pendiente, el mismo importe como
-    // "Balance previsto" en la tarjeta de previsión de fin de mes.
+    // "-50,00 €" appears three times: the month's balance, the total
+    // expenses (with sign, same as on the transactions screen — see
+    // `monthly_report_screen.dart`, "Gastos" `_SummaryTile`) and, since
+    // there's no pending recurring expense, the same amount as
+    // "Balance previsto" in the month-end forecast card.
     expect(find.text(_eur('-50,00')), findsNWidgets(3));
-    // "50,00 €" aparece tres veces: en la fila de la categoría del
-    // gráfico (el único gasto del mes, siempre en positivo ahí) y en la
-    // tarjeta de previsión ("Gastado hasta hoy" y "Gasto previsto",
-    // iguales entre sí al no haber ningún recurrente pendiente).
+    // "50,00 €" appears three times: in the chart's category row (the
+    // month's only expense, always positive there) and in the forecast
+    // card ("Gastado hasta hoy" and "Gasto previsto", equal to each
+    // other since there's no pending recurring expense).
     expect(find.text(_eur('50,00')), findsNWidgets(3));
   });
 
   group('previsión de fin de mes', () {
-    // Día 10 del mes real en curso: la pantalla siempre arranca en el mes
-    // real (`DateTime.now()`, no inyectable — ver `MonthlyReportScreen`),
-    // así que el reloj fijo de las pruebas comparte año y mes con "ahora"
-    // de verdad, y solo fija el día para que el resultado no dependa de
-    // qué día sea cuando se ejecuten los tests.
+    // Day 10 of the real current month: the screen always starts on
+    // the real month (`DateTime.now()`, not injectable — see
+    // `MonthlyReportScreen`), so the tests' fixed clock shares the
+    // year and month with the real "now", and only fixes the day so
+    // the result doesn't depend on which day the tests run on.
     final fixedNow = DateTime(now.year, now.month, 10);
 
     ProviderContainer containerWith(TransactionRepository repository) {
@@ -345,8 +344,8 @@ void main() {
       await repository.addAll(
         userId: _userId,
         transactions: [
-          // Netflix, día 20, en 2 de los 3 meses anteriores: recurrente.
-          // Día 20 > día 10 (hoy, según `fixedNow`): pendiente.
+          // Netflix, day 20, in 2 of the previous 3 months: recurring.
+          // Day 20 > day 10 (today, per `fixedNow`): pending.
           _tx(
             amountCents: -1299,
             date: DateTime(fixedNow.year, fixedNow.month - 2, 20),
@@ -372,11 +371,11 @@ void main() {
       expect(find.text('Gastado hasta hoy'), findsOneWidget);
       expect(find.text('Gasto previsto'), findsOneWidget);
       expect(find.text('Balance previsto'), findsOneWidget);
-      // Habiendo un pendiente, no se muestra la línea "ninguno".
+      // With one pending, the "ninguno" line isn't shown.
       expect(find.text('Recurrentes pendientes este mes'), findsNothing);
       expect(find.text('ninguno'), findsNothing);
-      // Gastado hasta hoy (0,00 €, sin movimientos este mes) + Netflix
-      // (12,99 €) = 12,99 € de gasto previsto.
+      // Gastado hasta hoy (0,00 €, no transactions this month) + Netflix
+      // (12,99 €) = 12,99 € forecast expense.
       expect(find.text(_eur('12,99')), findsWidgets);
     });
 
@@ -404,9 +403,9 @@ void main() {
         await repository.addAll(
           userId: _userId,
           transactions: [
-            // Netflix, día 5, en los 2 meses anteriores: recurrente. Día 5
-            // < día 10 (hoy, según `fixedNow`) y sin registrar este mes:
-            // esperado y no registrado, no pendiente.
+            // Netflix, day 5, in the previous 2 months: recurring. Day 5
+            // < day 10 (today, per `fixedNow`) and not registered this
+            // month: overdue and unregistered, not pending.
             _tx(
               amountCents: -1299,
               date: DateTime(fixedNow.year, fixedNow.month - 2, 5),
@@ -428,8 +427,9 @@ void main() {
 
         expect(find.text('Esperados y no registrados todavía (no incluidos en la previsión):'), findsOneWidget);
         expect(find.textContaining('Netflix (día 5)'), findsOneWidget);
-        // No pendiente, y no sumado al gasto previsto (sigue siendo 0,00 €,
-        // igual que lo acumulado, sin ningún movimiento este mes).
+        // Not pending, and not added to the forecast expense (still
+        // 0,00 €, same as the accumulated amount, with no transactions
+        // this month).
         expect(find.text('Recurrentes pendientes este mes'), findsOneWidget);
         expect(find.text('ninguno'), findsOneWidget);
         expect(find.text(_eur('0,00')), findsWidgets);
@@ -457,11 +457,11 @@ void main() {
 
         await _pump(tester, container, showAiComment: false);
 
-        // El balance del mes ya muestra estas mismas cifras (Ingresos:
-        // 1.500,00 €, Gastos: 30,00 €) en la tarjeta de arriba; la de
-        // previsión debe repetirlas, no recalcularlas de otra forma.
-        expect(find.text(_eur('1.500,00')), findsWidgets); // Ingresos y "Ingresos registrados"
-        expect(find.text(_eur('30,00')), findsWidgets); // Gastos y "Gastado hasta hoy"
+        // The month's balance already shows these same figures
+        // (Ingresos: 1.500,00 €, Gastos: 30,00 €) in the card above;
+        // the forecast one must repeat them, not recalculate them differently.
+        expect(find.text(_eur('1.500,00')), findsWidgets); // Ingresos and "Ingresos registrados"
+        expect(find.text(_eur('30,00')), findsWidgets); // Gastos and "Gastado hasta hoy"
         expect(find.text('Ingresos registrados: ${_eur('1.500,00')}.'), findsOneWidget);
         expect(
           find.descendant(
@@ -490,19 +490,19 @@ void main() {
 
         await _pump(tester, container, showAiComment: false);
 
-        // El resto del informe sigue mostrándose con normalidad...
+        // The rest of the report keeps displaying normally...
         expect(find.text('Balance del mes'), findsOneWidget);
         expect(find.text('Gasto por categoría'), findsOneWidget);
-        // ...pero la tarjeta de previsión no aparece.
+        // ...but the forecast card doesn't appear.
         expect(find.text('Previsión de fin de mes (estimación)'), findsNothing);
       },
     );
   });
 
   group('gastos inusuales', () {
-    // Mismo motivo que en "previsión de fin de mes": el día es fijo, el
-    // mes/año coincide con el real para que `_selectedMonth` (que arranca
-    // en `DateTime.now()`, no inyectable) siga siendo "el mes en curso".
+    // Same reason as in "previsión de fin de mes": the day is fixed,
+    // the month/year matches the real one so `_selectedMonth` (which
+    // starts at `DateTime.now()`, not injectable) stays "the current month".
     final fixedNow = DateTime(now.year, now.month, 10);
 
     ProviderContainer containerWith(TransactionRepository repository) {
@@ -537,12 +537,12 @@ void main() {
       await repository.addAll(
         userId: _userId,
         transactions: [
-          // Histórico de "ocio" (3 meses anteriores): mediana 1.000.
+          // "ocio" history (previous 3 months): median 1,000.
           historyTx(amountCents: -800, date: DateTime(fixedNow.year, fixedNow.month - 3, 10)),
           historyTx(amountCents: -900, date: DateTime(fixedNow.year, fixedNow.month - 2, 10)),
           historyTx(amountCents: -1100, date: DateTime(fixedNow.year, fixedNow.month - 1, 10)),
           historyTx(amountCents: -1200, date: DateTime(fixedNow.year, fixedNow.month - 1, 20)),
-          // Gasto de este mes, muy por encima del doble de la mediana (2.000).
+          // This month's expense, well above double the median (2,000).
           _tx(
             id: 'concierto',
             amountCents: -5000,
@@ -562,13 +562,13 @@ void main() {
 
       expect(find.text('Gastos inusuales (estimación)'), findsOneWidget);
       expect(find.textContaining('Concierto'), findsOneWidget);
-      // Aparece cuatro veces: el balance del mes, el total de "Gastos"
-      // (con signo, igual que en movimientos — ver `_SummaryTile` de
-      // "Gastos"), la fila del gasto inusual y, en la tarjeta de
-      // previsión, el "Balance previsto" (mismo importe, sin ningún
-      // ingreso ni recurrente pendiente este mes).
+      // Appears four times: the month's balance, the "Gastos" total
+      // (with sign, same as on transactions — see "Gastos"
+      // `_SummaryTile`), the unusual expense row and, in the forecast
+      // card, the "Balance previsto" (same amount, with no income or
+      // pending recurring expense this month).
       expect(find.text(_eur('-50,00')), findsNWidgets(4));
-      expect(find.textContaining(_eur('10,00')), findsOneWidget); // mediana de la categoría
+      expect(find.textContaining(_eur('10,00')), findsOneWidget); // category median
     });
 
     testWidgets(

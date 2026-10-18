@@ -2,38 +2,39 @@ import '../domain/savings/savings_suggestions_summary.dart';
 import 'eval_grading.dart' show containsSpelledOutAmount, extractAmountsCents;
 import 'savings_suggestions_eval_cases.dart';
 
-/// Conceptos que jamás deberían aparecer en la respuesta: no se envían al
-/// modelo (ver `SavingsSuggestionsSummary`, sin ningún campo para un
-/// concepto o descripción de movimiento), así que si aparecen es que el
-/// modelo los ha inventado. Son, a propósito, los mismos conceptos que
-/// `buildSavingsSuggestionsEvalCases` usa como [SavingsSuggestion.description]
-/// al fabricar los casos (ver `test/eval/savings_suggestions_eval_cases_test.dart`,
-/// que prueba que ninguno llega al resumen): la prueba de que están bien
-/// elegidos es que, aun existiendo en los datos de partida, no tienen
-/// ningún campo por el que llegar aquí.
+/// Concepts that should never appear in the response: they aren't
+/// sent to the model (see `SavingsSuggestionsSummary`, with no field
+/// for a transaction's concept or description), so if they appear
+/// the model has made them up. They're, on purpose, the same
+/// concepts `buildSavingsSuggestionsEvalCases` uses as
+/// [SavingsSuggestion.description] when fabricating the cases (see
+/// `test/eval/savings_suggestions_eval_cases_test.dart`, which
+/// proves none of them reaches the summary): the proof they're well
+/// chosen is that, even though they exist in the source data, they
+/// have no field to reach here through.
 const savingsSuggestionsForbiddenConcepts = ['netflix', 'spotify', 'gimnasio'];
 
-/// Términos de inversión/productos financieros: la instrucción de
-/// sistema prohíbe explícitamente dar consejo de inversión (ver
+/// Investment/financial product terms: the system instruction
+/// explicitly forbids giving investment advice (see
 /// `buildSavingsSuggestionsExplanationPrompt`).
 const savingsSuggestionsForbiddenInvestmentTerms = ['bolsa', 'fondos', 'cripto', 'invertir', 'acciones'];
 
-/// Frases de consejo o de juicio sobre la meta: la instrucción de sistema
-/// prohíbe "deberías"/"te recomiendo" (consejo) y juzgar si la meta es
-/// alcanzable o animar/presionar ("vas bien", "tienes que apretar el
-/// cinturón"...). "tienes que" y "vas bien" son los ejemplos más
-/// representativos de esa segunda prohibición.
+/// Advice or judgment phrases about the goal: the system instruction
+/// forbids "deberías"/"te recomiendo" (advice) and judging whether
+/// the goal is achievable or cheering/pressuring ("vas bien",
+/// "tienes que apretar el cinturón"...). "tienes que" and "vas bien"
+/// are the most representative examples of that second ban.
 const savingsSuggestionsForbiddenAdvicePhrases = ['deberías', 'te recomiendo', 'tienes que', 'vas bien'];
 
-/// Tope de frases de la respuesta (ver `buildSavingsSuggestionsExplanationPrompt`).
+/// Cap on the response's sentences (see `buildSavingsSuggestionsExplanationPrompt`).
 const savingsSuggestionsMaxSentences = 4;
 
-/// Importes ya formateados en euros de [summary] (objetivo, ahorrado,
-/// aportación mensual, total cubierto y el importe agregado de cada
-/// grupo de recurrentes/recortes/excesos), convertidos a céntimos: el
-/// universo de importes que la respuesta puede citar sin que cuente como
-/// "inventado". Se calcula a partir del propio [summary] (lo que de
-/// verdad recibe el modelo), nunca escrito a mano.
+/// [summary]'s amounts already formatted in euros (target, saved,
+/// monthly contribution, total covered, and each
+/// recurring/cut/excess group's aggregated amount), converted to
+/// cents: the universe of amounts the response can cite without it
+/// counting as "made up". Computed from [summary] itself (what the
+/// model actually receives), never hand-written.
 Set<int> summaryValidAmountsCents(SavingsSuggestionsSummary summary) {
   return {
     _centsFromFormatted(summary.targetFormatted),
@@ -46,13 +47,14 @@ Set<int> summaryValidAmountsCents(SavingsSuggestionsSummary summary) {
   };
 }
 
-/// Convierte un importe ya formateado por el dominio (p. ej. "1.234,56 €"
-/// o "0,00 €": siempre con separador de miles por puntos y dos
-/// decimales con coma, ver `_euros` en `savings_suggestions_summary.dart`)
-/// a céntimos enteros. No es un parser de entrada de usuario (para eso
-/// está `parseEurosToCents`, que exige el formato contrario, sin puntos
-/// de miles): este formato es el que el propio dominio ya garantiza que
-/// produce, así que basta con deshacerlo.
+/// Converts an amount already formatted by the domain layer (e.g.
+/// "1.234,56 €" or "0,00 €": always with a dot thousands separator
+/// and two comma decimals, see `_euros` in
+/// `savings_suggestions_summary.dart`) to integer cents. Not a
+/// parser for user input (that's `parseEurosToCents`, which requires
+/// the opposite format, with no thousands dots): this is the format
+/// the domain layer itself already guarantees it produces, so
+/// undoing it is enough.
 int _centsFromFormatted(String formatted) {
   final withoutSymbol = formatted.replaceAll('€', '').trim();
   final withoutThousands = withoutSymbol.replaceAll('.', '');
@@ -61,29 +63,32 @@ int _centsFromFormatted(String formatted) {
   return (euros * 100).round();
 }
 
-/// Punto, exclamación o interrogación que SÍ cuenta como corte de frase
-/// (ver [splitIntoSentences]): cualquiera de los tres, salvo que vaya
-/// seguido inmediatamente de un dígito, sin espacio — el caso del punto
-/// separador de miles ("1.234,56 €": el punto va seguido de "2", nunca de
-/// un espacio). La coma decimal española nunca entra en conflicto (no es
-/// ninguno de los tres signos), y un punto de cierre real como en
-/// "58,98 €/mes." sí cuenta, porque va seguido de un espacio o del final
-/// del texto, nunca de un dígito pegado.
+/// A period, exclamation, or question mark that DOES count as a
+/// sentence break (see [splitIntoSentences]): any of the three,
+/// unless immediately followed by a digit, with no space — the case
+/// of the thousands-separator dot ("1.234,56 €": the dot is
+/// followed by "2", never by a space). The Spanish decimal comma
+/// never conflicts (it isn't any of the three marks), and a real
+/// closing period like in "58,98 €/mes." does count, because it's
+/// followed by a space or the end of the text, never by a digit
+/// stuck to it.
 final _sentenceBoundary = RegExp(r'[.!?]+(?!\d)');
 
-/// Divide [text] en frases para contar cuántas hay (ver
-/// [savingsSuggestionsMaxSentences]). Un corte es cualquier `.`/`!`/`?`
-/// que no sea un separador de miles (ver [_sentenceBoundary]); el texto
-/// que quede tras el último corte (sin punto final, por ejemplo) también
-/// cuenta como una frase más. Fragmentos vacíos (dos signos de cierre
-/// seguidos, o el texto empieza por uno) se descartan.
+/// Splits [text] into sentences to count how many there are (see
+/// [savingsSuggestionsMaxSentences]). A break is any `.`/`!`/`?`
+/// that isn't a thousands separator (see [_sentenceBoundary]); the
+/// text left over after the last break (with no final period, for
+/// example) also counts as one more sentence. Empty fragments (two
+/// closing marks in a row, or the text starts with one) are
+/// dropped.
 ///
-/// **Simplificación a propósito** (documentada en docs/evaluation.md,
-/// igual que las de `eval_grading.dart`): si dos importes aparecieran
-/// pegados sin ningún espacio entre ellos (`"...€/mes.141,00 €..."`), el
-/// punto entre ellos no se contaría como corte (va seguido de un
-/// dígito), fusionando dos frases en una — no se ha visto nunca en
-/// prosa normal, donde siempre hay al menos un espacio entre frases.
+/// **Simplification on purpose** (documented in docs/evaluation.md,
+/// same as `eval_grading.dart`'s): if two amounts appeared stuck
+/// together with no space between them (`"...€/mes.141,00 €..."`),
+/// the period between them wouldn't count as a break (it's followed
+/// by a digit), merging two sentences into one — never seen in
+/// normal prose, where there's always at least one space between
+/// sentences.
 List<String> splitIntoSentences(String text) {
   final trimmed = text.trim();
   if (trimmed.isEmpty) return const [];
@@ -100,15 +105,15 @@ List<String> splitIntoSentences(String text) {
   return sentences;
 }
 
-/// Asteriscos, almohadillas o un guion de lista al principio de una línea
-/// (igual que pide evitar `buildSavingsSuggestionsExplanationPrompt`).
+/// Asterisks, hashes, or a list dash at the start of a line (what
+/// `buildSavingsSuggestionsExplanationPrompt` asks to avoid).
 final _markdownPattern = RegExp(r'[*#]|(^|\n)\s*-\s');
 
-/// Resultado de graduar la respuesta real a un [SavingsSuggestionsEvalCase].
-/// A diferencia de `EvalResult` (chat, un solo saco de motivos), aquí
-/// cada criterio es una entrada propia de [failuresByCriterion] (vacío si
-/// [passed]), para que el informe pueda decir exactamente cuál o cuáles
-/// de los 7 criterios ha incumplido cada caso.
+/// Result of grading the real response to a
+/// [SavingsSuggestionsEvalCase]. Unlike `EvalResult` (chat, a single
+/// bag of reasons), here each criterion is its own entry in
+/// [failuresByCriterion] (empty if [passed]), so the report can say
+/// exactly which of the 7 criteria each case failed.
 class SavingsSuggestionsEvalResult {
   const SavingsSuggestionsEvalResult({
     required this.caseId,
@@ -121,33 +126,33 @@ class SavingsSuggestionsEvalResult {
   final String description;
   final String response;
 
-  /// Clave = criterio (`'importes'`, `'palabras'`, `'conceptos'`,
-  /// `'inversion'`, `'consejo'`, `'markdown'`, `'frases'`); valor = motivo
-  /// concreto del fallo. Vacío si [passed].
+  /// Key = criterion (`'importes'`, `'palabras'`, `'conceptos'`,
+  /// `'inversion'`, `'consejo'`, `'markdown'`, `'frases'`); value =
+  /// the failure's specific reason. Empty if [passed].
   final Map<String, String> failuresByCriterion;
 
   bool get passed => failuresByCriterion.isEmpty;
 }
 
-/// Evalúa [response] (la redacción real del modelo) contra [evalCase]
-/// con 7 criterios automáticos, cada uno independiente de los demás (ver
-/// docs/evaluation.md, "Sugerencias de ahorro con IA"):
-/// 1. `importes`: todo importe bien formado de [response] (ver
-///    [extractAmountsCents], que acepta tanto "58,98 €/mes" como
-///    "1.234,56 €": el patrón no exige que el importe termine el texto,
-///    así que un sufijo como "/mes" no le afecta) debe estar en
-///    [summaryValidAmountsCents] — ninguno inventado ni mal copiado.
-/// 2. `palabras`: un importe escrito con palabras (ver
-///    [containsSpelledOutAmount]) es un fallo de **formato**, aparte del
-///    de "importe inventado" (que solo mira importes con forma de
-///    cifras).
-/// 3. `conceptos`: ninguno de [savingsSuggestionsForbiddenConcepts]
+/// Evaluates [response] (the model's real write-up) against
+/// [evalCase] with 7 automatic criteria, each independent of the
+/// rest (see docs/evaluation.md, "Sugerencias de ahorro con IA"):
+/// 1. `importes`: every well-formed amount in [response] (see
+///    [extractAmountsCents], which accepts both "58,98 €/mes" and
+///    "1.234,56 €": the pattern doesn't require the amount to end
+///    the text, so a suffix like "/mes" doesn't affect it) must be
+///    in [summaryValidAmountsCents] — none made up or miscopied.
+/// 2. `palabras`: an amount spelled out in words (see
+///    [containsSpelledOutAmount]) is a **formatting** failure,
+///    separate from "made-up amount" (which only looks at
+///    digit-shaped amounts).
+/// 3. `conceptos`: none of [savingsSuggestionsForbiddenConcepts]
 ///    (case-insensitive).
-/// 4. `inversion`: ninguno de [savingsSuggestionsForbiddenInvestmentTerms].
-/// 5. `consejo`: ninguna de [savingsSuggestionsForbiddenAdvicePhrases].
-/// 6. `markdown`: sin asteriscos, almohadillas ni guiones de lista (ver
+/// 4. `inversion`: none of [savingsSuggestionsForbiddenInvestmentTerms].
+/// 5. `consejo`: none of [savingsSuggestionsForbiddenAdvicePhrases].
+/// 6. `markdown`: no asterisks, hashes, or list dashes (see
 ///    [_markdownPattern]).
-/// 7. `frases`: como máximo [savingsSuggestionsMaxSentences] (ver
+/// 7. `frases`: at most [savingsSuggestionsMaxSentences] (see
 ///    [splitIntoSentences]).
 SavingsSuggestionsEvalResult gradeSavingsSuggestionsCase(
   SavingsSuggestionsEvalCase evalCase, {

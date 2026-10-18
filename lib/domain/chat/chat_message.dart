@@ -1,7 +1,7 @@
 enum ChatRole { user, assistant }
 
-/// Mensaje de la conversación de chat. Vive solo en memoria: nunca se
-/// guarda en Firestore ni se registra en logs.
+/// Message in the chat conversation. Lives only in memory: never saved
+/// to Firestore nor logged.
 class ChatMessage {
   const ChatMessage({required this.role, required this.text, required this.sentAt});
 

@@ -11,17 +11,17 @@ import '../theme/app_theme.dart';
 import 'chat_error_messages.dart';
 import 'chat_providers.dart';
 
-/// Cuándo se añade cada aviso de progreso mientras se espera la respuesta
-/// (ver [_ChatScreenState._send]), sin relación con [geminiRequestTimeout]
-/// (150 s): son solo texto para que la espera no parezca colgada, no un
-/// límite de tiempo.
+/// When each progress notice is added while waiting for the reply
+/// (see [_ChatScreenState._send]), unrelated to [geminiRequestTimeout]
+/// (150 s): they're just text so the wait doesn't look stuck, not a
+/// time limit.
 const _slowReplyWarningDelay = Duration(seconds: 10);
 const _verySlowReplyWarningDelay = Duration(seconds: 45);
 const _extremelySlowReplyWarningDelay = Duration(seconds: 120);
 
-/// Chat con la IA sobre los movimientos del usuario (function calling sobre
-/// Firestore). La conversación solo vive en esta pantalla, en memoria: no
-/// se guarda en Firestore ni se registra en logs, y se pierde al cerrarla.
+/// AI chat about the user's transactions (function calling over
+/// Firestore). The conversation only lives on this screen, in memory:
+/// it isn't saved to Firestore nor logged, and it's lost when closed.
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key, required this.userId});
 
@@ -79,10 +79,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
     _scrollToBottom();
 
-    // Timers, no un `Future.delayed` esperado: no bloquean nada, solo
-    // actualizan el texto de progreso si la petición sigue en curso cuando
-    // se disparan (de ahí la comprobación de `mounted` y `_isSending` en
-    // cada callback, por si ya ha terminado).
+    // Timers, not an awaited `Future.delayed`: they block nothing,
+    // they only update the progress text if the request is still in
+    // flight when they fire (hence the `mounted` and `_isSending`
+    // check in each callback, in case it has already finished).
     _slowReplyTimer = Timer(_slowReplyWarningDelay, () {
       if (!mounted || !_isSending) return;
       setState(() => _isSlowReply = true);
@@ -124,10 +124,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  /// Texto del indicador de progreso mientras se espera la respuesta,
-  /// acumulativo: cada aviso se añade al anterior, nunca lo sustituye, así
-  /// el usuario sigue viendo "Consultando tus movimientos..." aunque la
-  /// espera se alargue.
+  /// Progress indicator text while waiting for the reply, cumulative:
+  /// each notice is added to the previous one, never replacing it, so
+  /// the user keeps seeing "Consultando tus movimientos..." even if
+  /// the wait drags on.
   String get _progressMessage {
     final parts = ['Consultando tus movimientos...'];
     if (_isSlowReply) parts.add('Esto está tardando más de lo normal...');

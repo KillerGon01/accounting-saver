@@ -3,18 +3,19 @@ import 'dart:async';
 import 'package:accounting_saver/domain/chat/chat_gateway.dart';
 import 'package:accounting_saver/domain/chat/chat_message.dart';
 
-/// Fake configurable para probar [SendChatMessage] sin llamar a Gemini.
+/// Configurable fake for testing [SendChatMessage] without calling
+/// Gemini.
 ///
-/// - `FakeChatGateway.returning(...)` devuelve un texto fijo sin llamar a
-///   ninguna función.
-/// - `FakeChatGateway.callingFunction(...)` simula que el modelo pide una
-///   función antes de responder, para comprobar que el executor se invoca
-///   con el nombre y los argumentos esperados.
-/// - `FakeChatGateway.throwing(...)` simula un error del gateway.
-/// - `FakeChatGateway.pending()` no responde hasta que se llama a
-///   [complete] o [completeWithError]: para probar en la interfaz lo que
-///   se ve mientras una petición sigue en curso (indicador de progreso,
-///   botón de envío desactivado...) sin esperar tiempo real.
+/// - `FakeChatGateway.returning(...)` returns a fixed text without
+///   calling any function.
+/// - `FakeChatGateway.callingFunction(...)` simulates the model
+///   requesting a function before responding, to check the executor
+///   is called with the expected name and arguments.
+/// - `FakeChatGateway.throwing(...)` simulates a gateway error.
+/// - `FakeChatGateway.pending()` doesn't respond until [complete] or
+///   [completeWithError] is called: to test in the UI what's shown
+///   while a request is still in flight (progress indicator,
+///   disabled send button...) without waiting real time.
 class FakeChatGateway implements ChatGateway {
   FakeChatGateway.returning(this._result)
     : _error = null,

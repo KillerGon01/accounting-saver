@@ -4,17 +4,17 @@ import 'package:flutter/material.dart';
 
 import 'motion.dart';
 
-/// Entrada escalonada (fundido + deslizamiento corto) para una tarjeta o
-/// fila dentro de una lista, sin `AnimationController` propio: un
-/// temporizador retrasa el inicio según [index] y `AnimatedOpacity`/
-/// `AnimatedSlide` (ambos de Flutter, implícitos) hacen la transición.
-/// Mismo patrón de temporizador que ya usa `ChatScreen`/
-/// `MonthlyReportScreen` para sus avisos de espera: no bloquea nada, se
-/// cancela en `dispose` si el widget desaparece antes de disparar.
+/// Staggered entrance (fade + short slide) for a card or row inside a
+/// list, with no `AnimationController` of its own: a timer delays
+/// the start based on [index] and `AnimatedOpacity`/`AnimatedSlide`
+/// (both Flutter's own, implicit) do the transition. Same timer
+/// pattern already used by `ChatScreen`/`MonthlyReportScreen` for
+/// their wait notices: it blocks nothing, it's cancelled in
+/// `dispose` if the widget disappears before firing.
 ///
-/// El retraso tiene un tope de [maxStaggeredIndex] elementos: a partir de
-/// ahí, todos entran a la vez con el retraso máximo, para que una lista
-/// larga no tarde cada vez más en terminar de aparecer.
+/// The delay is capped at [maxStaggeredIndex] elements: from there
+/// on, all of them enter at once with the maximum delay, so a long
+/// list doesn't take longer and longer to finish appearing.
 class StaggeredEntrance extends StatefulWidget {
   const StaggeredEntrance({super.key, required this.index, required this.child});
 
@@ -51,8 +51,8 @@ class _StaggeredEntranceState extends State<StaggeredEntrance> {
     _scheduled = true;
     final delay = AppMotion.of(context, _delay!);
     if (delay == Duration.zero) {
-      // Sin animación (disableAnimations o retraso nulo): visible ya en
-      // este mismo frame, sin ningún temporizador que programar.
+      // No animation (disableAnimations or zero delay): already
+      // visible in this same frame, with no timer to schedule.
       _visible = true;
       return;
     }

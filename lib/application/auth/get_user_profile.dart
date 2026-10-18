@@ -6,7 +6,7 @@ class GetUserProfile {
 
   final AuthRepository _authRepository;
 
-  /// Null si no hay sesión iniciada.
+  /// Null if there's no signed-in session.
   UserProfile? call() {
     final user = _authRepository.currentUser;
     return user == null ? null : UserProfile.fromAppUser(user);

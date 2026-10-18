@@ -16,15 +16,15 @@ import 'savings_goal_providers.dart';
 import 'savings_suggestions_sheet.dart';
 import 'update_saved_amount_dialog.dart';
 
-/// Lista de metas de ahorro del usuario, con su progreso calculado en
-/// código (ver `calculateSavingsGoalProgress`, docs/design.md). Funciona
-/// sin IA: no depende de `effectiveEnableAi` en ningún punto.
+/// List of the user's savings goals, with their progress computed in
+/// code (see `calculateSavingsGoalProgress`, docs/design.md). Works
+/// without AI: doesn't depend on `effectiveEnableAi` anywhere.
 ///
-/// [clock] es inyectable (por defecto [SystemClock]) solo para que los
-/// tests puedan fijar "ahora" al calcular el progreso — mismo patrón que
-/// `BuildMonthlyReport`/`BuildMonthEndForecast`, aquí a nivel de pantalla
-/// porque el cálculo es una función de dominio pura, sin ningún caso de
-/// uso de por medio (ver `SavingsGoalsScreen` en docs/design.md).
+/// [clock] is injectable (defaulting to [SystemClock]) only so tests
+/// can fix "now" when computing progress — same pattern as
+/// `BuildMonthlyReport`/`BuildMonthEndForecast`, here at the screen
+/// level because the calculation is a pure domain function, with no
+/// use case in between (see `SavingsGoalsScreen` in docs/design.md).
 class SavingsGoalsScreen extends ConsumerWidget {
   const SavingsGoalsScreen({super.key, required this.userId, this.clock = const SystemClock()});
 
@@ -204,9 +204,9 @@ class _EmptyGoals extends StatelessWidget {
   }
 }
 
-/// Icono, texto y color de [status] — nunca solo el color: el texto ya
-/// dice el estado explícitamente, y cada estado tiene también su propio
-/// icono.
+/// Icon, text, and color for [status] — never color alone: the text
+/// already states the status explicitly, and each status also has
+/// its own icon.
 ({IconData icon, String label, Color Function(BuildContext) color}) _statusStyle(
   SavingsGoalStatus status,
 ) {
@@ -255,12 +255,13 @@ class _SavingsGoalCard extends StatefulWidget {
   State<_SavingsGoalCard> createState() => _SavingsGoalCardState();
 }
 
-/// `Stateful` solo para la celebración: el resto de la tarjeta sigue
-/// siendo tan "sin estado propio" como antes (recibe `progress` ya
-/// calculado, no vuelve a calcular nada). `didUpdateWidget` compara el
-/// estado anterior con el nuevo para animar un único "rebote" del icono
-/// de estado justo cuando la meta pasa a "Cumplida" — nunca si ya entra
-/// completada (eso no es una transición) ni en ningún otro cambio.
+/// `Stateful` only for the celebration: the rest of the card stays as
+/// "stateless" as before (it receives `progress` already computed,
+/// it recomputes nothing). `didUpdateWidget` compares the previous
+/// state with the new one to animate a single "bounce" of the status
+/// icon right when the goal moves to "Cumplida" — never if it already
+/// comes in completed (that isn't a transition) nor on any other
+/// change.
 class _SavingsGoalCardState extends State<_SavingsGoalCard> with SingleTickerProviderStateMixin {
   late final AnimationController _celebrationController;
   late final Animation<double> _celebrationScale;
@@ -268,10 +269,10 @@ class _SavingsGoalCardState extends State<_SavingsGoalCard> with SingleTickerPro
   @override
   void initState() {
     super.initState();
-    // Duración provisional: `MediaQuery.of` (vía `AppMotion.of`) no se
-    // puede leer todavía en `initState` (Flutter lo prohíbe de forma
-    // explícita — lanza si se intenta); se fija de verdad en
-    // `didChangeDependencies`, que se ejecuta justo después y sí puede.
+    // Provisional duration: `MediaQuery.of` (via `AppMotion.of`)
+    // can't be read yet in `initState` (Flutter explicitly forbids
+    // it — throws if attempted); it's set for real in
+    // `didChangeDependencies`, which runs right after and can.
     _celebrationController = AnimationController(vsync: this, duration: AppMotion.slow);
     _celebrationScale = TweenSequence<double>([
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.3).chain(CurveTween(curve: Curves.easeOut)), weight: 55),
@@ -362,12 +363,13 @@ class _SavingsGoalCardState extends State<_SavingsGoalCard> with SingleTickerPro
                   value: value,
                   minHeight: 12,
                   color: statusColor,
-                  // Antes `surfaceContainerHighest`: contra la tarjeta
-                  // (`surfaceContainerLow`) daba menos de 1,1:1 de contraste,
-                  // casi invisible con la meta vacía o recién creada. `outline`
-                  // da ~3:1 contra la tarjeta (umbral orientativo de WCAG para
-                  // componentes no textuales), y ya se usa en el resto del
-                  // tema para bordes e iconos secundarios.
+                  // Previously `surfaceContainerHighest`: against the
+                  // card (`surfaceContainerLow`) it gave less than
+                  // 1.1:1 contrast, almost invisible with an empty or
+                  // just-created goal. `outline` gives ~3:1 against
+                  // the card (WCAG's rough threshold for non-text
+                  // components), and it's already used elsewhere in
+                  // the theme for borders and secondary icons.
                   backgroundColor: theme.colorScheme.outline,
                 ),
               ),

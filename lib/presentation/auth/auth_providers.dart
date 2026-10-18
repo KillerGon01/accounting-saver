@@ -48,13 +48,13 @@ final signOutProvider = Provider<SignOut>(
   (ref) => SignOut(ref.watch(authRepositoryProvider)),
 );
 
-/// Único punto de cierre de sesión de toda la app (ver docs/design.md,
-/// "Avisos de sesión"): los tres botones que cierran sesión
-/// (`ProfileScreen`, `VerifyEmailScreen`, `TransactionsScreen`) llaman a
-/// esto, nunca a `signOutProvider` directamente. Si `signOut()` falla,
-/// la excepción se propaga tal cual (cada pantalla la trata como ya
-/// hacía) y `sessionFeedbackProvider` nunca llega a escribirse — solo se
-/// marca `signedOut` si el cierre de sesión terminó de verdad.
+/// The whole app's single sign-out point (see docs/design.md, "Avisos
+/// de sesión"): the three buttons that sign out
+/// (`ProfileScreen`, `VerifyEmailScreen`, `TransactionsScreen`) call
+/// this, never `signOutProvider` directly. If `signOut()` fails, the
+/// exception propagates as-is (each screen handles it as it already
+/// did) and `sessionFeedbackProvider` never gets written to — only
+/// `signedOut` is marked if the sign-out truly finished.
 final signOutWithFeedbackProvider = Provider<SignOutWithFeedback>((ref) {
   return SignOutWithFeedback(
     signOut: ref.watch(signOutProvider),

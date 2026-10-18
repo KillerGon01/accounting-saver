@@ -46,9 +46,9 @@ void main() {
       final gateway = FakeMonthlyReportGateway.returning('ok');
       final useCase = ExplainMonthlyReport(gateway);
 
-      // Un mes distinto por llamada: cada uno es una entrada de caché
-      // distinta, así que ninguna llamada acierta en caché y las
-      // `maxCommentsPerSession` cuentan todas como comentarios generados.
+      // A different month per call: each one is a different cache entry,
+      // so no call hits the cache and all `maxCommentsPerSession` count
+      // as generated comments.
       for (var i = 0; i < ExplainMonthlyReport.maxCommentsPerSession; i++) {
         await useCase(report: reportOf(2026, 12 - i));
       }

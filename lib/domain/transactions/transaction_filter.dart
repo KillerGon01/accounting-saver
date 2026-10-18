@@ -1,13 +1,13 @@
 import 'category.dart';
 import 'transaction.dart';
 
-/// Si el movimiento buscado es un gasto o un ingreso (ver
-/// [Transaction.isExpense]).
+/// Whether the transaction being searched for is an expense or an
+/// income (see [Transaction.isExpense]).
 enum TransactionKind { expense, income }
 
-/// Filtro de búsqueda sobre los movimientos de un mes ya cargados en la
-/// pantalla (ver [filterTransactions]): nunca dispara ninguna consulta
-/// nueva a Firestore, solo recorta en memoria una lista que ya existe.
+/// Search filter over a month's transactions already loaded on screen
+/// (see [filterTransactions]): never triggers a new query to
+/// Firestore, only trims an already-existing list in memory.
 class TransactionFilter {
   TransactionFilter({
     this.searchText = '',
@@ -29,14 +29,16 @@ class TransactionFilter {
   final Category? categoryId;
   final TransactionKind? kind;
 
-  /// En céntimos, siempre en valor absoluto: el filtro los compara contra
-  /// `amountCents.abs()` (ver [filterTransactions]), sin signo propio.
-  /// Quien quiera acotar también el signo combina este rango con [kind].
+  /// In cents, always in absolute value: the filter compares them
+  /// against `amountCents.abs()` (see [filterTransactions]), with no
+  /// sign of its own. Whoever also wants to narrow by sign combines
+  /// this range with [kind].
   final int? minAmountCents;
   final int? maxAmountCents;
 
-  /// Si hay algún criterio puesto. Determina si se muestra el indicador
-  /// "N de M movimientos" y la insignia del icono de búsqueda/filtros.
+  /// Whether any criterion is set. Determines whether the "N de M
+  /// movimientos" indicator and the search/filter icon's badge are
+  /// shown.
   bool get isActive =>
       searchText.trim().isNotEmpty ||
       categoryId != null ||
@@ -44,8 +46,8 @@ class TransactionFilter {
       minAmountCents != null ||
       maxAmountCents != null;
 
-  /// Cuántos criterios distintos hay puestos (texto, categoría, tipo,
-  /// mínimo, máximo — como mucho 5), para el número de la insignia.
+  /// How many distinct criteria are set (text, category, kind, min,
+  /// max — at most 5), for the badge's number.
   int get activeCriteriaCount => [
     searchText.trim().isNotEmpty,
     categoryId != null,
@@ -55,10 +57,10 @@ class TransactionFilter {
   ].where((hasCriterion) => hasCriterion).length;
 }
 
-/// Quita espacios de los extremos, pasa a minúsculas, colapsa espacios
-/// internos repetidos a uno solo y quita las tildes de las vocales (á é í
-/// ó ú ü), para que la búsqueda no distinga mayúsculas ni acentos ("Café",
-/// "CAFÉ" y "cafe" se normalizan igual).
+/// Trims leading/trailing spaces, lowercases, collapses repeated
+/// internal spaces to one, and strips vowel accents (á é í ó ú ü), so
+/// the search doesn't distinguish case or accents ("Café", "CAFÉ" and
+/// "cafe" all normalize the same way).
 String normalizeTransactionSearchText(String text) {
   var normalized = text.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   const accented = 'áéíóúü';
@@ -69,14 +71,15 @@ String normalizeTransactionSearchText(String text) {
   return normalized;
 }
 
-/// Filtra [transactions] según [filter]. Función pura: no toca ningún
-/// repositorio ni dispara ninguna consulta nueva, opera solo sobre la
-/// lista del mes que la pantalla ya tiene en memoria.
+/// Filters [transactions] according to [filter]. Pure function:
+/// touches no repository and triggers no new query, it only operates
+/// on the month's list the screen already has in memory.
 ///
-/// El texto de búsqueda se compara contra la descripción, normalizada con
-/// [normalizeTransactionSearchText] en los dos lados. El rango de importe
-/// se compara en valor absoluto, combinado con [TransactionFilter.kind] si
-/// también se ha indicado (ver [TransactionFilter.minAmountCents]).
+/// The search text is compared against the description, normalized
+/// with [normalizeTransactionSearchText] on both sides. The amount
+/// range is compared in absolute value, combined with
+/// [TransactionFilter.kind] if that's also been given (see
+/// [TransactionFilter.minAmountCents]).
 List<Transaction> filterTransactions(List<Transaction> transactions, TransactionFilter filter) {
   final normalizedQuery = normalizeTransactionSearchText(filter.searchText);
 

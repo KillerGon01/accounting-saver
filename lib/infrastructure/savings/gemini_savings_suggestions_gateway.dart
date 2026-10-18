@@ -10,11 +10,11 @@ import '../common/app_check_error.dart';
 import '../common/gemini_model_fallback.dart';
 import '../common/gemini_transient_retry.dart';
 
-/// Implementación de [SavingsSuggestionsGateway] con Gemini (Firebase AI
-/// Logic, Gemini Developer API): una sola llamada, sin function calling.
-/// Mismos modelos, fallback, reintento y timeout que el resto de la app
-/// (ver [geminiModelFallbacks], [withGeminiModelFallback],
-/// [withTransientRetry]): comparten la misma cuota gratuita.
+/// [SavingsSuggestionsGateway] implementation with Gemini (Firebase AI
+/// Logic, Gemini Developer API): a single call, no function calling.
+/// Same models, fallback, retry and timeout as the rest of the app
+/// (see [geminiModelFallbacks], [withGeminiModelFallback],
+/// [withTransientRetry]): they share the same free quota.
 class GeminiSavingsSuggestionsGateway implements SavingsSuggestionsGateway {
   GeminiSavingsSuggestionsGateway({GeminiModelAvailability? availability})
     : _availability = availability ?? GeminiModelAvailability();
@@ -24,8 +24,8 @@ class GeminiSavingsSuggestionsGateway implements SavingsSuggestionsGateway {
   static GenerativeModel _buildModel(String model) {
     return FirebaseAI.googleAI().generativeModel(
       model: model,
-      // Temperatura baja, igual que `GeminiMonthlyReportGateway`: es una
-      // redacción sobre cifras ya calculadas, no redacción creativa.
+      // Low temperature, same as `GeminiMonthlyReportGateway`: this is
+      // a write-up of already-computed figures, not creative writing.
       generationConfig: GenerationConfig(temperature: 0.2),
     );
   }
@@ -52,9 +52,10 @@ class GeminiSavingsSuggestionsGateway implements SavingsSuggestionsGateway {
         message: 'Se ha agotado la cuota gratuita de la IA por ahora. Inténtalo más tarde.',
       );
     } on TimeoutException {
-      // Igual que en `GeminiMonthlyReportGateway`/`GeminiChatGateway`: un
-      // timeout nunca se reintenta (ver `gemini_transient_retry.dart`), así
-      // que esto sale tras un único intento de `geminiRequestTimeout` (150 s).
+      // Same as in `GeminiMonthlyReportGateway`/`GeminiChatGateway`: a
+      // timeout is never retried (see `gemini_transient_retry.dart`),
+      // so this comes out after a single `geminiRequestTimeout`
+      // (150 s) attempt.
       throw const LlmGatewayException(
         'timeout',
         message: 'La IA no está disponible ahora mismo.',
@@ -90,15 +91,16 @@ class GeminiSavingsSuggestionsGateway implements SavingsSuggestionsGateway {
   }
 }
 
-/// Construye el prompt que se envía a Gemini para redactar un resumen de
-/// [summary]. Función pura (sin `firebase_ai` ni red), así se prueba sin
-/// ningún proyecto de Firebase: ver `test/infrastructure/savings/`.
+/// Builds the prompt sent to Gemini to write up a summary of
+/// [summary]. Pure function (no `firebase_ai`, no network), so it's
+/// tested without any Firebase project: see
+/// `test/infrastructure/savings/`.
 ///
-/// Solo recibe el resumen agregado, nunca la meta ni ningún movimiento:
-/// [SavingsSuggestionsSummary] no tiene ningún campo para un nombre, una
-/// descripción o un concepto, así que es imposible que uno se filtre aquí
-/// por accidente (no es un filtrado que pueda fallar, es un tipo que no
-/// transporta ese dato).
+/// Only receives the aggregated summary, never the goal or any
+/// transaction: [SavingsSuggestionsSummary] has no field for a name,
+/// a description, or a concept, so it's impossible for one to leak in
+/// here by accident (it's not a filtering step that could fail, it's
+/// a type that doesn't carry that data).
 String buildSavingsSuggestionsExplanationPrompt(SavingsSuggestionsSummary summary) {
   final buffer = StringBuffer()
     ..writeln(

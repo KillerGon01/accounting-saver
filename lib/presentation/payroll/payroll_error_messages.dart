@@ -3,10 +3,10 @@ import '../../domain/transactions/llm_gateway_exception.dart';
 
 const _genericMessage = 'No se pudo leer la nómina. Inténtalo de nuevo.';
 
-/// Mensaje en español para un error al leer una nómina con la IA. Reusa
-/// los mismos códigos de [LlmGatewayException] que la entrada en lenguaje
-/// natural (ver `llm_error_messages.dart`), con el texto adaptado a
-/// "nómina" en vez de a "texto".
+/// Spanish-language message for an error reading a payroll with AI.
+/// Reuses the same [LlmGatewayException] codes as natural language
+/// input (see `llm_error_messages.dart`), with the text adapted to
+/// "nómina" instead of "texto".
 String payrollErrorMessage(Object error) {
   if (error is PayrollFileException) return error.message;
   if (error is! LlmGatewayException) return _genericMessage;

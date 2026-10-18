@@ -89,8 +89,9 @@ class FirestoreTransactionRepository implements TransactionRepository {
     return _collection(userId).doc(transactionId).delete();
   }
 
-  /// Usa consultas agregadas (`count` y `sum`), así que no descarga los
-  /// movimientos: solo lee el primero y el último por fecha.
+  /// Uses aggregated queries (`count` and `sum`), so it doesn't
+  /// download the transactions: it only reads the first and last by
+  /// date.
   @override
   Future<ActivitySummary> getActivitySummary({required String userId}) async {
     final collection = _collection(userId);
@@ -118,11 +119,11 @@ class FirestoreTransactionRepository implements TransactionRepository {
     );
   }
 
-  /// Único `where` aparte de la igualdad por fecha: ninguno. El rango de
-  /// fecha es el único filtro en el servidor, con `orderBy` sobre ese mismo
-  /// campo, así que no depende de ningún índice compuesto. Cualquier otro
-  /// filtro (categoría, importe, signo...) y toda suma la hace quien llama,
-  /// en código, sobre la lista devuelta.
+  /// Only `where` besides equality by date: none. The date range is
+  /// the only filter on the server, with `orderBy` on that same
+  /// field, so it doesn't depend on any composite index. Any other
+  /// filter (category, amount, sign...) and every sum is done by the
+  /// caller, in code, over the returned list.
   @override
   Future<List<Transaction>> findByDateRange({
     required String userId,
@@ -150,10 +151,10 @@ class FirestoreTransactionRepository implements TransactionRepository {
     return result.count ?? 0;
   }
 
-  /// Suma de los importes positivos (`positive: true`) o de los negativos
-  /// (`positive: false`), en céntimos. El paquete devuelve `double`; como los
-  /// importes son enteros de céntimos, el redondeo recupera el valor exacto
-  /// mientras la suma quede por debajo de 2^53 céntimos.
+  /// Sum of the positive amounts (`positive: true`) or the negative
+  /// ones (`positive: false`), in cents. The package returns
+  /// `double`; since amounts are integer cents, rounding recovers the
+  /// exact value as long as the sum stays below 2^53 cents.
   Future<int> _sumAmounts(
     Query<Map<String, dynamic>> base, {
     required bool positive,

@@ -8,18 +8,19 @@ import '../../domain/auth/auth_exception.dart';
 import '../../domain/auth/auth_repository.dart';
 import 'native_google_credential.dart';
 
-/// Único punto de la app que importa `google_sign_in` (a través de
-/// `NativeGoogleCredential`): ni el dominio ni la presentación lo
-/// conocen (ver docs/design.md, "Inicio de sesión con Google en
-/// Android"). [googleSignIn] es inyectable solo para los tests (un
-/// `GoogleSignIn` de verdad por defecto), igual que [firebaseAuth].
+/// The app's only point that imports `google_sign_in` (through
+/// `NativeGoogleCredential`): neither the domain layer nor the
+/// presentation layer know about it (see docs/design.md, "Inicio de
+/// sesión con Google en Android"). [googleSignIn] is injectable only
+/// for tests (a real `GoogleSignIn` by default), same as
+/// [firebaseAuth].
 ///
-/// En web, [_nativeGoogle] es siempre `null` (ver
-/// `createNativeGoogleCredential`): nunca se instancia `GoogleSignIn` en
-/// esa plataforma, ni aunque nunca se vaya a usar — ver docs/design.md,
-/// "Bug: `GoogleSignIn` se instanciaba también en web". [isWeb] es
-/// inyectable solo para los tests, por el mismo motivo que en
-/// `createNativeGoogleCredential`.
+/// On web, [_nativeGoogle] is always `null` (see
+/// `createNativeGoogleCredential`): `GoogleSignIn` is never
+/// instantiated on that platform, not even though it's never going to
+/// be used — see docs/design.md, "Bug: `GoogleSignIn` se instanciaba
+/// también en web". [isWeb] is injectable only for tests, for the
+/// same reason as in `createNativeGoogleCredential`.
 class FirebaseAuthRepository implements AuthRepository {
   FirebaseAuthRepository({
     firebase_auth.FirebaseAuth? firebaseAuth,
@@ -32,9 +33,9 @@ class FirebaseAuthRepository implements AuthRepository {
   final firebase_auth.FirebaseAuth _firebaseAuth;
   final bool _isWeb;
 
-  /// Siempre no nulo cuando [_isWeb] es `false` (ver
-  /// `createNativeGoogleCredential`): solo se usa en las ramas que ya
-  /// comprueban `!_isWeb` antes.
+  /// Always non-null when [_isWeb] is `false` (see
+  /// `createNativeGoogleCredential`): only used in the branches that
+  /// already check `!_isWeb` first.
   final NativeGoogleCredential? _nativeGoogle;
 
   @override
@@ -80,10 +81,10 @@ class FirebaseAuthRepository implements AuthRepository {
         final userCredential = await _firebaseAuth.signInWithPopup(firebase_auth.GoogleAuthProvider());
         return _requireAppUser(userCredential.user);
       }
-      // Android (y el resto de plataformas nativas): el SDK nativo de
-      // Google, no `signInWithProvider` (el flujo por pestaña de Chrome
-      // que `identitytoolkit` bloquea con 403 "Requests from this
-      // Android client application <empty> are blocked" — ver
+      // Android (and the rest of native platforms): Google's native
+      // SDK, not `signInWithProvider` (the Chrome-tab flow that
+      // `identitytoolkit` blocks with a 403 "Requests from this
+      // Android client application <empty> are blocked" — see
       // docs/security.md).
       final credential = await _nativeGoogle!();
       final userCredential = await _firebaseAuth.signInWithCredential(credential);
@@ -106,14 +107,15 @@ class FirebaseAuthRepository implements AuthRepository {
     return _mapErrors(() async {
       final user = _currentUserOrThrow();
       await user.reload();
-      // Las reglas de Firestore leen `email_verified` del token, no del
-      // perfil recargado por `reload()`: sin forzar un token nuevo aquí,
-      // el cambio seguiría sin verse en Firestore hasta que el token
-      // expirase solo (hasta 1 h) o se cerrara y abriera sesión de nuevo.
-      // Va después de `reload()` y antes de devolver el usuario, para que
-      // quien llama (`VerifyEmailScreen`, vía `RefreshEmailVerification`)
-      // no pase a una pantalla que use Firestore con un token todavía
-      // antiguo.
+      // Firestore's rules read `email_verified` from the token, not
+      // from the profile reloaded by `reload()`: without forcing a
+      // new token here, the change would still be invisible to
+      // Firestore until the token expired on its own (up to 1 h) or
+      // the session was closed and reopened. It goes after `reload()`
+      // and before returning the user, so the caller
+      // (`VerifyEmailScreen`, via `RefreshEmailVerification`) doesn't
+      // move on to a screen that uses Firestore with a still-old
+      // token.
       await user.getIdToken(true);
       return _requireAppUser(_firebaseAuth.currentUser);
     });
@@ -140,10 +142,10 @@ class FirebaseAuthRepository implements AuthRepository {
         await user.reauthenticateWithPopup(firebase_auth.GoogleAuthProvider());
         return;
       }
-      // Mismo motivo que `signInWithGoogle`: sin esto, borrar la cuenta
-      // de un usuario que entró con Google seguiría fallando en Android
-      // (la reautenticación es obligatoria antes del borrado — ver
-      // `DeleteAccount`).
+      // Same reason as `signInWithGoogle`: without this, deleting the
+      // account of a user who signed in with Google would keep
+      // failing on Android (reauthentication is required before
+      // deletion — see `DeleteAccount`).
       final credential = await _nativeGoogle!();
       await user.reauthenticateWithCredential(credential);
     });
@@ -159,14 +161,14 @@ class FirebaseAuthRepository implements AuthRepository {
     await _firebaseAuth.signOut();
     if (!_isWeb) {
       try {
-        // Sin esto, el selector nativo de Google (`NativeGoogleCredential`)
-        // podría recordar la cuenta y no volver a mostrar el selector en
-        // el siguiente inicio de sesión. Un fallo aquí no deshace el
-        // `signOut` de Firebase de arriba — la sesión de la app ya ha
-        // terminado igualmente.
+        // Without this, Google's native selector
+        // (`NativeGoogleCredential`) could remember the account and
+        // not show the selector again on the next sign-in. A failure
+        // here doesn't undo Firebase's `signOut` above — the app's
+        // session has ended either way.
         await _nativeGoogle!.signOut();
       } catch (_) {
-        // Ignorado a propósito: ver el comentario de arriba.
+        // Ignored on purpose: see the comment above.
       }
     }
   }
@@ -177,9 +179,9 @@ class FirebaseAuthRepository implements AuthRepository {
     } on firebase_auth.FirebaseAuthException catch (error) {
       throw AuthException(error.code, message: error.message);
     } on PlatformException catch (error) {
-      // `google_sign_in` lanza esto para sus propios errores nativos
-      // (no es un `FirebaseAuthException`): mismo tipo de traducción,
-      // para que nunca llegue a la interfaz un error sin pasar por
+      // `google_sign_in` throws this for its own native errors (it's
+      // not a `FirebaseAuthException`): same kind of translation, so
+      // an error never reaches the UI without going through
       // `authErrorMessage`.
       throw AuthException(error.code, message: error.message);
     }

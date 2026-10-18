@@ -1,7 +1,7 @@
 import 'app_user.dart';
 
-/// Proveedor con el que el usuario inició sesión. La aplicación solo ofrece
-/// estos dos, así que cualquier otro identificador se trata como correo.
+/// Provider the user signed in with. The application only offers these
+/// two, so any other identifier is treated as email.
 enum SignInProvider { password, google }
 
 class UserProfile {

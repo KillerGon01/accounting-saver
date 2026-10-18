@@ -1,8 +1,8 @@
 import 'transaction.dart';
 import 'transaction_source.dart';
 
-/// Resumen de todo el histórico de movimientos de un usuario.
-/// El gasto se guarda como magnitud positiva, igual que en `MonthlySummary`.
+/// Summary of a user's entire transaction history.
+/// Expense is stored as a positive magnitude, same as in `MonthlySummary`.
 class ActivitySummary {
   const ActivitySummary({
     required this.totalCount,

@@ -12,12 +12,12 @@ import 'eval_fixtures.dart';
 import 'eval_grading.dart';
 import 'eval_report.dart';
 
-/// Un código HTTP de 3 cifras (4xx/5xx) dentro del mensaje de una
-/// [LlmGatewayException], si lo hay (p. ej. "...401 Unauthorized...").
-/// Las excepciones de infraestructura no siempre lo traen en un campo
-/// propio (ver `isModelNotFoundError`/`isAppCheckAttestationError`:
-/// detectan errores por texto, no por código), así que esto es un
-/// extra solo para el informe, no para decidir nada.
+/// A 3-digit HTTP code (4xx/5xx) inside an [LlmGatewayException]'s
+/// message, if there is one (e.g. "...401 Unauthorized...").
+/// Infrastructure exceptions don't always carry it in a field of
+/// their own (see `isModelNotFoundError`/`isAppCheckAttestationError`:
+/// they detect errors by text, not by code), so this is extra, only
+/// for the report, not to decide anything.
 final _httpCodePattern = RegExp(r'\b([45]\d{2})\b');
 
 String _describeError(LlmGatewayException error) {
@@ -27,10 +27,10 @@ String _describeError(LlmGatewayException error) {
   return httpCode == null ? error.code : '${error.code} ($httpCode)';
 }
 
-/// Se lanza si la cuenta de la sesión no coincide con la cuenta de
-/// evaluación (`EVAL_ACCOUNT_EMAIL`): `runEval` se niega a borrar ni a
-/// escribir nada en cualquier otra cuenta, incluida la de "Credenciales
-/// de prueba" (ver docs/evaluation.md).
+/// Thrown if the session's account doesn't match the evaluation
+/// account (`EVAL_ACCOUNT_EMAIL`): `runEval` refuses to delete or
+/// write anything in any other account, including the "Credenciales
+/// de prueba" one (see docs/evaluation.md).
 class WrongEvalAccountError implements Exception {
   const WrongEvalAccountError(this.expectedEmail, this.actualEmail);
 
@@ -43,11 +43,11 @@ class WrongEvalAccountError implements Exception {
       'EVAL_ACCOUNT_EMAIL ($expectedEmail). No se borra ni se escribe nada.';
 }
 
-/// Se lanza si el `caseFilter` de `runEval` no tiene sentido: alguno de
-/// sus elementos no es ni el `id` ni el `type.name` de ningún caso, o el
-/// filtro, aun siendo válido, no selecciona ningún caso. Se comprueba
-/// antes de borrar o sembrar nada en la cuenta de evaluación, para no
-/// tocarla por un filtro mal escrito.
+/// Thrown if `runEval`'s `caseFilter` doesn't make sense: one of its
+/// elements is neither the `id` nor the `type.name` of any case, or
+/// the filter, even if valid, selects no case. Checked before
+/// deleting or seeding anything in the evaluation account, so it
+/// isn't touched over a badly-written filter.
 class EvalCaseFilterError implements Exception {
   const EvalCaseFilterError(this.message);
 
@@ -64,44 +64,46 @@ class EvalRunConfig {
     this.estimatedRequestsPerCase = 3,
   });
 
-  /// Espaciado entre preguntas. El modelo principal
-  /// (`geminiModelFallbacks.first`) admite 15 peticiones/min y cada
-  /// pregunta son ~2 llamadas (la petición inicial y, al menos, la que
-  /// devuelve el resultado de la función); 10 s deja margen de sobra.
+  /// Spacing between questions. The main model
+  /// (`geminiModelFallbacks.first`) allows 15 requests/min and each
+  /// question is ~2 calls (the initial request and, at least, the
+  /// one that returns the function's result); 10 s leaves plenty of
+  /// margin.
   final Duration delayBetweenCases;
 
-  /// Tope de peticiones de toda la ejecución. No hay forma de contar las
-  /// llamadas reales dentro de `GeminiChatGateway` desde fuera (puede
-  /// encadenar hasta 5 idas y vueltas por pregunta, ver
-  /// `_maxFunctionCallSteps`), así que se aproxima contando
-  /// [estimatedRequestsPerCase] por caso. 160 (en vez de 80): con ~30
-  /// casos y como mucho 5 peticiones cada uno, 150 sería el peor caso
-  /// real; 80 cortaba la primera ejecución real antes de llegar a los
-  /// casos de "escritura" (11/10/2026, 78/80).
+  /// Cap on requests for the whole run. There's no way to count the
+  /// real calls inside `GeminiChatGateway` from outside (it can
+  /// chain up to 5 back-and-forths per question, see
+  /// `_maxFunctionCallSteps`), so it's approximated by counting
+  /// [estimatedRequestsPerCase] per case. 160 (instead of 80): with
+  /// ~30 cases and at most 5 requests each, 150 would be the real
+  /// worst case; 80 cut off the first real run before reaching the
+  /// "escritura" cases (11/10/2026, 78/80).
   final int requestBudget;
   final int estimatedRequestsPerCase;
 }
 
 typedef EvalProgressCallback = void Function(String message);
 
-/// Aplica un filtro de casos (ver `runEval`, parámetro `caseFilter`) a
-/// [allCases]: normaliza cada elemento (recorte de espacios, descartando
-/// los que quedan vacíos) y, si el resultado no es vacío, exige que todos
-/// sean el `id` o el `type.name` de algún caso de [allCases] o de
-/// [EvalCaseType.values] — si alguno no lo es, lanza [EvalCaseFilterError]
-/// con todos los desconocidos a la vez, ordenados. Si el filtro (ya
-/// normalizado) es `null` o vacío, devuelve [allCases] tal cual (mismo
-/// comportamiento de siempre: sin filtro, se ejecutan todos).
+/// Applies a case filter (see `runEval`, parameter `caseFilter`) to
+/// [allCases]: normalizes each element (trims spaces, drops the ones
+/// left empty) and, if the result isn't empty, requires all of them
+/// to be the `id` or the `type.name` of some case in [allCases] or
+/// of [EvalCaseType.values] — if any isn't, throws
+/// [EvalCaseFilterError] with all the unknown ones at once, sorted.
+/// If the (already normalized) filter is `null` or empty, returns
+/// [allCases] as is (same behavior as always: with no filter, all
+/// run).
 ///
-/// Si, aun con todos los elementos reconocidos, el filtro no selecciona
-/// ningún caso de [allCases] (posible si un `type.name` es válido —existe
-/// en el enum— pero no tiene ningún caso en esta lista concreta), también
-/// lanza [EvalCaseFilterError]: nunca se devuelve una lista vacía en
-/// silencio.
+/// If, even with every element recognized, the filter selects no
+/// case from [allCases] (possible if a `type.name` is valid — it
+/// exists in the enum — but has no case in this specific list), it
+/// also throws [EvalCaseFilterError]: an empty list is never
+/// returned silently.
 ///
-/// Función separada de `runEval` para poder probarla con una lista de
-/// casos de prueba (ver `test/eval/eval_runner_test.dart`), sin depender
-/// de los casos reales de `buildEvalDataset`.
+/// A function separate from `runEval` so it can be tested with a
+/// list of test cases (see `test/eval/eval_runner_test.dart`),
+/// without depending on `buildEvalDataset`'s real cases.
 List<EvalCase> resolveFilteredCases(List<EvalCase> allCases, Set<String>? caseFilter) {
   final normalizedFilter = caseFilter
       ?.map((element) => element.trim())
@@ -130,35 +132,37 @@ List<EvalCase> resolveFilteredCases(List<EvalCase> allCases, Set<String>? caseFi
   return cases;
 }
 
-/// Ejecuta la evaluación completa contra el backend real de Gemini (ver
-/// docs/evaluation.md): borra los movimientos existentes de [userId],
-/// los sustituye por los datos de evaluación deterministas
-/// ([seedEvalData]), hace las preguntas (con espaciado y tope de
-/// peticiones) directamente al gateway y al ejecutor de funciones reales
-/// —nunca a través de `SendChatMessage`, que tiene su propio reloj real y
-/// su tope de 20 preguntas por sesión— y devuelve el informe en
-/// Markdown, listo para pegar en `docs/evaluation.md`.
+/// Runs the full evaluation against Gemini's real backend (see
+/// docs/evaluation.md): deletes [userId]'s existing transactions,
+/// replaces them with deterministic evaluation data
+/// ([seedEvalData]), asks the questions (with spacing and a request
+/// cap) directly to the real gateway and function executor — never
+/// through `SendChatMessage`, which has its own real clock and its
+/// cap of 20 questions per session — and returns the report in
+/// Markdown, ready to paste into `docs/evaluation.md`.
 ///
-/// [caseFilter], si no es `null` ni vacío, limita la ejecución a los
-/// casos cuyo `id` o cuyo `type.name` (por ejemplo `"escritura"`) estén
-/// en el conjunto (cada elemento se recorta de espacios antes de
-/// comparar) — útil para repetir solo un subconjunto sin gastar cuota en
-/// los casos que ya han pasado. `null` o vacío (tras recortar espacios)
-/// ejecuta todos. Si algún elemento no es ni un `id` ni un `type.name` de
-/// ningún caso, o si el filtro no selecciona ningún caso, [runEval] lanza
-/// [EvalCaseFilterError] **antes** de borrar o sembrar nada en la cuenta
-/// y sin llamar a Gemini — nunca un informe vacío en silencio.
+/// [caseFilter], if not `null` nor empty, limits the run to the
+/// cases whose `id` or `type.name` (for example `"escritura"`) are
+/// in the set (each element is trimmed of spaces before comparing)
+/// — useful for repeating only a subset without spending quota on
+/// cases that have already passed. `null` or empty (after trimming
+/// spaces) runs all of them. If any element is neither an `id` nor
+/// a `type.name` of any case, or if the filter selects no case,
+/// [runEval] throws [EvalCaseFilterError] **before** deleting or
+/// seeding anything in the account and without calling Gemini —
+/// never a silently empty report.
 ///
-/// Antes de tocar nada comprueba que [sessionEmail] (el correo de la
-/// sesión ya iniciada) coincide con [expectedEmail]
-/// (`EVAL_ACCOUNT_EMAIL`); si no coincide, o si [expectedEmail] está
-/// vacío, lanza [WrongEvalAccountError] sin borrar ni escribir nada.
+/// Before touching anything, checks that [sessionEmail] (the
+/// already-signed-in session's email) matches [expectedEmail]
+/// (`EVAL_ACCOUNT_EMAIL`); if it doesn't match, or if [expectedEmail]
+/// is empty, throws [WrongEvalAccountError] without deleting or
+/// writing anything.
 ///
-/// [gatewayOverride] es solo para `test/eval/eval_runner_test.dart`
-/// (comprobar la repetición automática ante un error de infraestructura
-/// sin llamar a Gemini de verdad, ver [EvalResult.notEvaluable]): si es
-/// `null` (el valor normal, siempre en `lib/eval_main.dart`), se usa el
-/// `GeminiChatGateway` real.
+/// [gatewayOverride] is only for `test/eval/eval_runner_test.dart`
+/// (checking the automatic retry on an infrastructure error without
+/// really calling Gemini, see [EvalResult.notEvaluable]): if it's
+/// `null` (the normal value, always in `lib/eval_main.dart`), the
+/// real `GeminiChatGateway` is used.
 Future<String> runEval({
   required TransactionRepository repository,
   required String userId,
@@ -187,9 +191,9 @@ Future<String> runEval({
 
   log('Cuenta verificada ($sessionEmail).');
 
-  // El dataset (y, con él, la lista de ids/tipos válidos) se calcula
-  // antes de tocar la cuenta: así un filtro mal escrito se detecta sin
-  // haber borrado ni sembrado nada todavía.
+  // The dataset (and, with it, the list of valid ids/types) is
+  // computed before touching the account: this way a badly-written
+  // filter is caught without having deleted or seeded anything yet.
   log('Calculando los valores esperados de cada caso...');
   final dataset = await buildEvalDataset();
   final allCases = dataset.cases;
@@ -222,8 +226,8 @@ Future<String> runEval({
 
   for (; nextIndex < cases.length; nextIndex++) {
     final evalCase = cases[nextIndex];
-    // Una conversación de varios turnos (ver `EvalCase.priorTurns`) gasta
-    // una petición estimada por turno, no solo por el turno final.
+    // A multi-turn conversation (see `EvalCase.priorTurns`) spends
+    // an estimated request per turn, not only for the final turn.
     final turnsInCase = evalCase.priorTurns.length + 1;
     if (requestsUsed + config.estimatedRequestsPerCase * turnsInCase > config.requestBudget) {
       aborted = true;
@@ -236,12 +240,12 @@ Future<String> runEval({
     LlmGatewayException? lastError;
     var wasRetried = false;
     var countBefore = await transactionCount();
-    // Respuestas literales del modelo real a `evalCase.priorTurns`, en el
-    // mismo orden (ver `EvalResult.priorTurnResponses`): no se gradúan,
-    // solo se guardan para el informe. Se reinicia en cada intento (un
-    // reintento tras un error de infraestructura vuelve a reproducir la
-    // conversación desde el turno 1, así que no tiene sentido conservar
-    // las del intento anterior).
+    // The real model's literal responses to `evalCase.priorTurns`,
+    // in the same order (see `EvalResult.priorTurnResponses`): not
+    // graded, only stored for the report. Reset on each attempt (a
+    // retry after an infrastructure error reproduces the
+    // conversation again from turn 1, so there's no point keeping
+    // the previous attempt's ones).
     var priorResponses = <String>[];
 
     ChatFunctionExecutor buildExecutor() {
@@ -251,10 +255,11 @@ Future<String> runEval({
     for (var attempt = 0; attempt < 2; attempt++) {
       final collectedResponses = <String>[];
       try {
-        // Reproduce los turnos previos con el historial real que vería
-        // `ChatScreen` (igual que `SendChatMessage`), para llegar al turno
-        // final en el mismo contexto que en producción. Sus respuestas no
-        // se juzgan: solo pasan a formar parte del historial.
+        // Reproduces the previous turns with the real history
+        // `ChatScreen` would see (same as `SendChatMessage`), to
+        // reach the final turn in the same context as production.
+        // Their responses aren't judged: they only become part of
+        // the history.
         final history = <ChatMessage>[];
         for (final priorMessage in evalCase.priorTurns) {
           final priorReply = await gateway.sendMessage(
@@ -276,9 +281,9 @@ Future<String> runEval({
         lastError = null;
         break;
       } on LlmGatewayException catch (error) {
-        // Puede haber menos respuestas que `priorTurns` si el error
-        // interrumpió la conversación a mitad de los turnos previos (ver
-        // `EvalResult.priorTurnResponses`).
+        // There may be fewer responses than `priorTurns` if the
+        // error interrupted the conversation midway through the
+        // previous turns (see `EvalResult.priorTurnResponses`).
         priorResponses = collectedResponses;
         lastError = error;
         requestsUsed += config.estimatedRequestsPerCase * turnsInCase;
@@ -286,7 +291,7 @@ Future<String> runEval({
           wasRetried = true;
           log('  → error de infraestructura (${_describeError(error)}); repitiendo una vez...');
           await Future<void>.delayed(config.delayBetweenCases);
-          countBefore = await transactionCount(); // por si el primer intento sí llegó a algo
+          countBefore = await transactionCount(); // in case the first attempt did reach something
         }
       }
     }

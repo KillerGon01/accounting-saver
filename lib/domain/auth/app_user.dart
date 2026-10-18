@@ -1,4 +1,4 @@
-/// Identificadores de proveedor de Firebase Auth usados por la aplicación.
+/// Firebase Auth provider identifiers used by the application.
 const passwordProviderId = 'password';
 const googleProviderId = 'google.com';
 
@@ -21,8 +21,8 @@ class AppUser {
   final DateTime? createdAt;
   final DateTime? lastSignInAt;
 
-  /// Las cuentas creadas con correo y contraseña deben verificar su correo
-  /// antes de usar la app. Los usuarios de Google ya vienen verificados.
+  /// Accounts created with email and password must verify their email
+  /// before using the app. Google users already come verified.
   bool get needsEmailVerification =>
       !emailVerified && providerIds.contains(passwordProviderId);
 }

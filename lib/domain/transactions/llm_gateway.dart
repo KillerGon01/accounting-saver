@@ -1,18 +1,18 @@
 import 'raw_parsed_transaction.dart';
 
-/// Puerto hacia un modelo de lenguaje capaz de extraer un movimiento a
-/// partir de un texto libre. La infraestructura (Gemini) implementa esta
-/// interfaz; el dominio y la aplicación no conocen el proveedor.
+/// Port to a language model able to extract a transaction from free
+/// text. The infrastructure layer (Gemini) implements this interface;
+/// the domain and application layers don't know the provider.
 abstract class LlmGateway {
-  /// Extrae un movimiento a partir de [text]. [now] se usa para resolver
-  /// fechas relativas ("ayer", "el lunes pasado").
+  /// Extracts a transaction from [text]. [now] is used to resolve
+  /// relative dates ("yesterday", "last Monday").
   ///
-  /// Si el texto no describe con claridad un movimiento con importe, el
-  /// resultado tiene `understood: false` y el resto de campos en `null`;
-  /// no lanza una excepción por eso.
+  /// If the text doesn't clearly describe a transaction with an
+  /// amount, the result has `understood: false` and the rest of the
+  /// fields are `null`; it doesn't throw for that.
   ///
-  /// Lanza [LlmGatewayException] si la IA no está disponible (cuota, red)
-  /// o si la respuesta no se puede interpretar.
+  /// Throws [LlmGatewayException] if the AI isn't available (quota,
+  /// network) or if the response can't be parsed.
   Future<RawParsedTransaction> extractTransaction({
     required String text,
     required DateTime now,

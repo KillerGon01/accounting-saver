@@ -27,10 +27,10 @@ Future<void> _pump(WidgetTester tester, ParsePayrollResult result) async {
       supportedLocales: appSupportedLocales,
       localizationsDelegates: appLocalizationsDelegates,
       home: Scaffold(
-        // Con scroll, igual que `PayrollScreen` de verdad (ver su `build`):
-        // sin esto, una nómina con muchas deducciones y avisos desborda el
-        // viewport fijo del test, que no es el problema que estos tests
-        // quieren comprobar.
+        // With scrolling, same as the real `PayrollScreen` (see its
+        // `build`): without this, a payroll with many deductions and
+        // warnings overflows the test's fixed viewport, which isn't the
+        // problem these tests want to check.
         body: SingleChildScrollView(child: PayrollResultView(result: result, onAddIncome: () {})),
       ),
     ),
@@ -83,12 +83,12 @@ void main() {
 
     await _pump(tester, result);
 
-    // Un único aviso menciona el texto citado (no dos bullets separados
-    // sobre el mismo hecho).
+    // A single warning mentions the quoted text (not two separate
+    // bullets about the same fact).
     expect(find.textContaining(injected), findsOneWidget);
 
-    // Se renderiza con un `Text` normal (texto plano): nada lo convierte
-    // en un enlace pulsable ni interpreta markup dentro de la cita.
+    // It's rendered with a plain `Text` widget: nothing turns it into a
+    // tappable link or interprets markup inside the quote.
     final warningText = tester.widget<Text>(find.textContaining(injected));
     expect(warningText.data, contains(injected));
   });

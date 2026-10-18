@@ -5,10 +5,10 @@ import '../../domain/transactions/parsed_transaction.dart';
 import 'llm_error_messages.dart';
 import 'transaction_providers.dart';
 
-/// Campo para añadir un movimiento describiéndolo en lenguaje natural
-/// (por ejemplo "ayer 12,50 en el bar con Marta"). Solo interpreta el
-/// texto: [onParsed] abre el formulario ya rellenado, y nada se guarda
-/// hasta que el usuario lo confirma allí.
+/// Field for adding a transaction by describing it in natural
+/// language (for example "ayer 12,50 en el bar con Marta"). Only
+/// parses the text: [onParsed] opens the already-filled form, and
+/// nothing is saved until the user confirms it there.
 class NaturalLanguageInput extends ConsumerStatefulWidget {
   const NaturalLanguageInput({super.key, required this.onParsed});
 

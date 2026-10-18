@@ -1,7 +1,7 @@
-/// Error al extraer un movimiento con la IA, independiente del proveedor.
-/// La infraestructura traduce sus errores (cuota, red, respuesta
-/// inesperada) a este tipo, y la presentación decide el mensaje a mostrar
-/// a partir de [code].
+/// Error extracting a transaction with the AI, independent of the
+/// provider. The infrastructure layer translates its own errors
+/// (quota, network, unexpected response) into this type, and the
+/// presentation layer decides the message to show based on [code].
 class LlmGatewayException implements Exception {
   const LlmGatewayException(this.code, {this.message});
 

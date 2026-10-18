@@ -49,9 +49,9 @@ void main() {
       ),
     );
 
-    // Justo tras el retraso del tope (320 ms = 40 ms × 8): si el índice
-    // 20 esperase más que el tope (800 ms), a esta altura solo habría
-    // aparecido el primero.
+    // Right after the capped delay (320 ms = 40 ms × 8): if index 20
+    // waited longer than the cap (800 ms), only the first one would
+    // have appeared by now.
     await tester.pump(const Duration(milliseconds: 325));
 
     expect(
@@ -71,10 +71,10 @@ void main() {
   testWidgets('el temporizador se cancela si el widget se destruye antes de disparar', (tester) async {
     await _pump(tester, const StaggeredEntrance(index: 5, child: Text('tarjeta')));
 
-    // Se quita del árbol antes de que cumpla su retraso (200 ms): si el
-    // temporizador no se cancelara en `dispose`, `flutter_test` falla la
-    // prueba al final con "A Timer is still pending" en vez de con esta
-    // aserción.
+    // Removed from the tree before its delay (200 ms) elapses: if the
+    // timer weren't cancelled in `dispose`, `flutter_test` would fail
+    // the test at the end with "A Timer is still pending" instead of
+    // with this assertion.
     await _pump(tester, const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 250));
 

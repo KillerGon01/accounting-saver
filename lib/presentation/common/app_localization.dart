@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-/// Localización de los widgets de Material (selector de fecha, el
-/// tooltip "Atrás" del botón de volver automático, los botones de los
-/// diálogos...) en español de España, fija — igual que el tema está
-/// forzado a oscuro (`ThemeMode.dark` en `main.dart`), el idioma de
-/// estos widgets no depende del idioma del sistema. No afecta a ningún
-/// texto ni formato propio de la app (fechas, meses, importes): todo eso
-/// ya es texto escrito a mano (`formatters.dart`/`report_formatters.dart`),
-/// sin `package:intl` en ningún punto del código de la app — ver
+/// Localization of Material widgets (the date picker, the automatic
+/// back button's "Atrás" tooltip, dialog buttons...) in Spanish
+/// (Spain), fixed — same as the theme is forced to dark
+/// (`ThemeMode.dark` in `main.dart`), these widgets' language doesn't
+/// depend on the system's language. Doesn't affect any of the app's
+/// own text or formatting (dates, months, amounts): all of that is
+/// already hand-written text (`formatters.dart`/`report_formatters.dart`),
+/// with `package:intl` nowhere in the app's code — see
 /// docs/design.md, "Localización de Material (es-ES)".
 const appLocale = Locale('es', 'ES');
 const appSupportedLocales = [appLocale];

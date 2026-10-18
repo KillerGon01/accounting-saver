@@ -5,9 +5,9 @@ import '../../application/savings/create_savings_goal.dart';
 import '../../application/savings/explain_savings_suggestions.dart';
 import 'help_topic.dart';
 
-/// Título y pasos de ayuda de una pantalla, en castellano, sacados de lo ya
-/// documentado en `README.md` y `docs/`: capa de presentación pura, sin
-/// ninguna capacidad nueva.
+/// A screen's help title and steps, in Spanish, drawn from what's
+/// already documented in `README.md` and `docs/`: pure presentation
+/// layer, no new capability.
 class HelpEntry {
   const HelpEntry({required this.title, required this.steps});
 
@@ -15,13 +15,14 @@ class HelpEntry {
   final List<String> steps;
 }
 
-/// Contenido de ayuda de cada pantalla (ver [HelpTopic]). Los límites
-/// numéricos que aparecen en los pasos se leen de las constantes del
-/// código (`SendChatMessage.maxQuestionsPerSession`,
+/// Help content for each screen (see [HelpTopic]). The numeric limits
+/// that appear in the steps are read from the code's constants
+/// (`SendChatMessage.maxQuestionsPerSession`,
 /// `ExplainMonthlyReport.maxCommentsPerSession`,
 /// `ParsePayroll.maxReadsPerSession`, `CreateSavingsGoal.maxGoalsPerUser`,
-/// `ExplainSavingsSuggestions.maxExplanationsPerSession`), nunca escritos a
-/// mano, para que este texto no se desincronice si cambian.
+/// `ExplainSavingsSuggestions.maxExplanationsPerSession`), never
+/// hand-written, so this text doesn't drift out of sync if they
+/// change.
 final Map<HelpTopic, HelpEntry> helpContent = {
   HelpTopic.transactions: const HelpEntry(
     title: 'Movimientos',

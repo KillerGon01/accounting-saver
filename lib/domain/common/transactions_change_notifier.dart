@@ -1,15 +1,15 @@
-/// Lleva la cuenta de cuántas veces han cambiado los movimientos de un
-/// usuario (se ha creado, editado o borrado alguno), para que quien cachee
-/// datos derivados de ellos (ver `SendChatMessage`) pueda saber, comparando
-/// este contador antes y después, si su caché ha quedado obsoleta.
+/// Keeps count of how many times a user's transactions have changed
+/// (one was created, edited, or deleted), so whoever caches data derived
+/// from them (see `SendChatMessage`) can tell, by comparing this counter
+/// before and after, whether its cache has gone stale.
 ///
-/// También admite observadores (`addListener`/`removeListener`), para
-/// quien necesite *reaccionar* al cambio en vez de solo comparar un
-/// número más tarde — por ejemplo, un provider de Riverpod que deba
-/// recalcular un informe en cuanto cambien los movimientos (ver
-/// `transactionsVersionProvider` en la presentación). Sigue siendo Dart
-/// puro: `void Function()` es un tipo del lenguaje, no de Flutter ni de
-/// ningún paquete de estado.
+/// Also supports observers (`addListener`/`removeListener`), for
+/// whoever needs to *react* to the change instead of just comparing a
+/// number later — for example, a Riverpod provider that needs to
+/// recompute a report as soon as the transactions change (see
+/// `transactionsVersionProvider` in the presentation layer). Still pure
+/// Dart: `void Function()` is a language type, not Flutter's or any
+/// state-management package's.
 class TransactionsChangeNotifier {
   int _version = 0;
   final _listeners = <void Function()>{};

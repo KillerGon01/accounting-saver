@@ -1,6 +1,6 @@
 import 'package:accounting_saver/domain/common/clock.dart';
 
-/// Reloj fijo para los tests: siempre devuelve la misma fecha.
+/// Fixed clock for tests: always returns the same date.
 class FakeClock implements Clock {
   FakeClock(this._now);
 

@@ -28,10 +28,10 @@ import 'transaction_filter_sheet.dart';
 import 'transaction_form_screen.dart';
 import 'transaction_providers.dart';
 
-/// Entradas del menú "Más opciones" del `AppBar` (ver
-/// `_TransactionsScreenState._handleMoreMenuSelection`): un único icono en
-/// vez de uno por destino, para no sumar un séptimo icono a la barra (ver
-/// docs/design.md, "Metas de ahorro").
+/// The `AppBar`'s "Más opciones" menu entries (see
+/// `_TransactionsScreenState._handleMoreMenuSelection`): a single
+/// icon instead of one per destination, so as not to add a seventh
+/// icon to the bar (see docs/design.md, "Metas de ahorro").
 enum _MoreMenuEntry { help, profile, savingsGoals }
 
 class TransactionsScreen extends ConsumerStatefulWidget {
@@ -47,12 +47,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   late DateTime _selectedMonth;
   bool _isLoadingDemo = false;
 
-  /// Búsqueda y filtros sobre la lista del mes ya cargada (nunca una
-  /// consulta nueva a Firestore, ver `TransactionFilter`). Vive en el
-  /// estado de la pantalla, sin persistir: se reinicia al cambiar de mes
-  /// (`_changeMonth`) y, al cambiar de usuario, porque `AuthGate` desmonta
-  /// esta pantalla entera (una instancia nueva de este estado nace con el
-  /// filtro vacío de siempre).
+  /// Search and filters over the month's already-loaded list (never
+  /// a new query to Firestore, see `TransactionFilter`). Lives in the
+  /// screen's state, without persisting: resets when changing month
+  /// (`_changeMonth`) and, when switching user, because `AuthGate`
+  /// unmounts this entire screen (a new instance of this state is
+  /// always born with an empty filter).
   TransactionFilter _filter = TransactionFilter();
 
   @override
@@ -82,12 +82,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  /// Oculta el aviso actual antes de navegar a otra pantalla (ver
-  /// docs/design.md, "Aviso estable al navegar"): un `SnackBar` flotante se
-  /// posiciona por encima del `FloatingActionButton` cuando lo hay, así que
-  /// si sigue visible al entrar en una pantalla sin FAB, el `Scaffold`
-  /// recalcula su posición vertical y da la sensación de que "sube" o
-  /// cambia de tamaño a mitad de la transición.
+  /// Hides the current notice before navigating to another screen
+  /// (see docs/design.md, "Aviso estable al navegar"): a floating
+  /// `SnackBar` is positioned above the `FloatingActionButton` when
+  /// there is one, so if it's still visible when entering a screen
+  /// without a FAB, the `Scaffold` recomputes its vertical position
+  /// and gives the impression that it "rises" or changes size
+  /// mid-transition.
   void _hideSnackBar() => ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
   Future<void> _openForm([Transaction? transaction]) {
@@ -211,21 +212,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   Future<void> _signOut() async {
     try {
-      // Única función compartida por los tres botones de cerrar sesión
-      // de la app (ver docs/design.md, "Avisos de sesión"): deja
-      // `signedOut` en `sessionFeedbackProvider` solo si el cierre de
-      // sesión termina con éxito.
+      // The only function shared by the app's three sign-out buttons
+      // (see docs/design.md, "Avisos de sesión"): leaves `signedOut`
+      // in `sessionFeedbackProvider` only if sign-out finishes
+      // successfully.
       await ref.read(signOutWithFeedbackProvider)();
     } catch (error) {
       if (mounted) _showMessage('No se pudo cerrar la sesión: $error');
     }
   }
 
-  /// El resumen (`_SummaryCard`) sigue viendo siempre [transactions] sin
-  /// filtrar (el resumen es del mes completo); solo la lista de abajo usa
-  /// la versión filtrada, calculada aquí mismo con `filterTransactions`
-  /// (ninguna consulta nueva, solo recorta en memoria la lista del mes
-  /// que ya se había pedido a Firestore).
+  /// The summary (`_SummaryCard`) always keeps seeing unfiltered
+  /// [transactions] (the summary is for the whole month); only the
+  /// list below uses the filtered version, computed right here with
+  /// `filterTransactions` (no new query, it only trims in memory the
+  /// month's list that had already been requested from Firestore).
   Widget _buildMonthBody(List<Transaction> transactions) {
     final filtered = filterTransactions(transactions, _filter);
 
@@ -509,10 +510,10 @@ class _SummaryItem extends StatelessWidget {
   }
 }
 
-/// Fila con "N de M movimientos" y un botón para quitar los filtros,
-/// solo visible cuando hay algún criterio puesto (`TransactionFilter.isActive`).
-/// El texto es el aviso principal (no depende solo de la insignia del
-/// icono, de color, para saber que hay un filtro activo).
+/// Row with "N de M movimientos" and a button to clear the filters,
+/// only visible when some criterion is set (`TransactionFilter.isActive`).
+/// The text is the main notice (it doesn't rely solely on the icon's
+/// badge, which is color-based, to know a filter is active).
 class _FilterStatusBar extends StatelessWidget {
   const _FilterStatusBar({
     required this.matchCount,
@@ -549,9 +550,10 @@ class _FilterStatusBar extends StatelessWidget {
   }
 }
 
-/// Estado vacío cuando el mes tiene movimientos pero ninguno coincide con
-/// la búsqueda o los filtros activos — distinto de `_EmptyMonth` (que es
-/// cuando el mes no tiene ningún movimiento, con o sin filtro).
+/// Empty state when the month has transactions but none match the
+/// active search or filters — distinct from `_EmptyMonth` (which is
+/// when the month has no transactions at all, with or without a
+/// filter).
 class _FilteredEmptyState extends StatelessWidget {
   const _FilteredEmptyState({required this.onClearFilters});
 

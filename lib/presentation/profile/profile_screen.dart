@@ -34,10 +34,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       _errorMessage = null;
     });
     try {
-      // `SignOutWithFeedback` ya deja `signedOut` en `sessionFeedbackProvider`
-      // si el cierre de sesión termina con éxito (ver docs/design.md,
-      // "Avisos de sesión") — única función compartida por los tres
-      // botones de cerrar sesión de la app, nunca `signOutProvider` a secas.
+      // `SignOutWithFeedback` already leaves `signedOut` in
+      // `sessionFeedbackProvider` if sign-out finishes successfully
+      // (see docs/design.md, "Avisos de sesión") — the only function
+      // shared by the app's three sign-out buttons, never
+      // `signOutProvider` on its own.
       await ref.read(signOutWithFeedbackProvider)();
       if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (error) {
@@ -64,11 +65,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     });
     try {
       await ref.read(deleteAccountProvider)(password: request.password);
-      // Solo si los tres pasos terminaron (reautenticar, borrar
-      // movimientos, borrar la cuenta de Auth): un borrado fallido o
-      // parcial entra por el `catch` de abajo y nunca llega aquí.
+      // Only if all three steps finished (reauthenticating, deleting
+      // the transactions, deleting the Auth account): a failed or
+      // partial deletion goes through the `catch` below and never
+      // reaches here.
       ref.read(sessionFeedbackProvider.notifier).set(SessionFeedbackKind.accountDeleted);
-      // La cuenta ya no existe: AuthGate muestra el login y se cierra el perfil.
+      // The account no longer exists: AuthGate shows the login and the profile closes.
       if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (error) {
       if (mounted) {
@@ -84,7 +86,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Se reconstruye al cambiar la sesión; el perfil sale de la sesión actual.
+    // Rebuilds when the session changes; the profile comes from the current session.
     ref.watch(authStateChangesProvider);
     final profile = ref.watch(getUserProfileProvider)();
     if (profile == null) return const Scaffold(body: SizedBox.shrink());

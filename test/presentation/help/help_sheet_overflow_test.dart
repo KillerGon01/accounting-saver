@@ -5,9 +5,9 @@ import 'package:accounting_saver/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Mismo patrón que `overflow_small_screens_test.dart`: 360x640 (el peor
-/// caso de ancho entre las dos pantallas pequeñas de esa suite) con la
-/// escala de texto del sistema a 1.3, sin modificar ese archivo.
+/// Same pattern as `overflow_small_screens_test.dart`: 360x640 (the
+/// narrowest of that suite's two small screen sizes) with the system
+/// text scale at 1.3, without modifying that file.
 Future<void> _pumpHelpSheet(WidgetTester tester, HelpTopic topic) async {
   tester.view.physicalSize = const Size(360, 640);
   tester.view.devicePixelRatio = 1;

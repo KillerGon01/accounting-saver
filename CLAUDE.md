@@ -61,7 +61,10 @@ estable al navegar"); y, nuevo, un bug de arranque en web: `FirebaseAuthReposito
 instanciaba `GoogleSignIn()` siempre (también en web, donde su propio constructor dispara
 una inicialización que falla por falta de client ID), dejando la app en blanco. Arreglado con
 `createNativeGoogleCredential` + un `isWeb` inyectable, nunca se crea `GoogleSignIn` en web
-(ver docs/design.md, "Bug: `GoogleSignIn` se instanciaba también en web"). Tests: 708.
+(ver docs/design.md, "Bug: `GoogleSignIn` se instanciaba también en web"); y, nuevo, todos los
+comentarios y doc comments (`//`/`///`) del código Dart traducidos al inglés, por lotes con
+commit propio y verificación de que el código no cambió (ver docs/design.md, "Idioma del
+código"); el resto (interfaz, README, docs/) sigue en castellano. Tests: 708.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
 abierto, `thinkingConfig`, CI para `firestore-tests/`, cuota compartida entre nóminas, chat,
 lenguaje natural, resumen mensual y sugerencias de ahorro) más los riesgos/límites ya

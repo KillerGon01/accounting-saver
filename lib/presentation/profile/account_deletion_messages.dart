@@ -1,8 +1,9 @@
 import '../../domain/auth/account_deletion_exception.dart';
 import '../auth/auth_error_messages.dart';
 
-/// Mensaje para un fallo del borrado de cuenta. Cuando la etapa es conocida,
-/// dice qué ha quedado hecho para que el usuario sepa que puede reintentar.
+/// Message for an account deletion failure. When the stage is known,
+/// it says what has already been done so the user knows they can
+/// retry.
 String accountDeletionErrorMessage(Object error) {
   if (error is AccountDeletionException) {
     return switch (error.stage) {

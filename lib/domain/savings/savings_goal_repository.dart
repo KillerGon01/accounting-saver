@@ -1,11 +1,11 @@
 import 'savings_goal.dart';
 
-/// Puerto hacia el almacenamiento de las metas de ahorro de un usuario
-/// (`users/{uid}/goals` en Firestore; ver `FirestoreSavingsGoalRepository`).
+/// Port to the storage of a user's savings goals (`users/{uid}/goals`
+/// in Firestore; see `FirestoreSavingsGoalRepository`).
 abstract class SavingsGoalRepository {
-  /// En tiempo real: se actualiza sola al crear, editar o borrar una meta,
-  /// sin necesitar ningún aviso de cambios aparte (a diferencia de
-  /// `TransactionRepository`, aquí nada más depende de las metas).
+  /// In real time: updates on its own when a goal is created, edited,
+  /// or deleted, with no separate change notice needed (unlike
+  /// `TransactionRepository`, nothing else depends on the goals here).
   Stream<List<SavingsGoal>> watchAll({required String userId});
 
   String newId({required String userId});
@@ -16,8 +16,8 @@ abstract class SavingsGoalRepository {
 
   Future<void> delete({required String userId, required String goalId});
 
-  /// Cuántas metas tiene ya el usuario, con una consulta agregada (sin
-  /// descargar ninguna meta): para el máximo por usuario, ver
+  /// How many goals the user already has, with an aggregated query
+  /// (without downloading any goal): for the per-user maximum, see
   /// `CreateSavingsGoal`.
   Future<int> count({required String userId});
 }

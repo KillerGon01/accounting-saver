@@ -5,14 +5,14 @@ import 'savings_suggestions_eval_cases.dart';
 import 'savings_suggestions_eval_grading.dart';
 import 'savings_suggestions_eval_report.dart';
 
-/// Igual que `resolveFilteredCases` (`eval_runner.dart`) pero para
-/// [SavingsSuggestionsEvalCase], que no tiene ningún `type` (cada caso es
-/// distinto por diseño: no hay dos casos del "mismo tipo" entre los que
-/// elegir), así que el filtro solo compara contra `id`. Mismo
-/// comportamiento ante un filtro vacío o `null` (todos los casos) y ante
-/// uno con algún elemento desconocido o que no selecciona ninguno
-/// ([EvalCaseFilterError], reutilizada tal cual): aborta con un mensaje
-/// claro, antes de llamar a Gemini.
+/// Same as `resolveFilteredCases` (`eval_runner.dart`) but for
+/// [SavingsSuggestionsEvalCase], which has no `type` at all (each
+/// case is different by design: there are no two cases of the "same
+/// type" to choose between), so the filter only compares against
+/// `id`. Same behavior for an empty or `null` filter (all cases)
+/// and for one with an unknown element or that selects none
+/// ([EvalCaseFilterError], reused as-is): aborts with a clear
+/// message, before calling Gemini.
 List<SavingsSuggestionsEvalCase> resolveFilteredSavingsSuggestionsCases(
   List<SavingsSuggestionsEvalCase> allCases,
   Set<String>? caseFilter,
@@ -39,20 +39,21 @@ List<SavingsSuggestionsEvalCase> resolveFilteredSavingsSuggestionsCases(
   return cases;
 }
 
-/// Ejecuta la evaluación de `GeminiSavingsSuggestionsGateway` contra los
-/// casos de [buildSavingsSuggestionsEvalCases] (ver docs/evaluation.md,
-/// "Sugerencias de ahorro con IA"). A diferencia de `runEval` (chat), no
-/// toca ninguna cuenta ni Firestore: cada caso es un
-/// [SavingsSuggestionsSummary] ya construido en memoria, así que solo
-/// hay una llamada por caso al gateway (real o [gatewayOverride], solo
-/// para `test/eval/savings_suggestions_eval_runner_test.dart`), con el
-/// mismo espaciado y tope de peticiones que el resto del arnés
-/// ([EvalRunConfig], reutilizada tal cual).
+/// Runs `GeminiSavingsSuggestionsGateway`'s evaluation against
+/// [buildSavingsSuggestionsEvalCases]'s cases (see
+/// docs/evaluation.md, "Sugerencias de ahorro con IA"). Unlike
+/// `runEval` (chat), it touches no account or Firestore: each case
+/// is a [SavingsSuggestionsSummary] already built in memory, so
+/// there's only one call per case to the gateway (real or
+/// [gatewayOverride], only for
+/// `test/eval/savings_suggestions_eval_runner_test.dart`), with the
+/// same spacing and request cap as the rest of the harness
+/// ([EvalRunConfig], reused as-is).
 ///
-/// [caseFilter] se resuelve ANTES de llamar a Gemini (ver
-/// [resolveFilteredSavingsSuggestionsCases]): un id desconocido, o un
-/// filtro que no selecciona ningún caso, aborta con
-/// [EvalCaseFilterError] sin gastar ninguna petición.
+/// [caseFilter] is resolved BEFORE calling Gemini (see
+/// [resolveFilteredSavingsSuggestionsCases]): an unknown id, or a
+/// filter that selects no case, aborts with [EvalCaseFilterError]
+/// without spending any request.
 Future<String> runSavingsSuggestionsEval({
   required SavingsSuggestionsGateway gateway,
   EvalRunConfig config = const EvalRunConfig(estimatedRequestsPerCase: 1),

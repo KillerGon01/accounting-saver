@@ -94,8 +94,8 @@ void main() {
     });
 
     test('separa varios ingresos y gastos por signo en código, no en Firestore', () async {
-      // El repositorio (y el fake) solo filtran por fecha; separar por
-      // signo es responsabilidad de TransactionChatFunctions.
+      // The repository (and the fake) only filter by date; splitting by
+      // sign is TransactionChatFunctions' responsibility.
       await addTransaction(amountCents: 100000, date: DateTime(2026, 10, 1));
       await addTransaction(amountCents: 50000, date: DateTime(2026, 10, 2));
       await addTransaction(amountCents: -2000, date: DateTime(2026, 10, 3));
@@ -115,8 +115,8 @@ void main() {
     });
 
     test('avisa si se alcanza el límite de seguridad de lectura sin ocultarlo', () async {
-      // Más movimientos que TransactionChatFunctions.maxFetchLimit: el
-      // resumen debe avisar en vez de sumar solo una parte en silencio.
+      // More transactions than TransactionChatFunctions.maxFetchLimit: the
+      // summary must warn instead of silently summing only part of them.
       final total = TransactionChatFunctions.maxFetchLimit + 1;
       for (var i = 0; i < total; i++) {
         await addTransaction(amountCents: -1, date: DateTime(2026, 10, 1).add(Duration(seconds: i)));
@@ -131,7 +131,7 @@ void main() {
 
       expect(result['safetyLimitReached'], isTrue);
       expect(result['safetyLimitNote'], isNotNull);
-      // Solo se suman los maxFetchLimit movimientos leídos, no todos.
+      // Only the maxFetchLimit transactions read are summed, not all of them.
       expect(result['expenseCents'], TransactionChatFunctions.maxFetchLimit);
     });
   });
@@ -201,7 +201,7 @@ void main() {
 
       expect(result['truncated'], isTrue);
       expect((result['transactions'] as List), hasLength(TransactionChatFunctions.maxResults));
-      // Los importes son del rango completo, no solo de lo devuelto.
+      // The amounts are from the full range, not just what was returned.
       expect(result['expenseCents'], 3100);
       expect(result['note'], isNotNull);
     });
@@ -253,10 +253,9 @@ void main() {
     });
 
     test('el recorte a 30 se aplica después de filtrar por categoría, no antes', () async {
-      // 35 movimientos de la categoría pedida y 10 de otra, todos dentro
-      // del rango: el filtro por categoría (en Dart) debe aplicarse sobre
-      // los 45 antes de recortar a 30, no sobre los primeros 30 brutos de
-      // Firestore.
+      // 35 transactions in the requested category and 10 in another, all
+      // within range: the category filter (in Dart) must apply to the 45
+      // before trimming to 30, not to Firestore's first 30 raw results.
       for (var day = 1; day <= 35; day++) {
         await addTransaction(
           amountCents: -1000,
@@ -281,7 +280,7 @@ void main() {
 
       expect(result['truncated'], isTrue);
       expect((result['transactions'] as List), hasLength(TransactionChatFunctions.maxResults));
-      // 35 movimientos de 1000 céntimos = 35000, no solo los 30 mostrados.
+      // 35 transactions of 1000 cents = 35000, not just the 30 shown.
       expect(result['expenseCents'], 35000);
       final transactions = result['transactions'] as List<dynamic>;
       expect(
@@ -461,8 +460,8 @@ void main() {
   });
 
   group('recurringExpenses', () {
-    // now = 15/10/2026: los 3 meses completos analizados son julio, agosto
-    // y septiembre de 2026 (el mes en curso, octubre, no está completo).
+    // now = 15/10/2026: the 3 full months analyzed are July, August and
+    // September 2026 (the current month, October, isn't complete).
 
     test('detecta un cargo igual en 3 meses distintos', () async {
       await addTransaction(amountCents: -1299, date: DateTime(2026, 7, 5), description: 'Netflix');
@@ -541,7 +540,7 @@ void main() {
         now: now,
       );
 
-      // 2 meses distintos (julio y agosto), aunque haya 3 movimientos.
+      // 2 different months (July and August), even though there are 3 transactions.
       final recurring = result['recurringExpenses'] as List<dynamic>;
       expect(recurring, hasLength(1));
       expect((recurring.single as Map)['months'], ['2026-07', '2026-08']);
@@ -572,7 +571,7 @@ void main() {
         now: now,
       );
 
-      // Junio queda fuera del rango (julio-septiembre): solo 1 mes dentro.
+      // June falls outside the range (July-September): only 1 month within it.
       expect(result['recurringExpenses'], isEmpty);
     });
 
@@ -596,11 +595,12 @@ void main() {
     test(
       'coincide céntimo a céntimo con BuildMonthlyReport.categoryBreakdown, incluido el top 3',
       () async {
-        // Mismo escenario que "topCategories son como mucho las 3 de mayor
-        // gasto" en build_monthly_report_test.dart: 5 categorías con
-        // importes distintos, para comprobar orden y cifras exactas. Mes
-        // 9 (no el actual, que es octubre con `now`): así no se mezcla con
-        // el aviso de mes en curso, que tiene su propio test más abajo.
+        // Same scenario as "topCategories are at most the 3 with the
+        // highest expense" in build_monthly_report_test.dart: 5
+        // categories with different amounts, to check order and exact
+        // figures. Month 9 (not the current one, which is October with
+        // `now`): this way it doesn't mix with the current-month
+        // warning, which has its own test further below.
         await addTransaction(amountCents: -500, date: DateTime(2026, 9, 1), category: Category.supermercado);
         await addTransaction(amountCents: -400, date: DateTime(2026, 9, 2), category: Category.ocio);
         await addTransaction(amountCents: -300, date: DateTime(2026, 9, 3), category: Category.transporte);
@@ -626,7 +626,7 @@ void main() {
           expect(actual['amountCents'], expected.amountCents);
         }
 
-        // Las líneas ya redactadas, en el mismo orden que topCategories.
+        // The already-written lines, in the same order as topCategories.
         final rankingLines = result['rankingLines'] as List<dynamic>;
         expect(rankingLines, hasLength(5));
         expect(rankingLines[0], '1. Supermercado: 5,00 € (33,3 %)');
@@ -647,7 +647,7 @@ void main() {
     });
 
     test('mes sin gastos: nota explícita en vez de categorías inventadas', () async {
-      // Mes 9, no el actual, para no mezclar con el aviso de mes en curso.
+      // Month 9, not the current one, to avoid mixing with the current-month warning.
       final result = await functions.execute(
         userId: userId,
         name: ChatFunctions.getCategoryBreakdown,
@@ -677,7 +677,7 @@ void main() {
       );
 
       expect(result['safetyLimitReached'], isTrue);
-      // Solo se suman los 2.000 movimientos leídos, no los 2.005 reales.
+      // Only the 2,000 transactions read are summed, not the real 2,005.
       expect(result['totalExpenseCents'], 2000);
     });
 
@@ -699,14 +699,14 @@ void main() {
       final result = await functions.execute(
         userId: userId,
         name: ChatFunctions.getCategoryBreakdown,
-        arguments: {'year': 2026, 'month': 10}, // octubre = mes actual con `now`
+        arguments: {'year': 2026, 'month': 10}, // October = current month with `now`
         now: now,
       );
 
       final rankingLines = result['rankingLines'] as List<dynamic>;
       expect(rankingLines.first, startsWith('Aviso: octubre de 2026 está en curso'));
       expect(rankingLines.first, contains('datos hasta el día 15'));
-      // Las categorías siguen numeradas desde 1, el aviso no cuenta.
+      // Categories are still numbered from 1, the warning doesn't count.
       expect(rankingLines[1], startsWith('1. '));
     });
 
@@ -716,7 +716,7 @@ void main() {
       final result = await functions.execute(
         userId: userId,
         name: ChatFunctions.getCategoryBreakdown,
-        arguments: {'year': 2026, 'month': 9}, // septiembre ya ha terminado
+        arguments: {'year': 2026, 'month': 9}, // September has already ended
         now: now,
       );
 
@@ -727,14 +727,14 @@ void main() {
     test(
       'con los datos de ejemplo (LoadDemoData), coincide con las cifras reales de octubre de 2026',
       () async {
-        // now = 11/12/2026: octubre queda como el más antiguo de los 3
-        // meses que genera LoadDemoData (monthIndex 0 en
-        // load_demo_data.dart), así que estas cifras no dependen de qué
-        // día de diciembre se use. Son una referencia deliberada: los
-        // importes exactos que produce HOY `LoadDemoData` para octubre
-        // (semilla fija, ver `_seed` en load_demo_data.dart), comprobados
-        // ejecutando el código real, no calculados a mano; si cambian los
-        // datos de ejemplo, este test debe romperse para que se note.
+        // now = 11/12/2026: October ends up as the oldest of the 3
+        // months LoadDemoData generates (monthIndex 0 in
+        // load_demo_data.dart), so these figures don't depend on which
+        // day of December is used. They're a deliberate reference: the
+        // exact amounts `LoadDemoData` produces TODAY for October (fixed
+        // seed, see `_seed` in load_demo_data.dart), verified by running
+        // the real code, not calculated by hand; if the sample data
+        // changes, this test must break so it gets noticed.
         final demoNow = DateTime(2026, 12, 11);
         await LoadDemoData(repository)(userId: userId, now: demoNow);
 
@@ -757,11 +757,11 @@ void main() {
           for (final entry in result['categories'] as List<dynamic>)
             categoryFromName((entry as Map)['categoryId'] as String)!: entry['amountCents'] as int,
         };
-        expect(amountsByCategory[Category.hogar], 93890); // 938,90 €
-        expect(amountsByCategory[Category.supermercado], 19868); // 198,68 €
-        expect(amountsByCategory[Category.restaurantes], 6340); // 63,40 €
+        expect(amountsByCategory[Category.hogar], 93890); // €938.90
+        expect(amountsByCategory[Category.supermercado], 19868); // €198.68
+        expect(amountsByCategory[Category.restaurantes], 6340); // €63.40
 
-        // Las mismas cifras que el informe de verdad: nada improvisado.
+        // The same figures as the real report: nothing improvised.
         for (final expense in report.categoryBreakdown) {
           expect(amountsByCategory[expense.category], expense.amountCents);
         }
@@ -854,7 +854,7 @@ void main() {
       final result = await functions.execute(
         userId: userId,
         name: ChatFunctions.compareMonths,
-        arguments: {'yearA': 2026, 'monthA': 9, 'yearB': 2026, 'monthB': 10}, // B = octubre = mes actual
+        arguments: {'yearA': 2026, 'monthA': 9, 'yearB': 2026, 'monthB': 10}, // B = October = current month
         now: now,
       );
 

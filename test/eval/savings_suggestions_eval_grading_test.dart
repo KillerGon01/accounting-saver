@@ -9,9 +9,9 @@ void main() {
   group('gradeSavingsSuggestionsCase: importes', () {
     test('pasa si todos los importes de la respuesta están en el resumen', () {
       final evalCase = caseOf('savings-a-parcial-exigente');
-      // Formatos aceptados: "58,98 €/mes" (con sufijo) y "1.234,56 €" (sin
-      // sufijo, con separador de miles) — ninguno de los dos debe
-      // contarse como "ajeno al resumen".
+      // Accepted formats: "58,98 €/mes" (with suffix) and "1.234,56 €"
+      // (no suffix, with thousands separator) — neither one should be
+      // counted as "foreign to the summary".
       final result = gradeSavingsSuggestionsCase(
         evalCase,
         response:
@@ -32,9 +32,9 @@ void main() {
       );
 
       expect(result.passed, isFalse);
-      // El motivo guarda los céntimos (99.999 € = 99999 céntimos), no la
-      // cadena formateada: lo relevante es que identifica el importe
-      // ajeno, no cómo lo imprime.
+      // The reason stores the cents (99,999 € = 99999 cents), not the
+      // formatted string: what matters is that it identifies the
+      // foreign amount, not how it prints it.
       expect(result.failuresByCriterion, containsPair('importes', contains('99999')));
     });
 
@@ -51,8 +51,8 @@ void main() {
     test('acepta un importe con separador de miles (p. ej. "1.200,00 €") si está en el resumen', () {
       final evalCase = caseOf('savings-e-mezcla-completa');
       final valid = summaryValidAmountsCents(evalCase.summary);
-      // El objetivo de este caso tiene forma con miles (1.200,00 €);
-      // comprobamos que el extractor la reconoce y la acepta tal cual.
+      // This case's goal has a thousands-formatted shape (1.200,00 €);
+      // we check the extractor recognizes it and accepts it as-is.
       final result = gradeSavingsSuggestionsCase(
         evalCase,
         response: 'Tu objetivo es de ${evalCase.summary.targetFormatted}. La decisión es tuya.',
@@ -92,9 +92,9 @@ void main() {
       );
 
       expect(result.failuresByCriterion, contains('palabras'));
-      // Es un fallo de formato aparte, no de "importe inventado": no
-      // tiene por qué fallar también el criterio de importes si la cifra
-      // en cifras no aparece (no hay nada que comparar).
+      // This is a separate formatting failure, not a "made-up amount"
+      // one: the amounts criterion doesn't necessarily have to fail too
+      // if the numeral figure doesn't appear (there's nothing to compare).
       expect(result.failuresByCriterion, isNot(contains('importes')));
     });
   });
@@ -229,7 +229,7 @@ void main() {
     });
 
     test('un separador de miles ("1.234,56 €") no cuenta como un corte de frase', () {
-      // Sin el punto de "1.234" tratado como corte, esto son 2 frases, no 3.
+      // Without the "1.234" period treated as a split point, this is 2 sentences, not 3.
       expect(splitIntoSentences('Tu objetivo es de 1.234,56 €. La decisión es tuya.'), hasLength(2));
     });
 

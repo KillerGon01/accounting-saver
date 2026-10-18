@@ -19,21 +19,22 @@ abstract class AuthRepository {
 
   Future<void> sendPasswordResetEmail({required String email});
 
-  /// Envía el correo de verificación al usuario de la sesión actual.
+  /// Sends the verification email to the currently signed-in user.
   Future<void> sendEmailVerification();
 
-  /// Recarga el usuario desde el proveedor para ver si ya verificó el correo.
+  /// Reloads the user from the provider to check whether the email has
+  /// been verified yet.
   Future<AppUser> reloadUser();
 
-  /// Vuelve a comprobar la identidad del usuario con su contraseña. Necesario
-  /// antes de operaciones sensibles como borrar la cuenta.
+  /// Re-checks the user's identity with their password. Required before
+  /// sensitive operations such as deleting the account.
   Future<void> reauthenticateWithPassword({required String password});
 
-  /// Vuelve a comprobar la identidad del usuario con Google (popup o flujo nativo).
+  /// Re-checks the user's identity with Google (popup or native flow).
   Future<void> reauthenticateWithGoogle();
 
-  /// Borra la cuenta de autenticación del usuario actual. Exige una
-  /// reautenticación reciente.
+  /// Deletes the current user's authentication account. Requires a
+  /// recent reauthentication.
   Future<void> deleteAccount();
 
   Future<void> signOut();

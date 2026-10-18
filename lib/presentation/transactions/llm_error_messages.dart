@@ -4,11 +4,11 @@ import '../../domain/transactions/not_understood_exception.dart';
 const _genericMessage =
     'No se pudo interpretar el texto. Inténtalo de nuevo o añade el movimiento a mano.';
 
-/// Mensaje en español para un error al extraer un movimiento con la IA.
-/// Las validaciones de dominio (`ArgumentError`, por ejemplo una categoría
-/// o una fecha que la IA no debería haber devuelto) usan el mismo mensaje
-/// genérico: desde el punto de vista del usuario, hay que reformular el
-/// texto o rellenar el formulario a mano.
+/// Spanish-language message for an error extracting a transaction
+/// with AI. Domain validations (`ArgumentError`, for example a
+/// category or a date the AI shouldn't have returned) use the same
+/// generic message: from the user's point of view, the text has to
+/// be reworded or the form filled in by hand.
 String llmErrorMessage(Object error) {
   if (error is NotUnderstoodException) return error.message;
   if (error is! LlmGatewayException) return _genericMessage;
@@ -18,19 +18,20 @@ String llmErrorMessage(Object error) {
         'Inténtalo más tarde o añade el movimiento a mano.',
     'network-error' =>
       'No se pudo contactar con la IA. Comprueba tu conexión e inténtalo de nuevo.',
-    // Token de App Check inválido (403, "App attestation failed"): se
-    // traduce al mensaje de la IA no disponible, no al genérico de "no se
-    // pudo interpretar el texto" (sería engañoso: el problema no es el
-    // texto) ni, por supuesto, al JSON crudo del error.
+    // Invalid App Check token (403, "App attestation failed"):
+    // translated to the AI-unavailable message, not to the generic
+    // "no se pudo interpretar el texto" (that would be misleading:
+    // the problem isn't the text) nor, of course, to the error's raw
+    // JSON.
     'app-check-failed' => 'La IA no está disponible ahora mismo.',
-    // Un timeout (150 s, sin reintento) se traduce igual que el fallo de
-    // App Check: el problema es la disponibilidad de la IA, no el texto
-    // del usuario, así que no cae en el genérico de "no se pudo
+    // A timeout (150 s, no retry) is translated the same as an App
+    // Check failure: the problem is the AI's availability, not the
+    // user's text, so it doesn't fall into the generic "no se pudo
     // interpretar el texto".
     'timeout' => 'La IA no está disponible ahora mismo.',
-    // Un modelo retirado (404 "is not found for API version...", ver
-    // `isModelNotFoundError`) tampoco es un problema del texto del
-    // usuario: mismo mensaje que el fallo de App Check o el timeout.
+    // A retired model (404 "is not found for API version...", see
+    // `isModelNotFoundError`) also isn't a problem with the user's
+    // text: same message as an App Check failure or a timeout.
     'model-not-found' => 'La IA no está disponible ahora mismo.',
     _ => _genericMessage,
   };

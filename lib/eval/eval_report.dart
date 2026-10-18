@@ -1,10 +1,10 @@
 import 'eval_cases.dart';
 import 'eval_grading.dart';
 
-/// Construye el bloque Markdown listo para pegar en `docs/evaluation.md`
-/// (ver ese documento para el porqué de este formato y de qué evalúa
-/// exactamente esta evaluación: el gateway y el ejecutor de funciones
-/// reales, no la pantalla de chat completa).
+/// Builds the Markdown block ready to paste into `docs/evaluation.md`
+/// (see that document for why this format and what exactly this
+/// evaluation tests: the real gateway and function executor, not
+/// the full chat screen).
 String buildEvalReportMarkdown({
   required DateTime runDate,
   required String model,

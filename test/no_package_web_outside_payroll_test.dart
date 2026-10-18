@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// El único archivo de `lib/` que puede importar `package:web` (ver el
-/// import condicional en `lib/presentation/payroll/payroll_file_picker.dart`):
-/// todo lo demás, incluido el propio `payroll_file_picker.dart` y su stub,
-/// debe compilar en Android y en el runner de `flutter test` sin tocarlo.
+/// The only file in `lib/` that may import `package:web` (see the
+/// conditional import in `lib/presentation/payroll/payroll_file_picker.dart`):
+/// everything else, including `payroll_file_picker.dart` itself and its
+/// stub, must compile on Android and in the `flutter test` runner without touching it.
 const _allowedFile = 'lib/presentation/payroll/payroll_file_picker_web.dart';
 
 void main() {

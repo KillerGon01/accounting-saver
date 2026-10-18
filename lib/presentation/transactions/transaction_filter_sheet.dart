@@ -8,12 +8,12 @@ import '../theme/app_theme.dart';
 import 'category_style.dart';
 import 'formatters.dart';
 
-/// Abre el panel de búsqueda y filtros sobre los movimientos del mes
-/// visible (un `showModalBottomSheet`, no un panel fijo en la pantalla:
-/// así no ocupa ningún hueco en el `body` mientras no está abierto).
-/// Devuelve el [TransactionFilter] nuevo si se pulsa "Aplicar" o
-/// "Limpiar", o `null` si se cierra sin elegir ninguno de los dos (por
-/// ejemplo, deslizando la hoja hacia abajo).
+/// Opens the search and filter panel over the visible month's
+/// transactions (a `showModalBottomSheet`, not a fixed panel on the
+/// screen: this way it takes up no space in the `body` while it
+/// isn't open). Returns the new [TransactionFilter] if "Aplicar" or
+/// "Limpiar" is pressed, or `null` if closed without choosing either
+/// of the two (for example, by swiping the sheet down).
 Future<TransactionFilter?> showTransactionFilterSheet(
   BuildContext context, {
   required TransactionFilter current,

@@ -1,7 +1,7 @@
-/// El archivo elegido no es un PDF válido o supera el tamaño máximo (ver
-/// `ParsePayroll.maxPdfBytes`), comprobado en código antes de llamar al
-/// modelo: no gasta cuota de Gemini ni cuenta como una lectura de la
-/// sesión.
+/// The chosen file isn't a valid PDF or exceeds the maximum size (see
+/// `ParsePayroll.maxPdfBytes`), checked in code before calling the
+/// model: it doesn't spend Gemini quota or count as a reading of the
+/// session.
 class PayrollFileException implements Exception {
   const PayrollFileException(this.message);
 

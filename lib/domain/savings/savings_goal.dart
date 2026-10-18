@@ -1,8 +1,8 @@
 import '../transactions/amount_limits.dart';
 
-/// Meta de ahorro de un usuario: un nombre, un importe objetivo y lo ya
-/// ahorrado, con una fecha límite. Céntimos enteros, nunca `double`, como
-/// el resto de la app.
+/// A user's savings goal: a name, a target amount, and what's already
+/// saved, with a deadline. Integer cents, never `double`, like the
+/// rest of the app.
 class SavingsGoal {
   static const maxNameLength = 60;
 

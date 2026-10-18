@@ -52,9 +52,9 @@ void main() {
       for (final entry in expected.entries) {
         final occurrences = _named(transactions, entry.key);
         expect(occurrences.length, 3, reason: entry.key);
-        // Las 3 ocurrencias caen en 3 meses distintos (no 3 veces en el
-        // mismo mes), que es justo lo que necesita `recurringExpenses`
-        // para considerarlo un gasto recurrente.
+        // The 3 occurrences fall in 3 different months (not 3 times in
+        // the same month), which is exactly what `recurringExpenses`
+        // needs to consider it a recurring expense.
         final months = occurrences.map((t) => (t.date.year, t.date.month)).toSet();
         expect(months, hasLength(3), reason: entry.key);
         expect(occurrences.map((t) => t.date.day).toSet(), {entry.value.day}, reason: entry.key);

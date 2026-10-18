@@ -1,11 +1,12 @@
-/// Resultado sin validar que devuelve [LlmGateway]. La categoría llega como
-/// texto porque la IA puede devolver un valor que no exista en [Category];
-/// el caso de uso es quien la valida y la convierte en [ParsedTransaction].
+/// Unvalidated result returned by [LlmGateway]. The category arrives
+/// as text because the AI can return a value that doesn't exist in
+/// [Category]; the use case is what validates it and converts it into
+/// a [ParsedTransaction].
 ///
-/// Si el texto no describía con claridad un movimiento con importe,
-/// [understood] es `false` y el resto de campos son `null`: la IA no debe
-/// inventar un importe, un concepto ni una categoría que no estén en el
-/// texto.
+/// If the text didn't clearly describe a transaction with an amount,
+/// [understood] is `false` and the rest of the fields are `null`: the
+/// AI must not make up an amount, a description, or a category that
+/// aren't in the text.
 class RawParsedTransaction {
   const RawParsedTransaction({
     required this.understood,
@@ -17,11 +18,11 @@ class RawParsedTransaction {
 
   final bool understood;
 
-  /// Negativo = gasto. `null` si [understood] es `false`.
+  /// Negative = expense. `null` if [understood] is `false`.
   final int? amountCents;
   final DateTime? date;
   final String? description;
 
-  /// Nombre de un valor de `Category`. Puede no existir en el enum.
+  /// Name of a `Category` value. May not exist in the enum.
   final String? categoryName;
 }

@@ -12,47 +12,48 @@ import '../common/app_check_error.dart';
 import '../common/gemini_model_fallback.dart';
 import '../common/gemini_transient_retry.dart';
 
-/// Implementación de [ChatGateway] con Gemini (Firebase AI Logic, Gemini
-/// Developer API), con function calling sobre los movimientos del usuario.
-/// Usa los mismos modelos (con el mismo fallback) que la entrada en
-/// lenguaje natural: ver [geminiModelFallbacks]. Ambas llamadas comparten el
-/// nivel gratuito y, a través de [GeminiModelAvailability], la misma
-/// memoria de qué modelo está agotado.
+/// [ChatGateway] implementation with Gemini (Firebase AI Logic, Gemini
+/// Developer API), with function calling over the user's
+/// transactions. Uses the same models (with the same fallback) as
+/// natural language input: see [geminiModelFallbacks]. Both calls
+/// share the free tier and, through [GeminiModelAvailability], the
+/// same memory of which model is exhausted.
 class GeminiChatGateway implements ChatGateway {
-  // [clock] es público (a diferencia del campo que guarda, `_clock`) para
-  // que se pueda fijar desde fuera de este archivo: lo usa
-  // `lib/eval/eval_runner.dart` para que la evaluación de calidad del
-  // chat (ver docs/evaluation.md) sea reproducible con una fecha fija, en
-  // vez del reloj real del dispositivo.
+  // [clock] is public (unlike the field that stores it, `_clock`) so
+  // it can be fixed from outside this file: `lib/eval/eval_runner.dart`
+  // uses it so the chat's quality evaluation (see docs/evaluation.md)
+  // is reproducible with a fixed date, instead of the device's real
+  // clock.
   GeminiChatGateway({Clock clock = const SystemClock(), GeminiModelAvailability? availability})
     // ignore: prefer_initializing_formals (el nombre público es `clock`, no `_clock`)
     : _clock = clock,
       _availability = availability ?? GeminiModelAvailability();
 
-  /// Límite de idas y vueltas con llamadas a función en un mismo turno, para
-  /// no encadenar peticiones sin fin si el modelo no deja de pedir
-  /// funciones.
+  /// Limit on back-and-forths with function calls within a single
+  /// turn, so as not to chain requests endlessly if the model keeps
+  /// asking for functions.
   static const _maxFunctionCallSteps = 5;
 
   final Clock _clock;
   final GeminiModelAvailability _availability;
 
-  /// Un `GenerativeModel` nuevo por petición, en vez de uno guardado en el
-  /// campo de la clase: la instrucción de sistema lleva la fecha de hoy
-  /// resuelta (ver [buildChatSystemInstruction]), y el SDK de `firebase_ai`
-  /// la fija al construir el modelo, no en cada llamada a
-  /// `generateContent`. Si se guardara un solo modelo, la fecha quedaría
-  /// congelada en el momento en que se creó el gateway (normalmente al
-  /// arrancar la app), y el chat volvería a fallar al deducir "este mes"
-  /// en sesiones largas o que cruzan la medianoche. Además, el modelo puede
-  /// cambiar de una petición a otra por el fallback de [withGeminiModelFallback].
+  /// A new `GenerativeModel` per request, instead of one stored in
+  /// the class field: the system instruction carries today's date
+  /// already resolved (see [buildChatSystemInstruction]), and the
+  /// `firebase_ai` SDK fixes it when the model is built, not on each
+  /// call to `generateContent`. If a single model were stored, the
+  /// date would stay frozen at the moment the gateway was created
+  /// (normally at app startup), and the chat would fail again when
+  /// inferring "this month" in long sessions or ones that cross
+  /// midnight. Also, the model can change from one request to another
+  /// because of [withGeminiModelFallback]'s fallback.
   GenerativeModel _buildModel(String model) {
     return FirebaseAI.googleAI().generativeModel(
       model: model,
       systemInstruction: Content.system(buildChatSystemInstruction(_clock)),
       tools: [Tool.functionDeclarations(chatFunctionDeclarations())],
-      // Temperatura baja: son respuestas sobre datos del usuario, no
-      // redacción creativa; conviene que sean consistentes.
+      // Low temperature: these are answers about the user's data, not
+      // creative writing; they should be consistent.
       generationConfig: GenerationConfig(temperature: 0.2),
     );
   }
@@ -76,10 +77,10 @@ class GeminiChatGateway implements ChatGateway {
         return (text == null || text.trim().isEmpty) ? _noTextResponseMessage : text;
       }
 
-      // Se conserva el Content que ha devuelto Gemini tal cual (rol
-      // `model`, con los function calls y, si los hubiera, las thought
-      // signatures), en vez de reconstruirlo solo con los FunctionCall ya
-      // extraídos en `calls`.
+      // The Content Gemini returned is kept as-is (role `model`, with
+      // the function calls and, if any, the thought signatures),
+      // instead of rebuilding it only from the FunctionCalls already
+      // extracted in `calls`.
       contents.add(response.candidates.first.content);
 
       final functionResponses = <FunctionResponse>[];
@@ -87,8 +88,8 @@ class GeminiChatGateway implements ChatGateway {
         final result = await executeFunction(call.name, call.args);
         functionResponses.add(FunctionResponse(call.name, result, id: call.id));
       }
-      // Todas las respuestas de este turno van en un único Content, en el
-      // mismo orden en que se pidieron las funciones: ver
+      // All of this turn's responses go in a single Content, in the
+      // same order the functions were requested: see
       // `functionResponsesContent`.
       contents.add(functionResponsesContent(functionResponses));
     }
@@ -115,22 +116,24 @@ class GeminiChatGateway implements ChatGateway {
         message: 'Se ha agotado la cuota gratuita de la IA por ahora. Inténtalo más tarde.',
       );
     } on TimeoutException {
-      // El intento inicial y el único reintento de `withTransientRetry` ya
-      // han superado los dos [geminiRequestTimeout]: no hay más reintentos
-      // aquí. No consume una pregunta de las 8 (el contador solo sube tras
-      // un `sendMessage` que termina con éxito) ni marca ningún modelo como
-      // agotado (eso solo lo hace `withGeminiModelFallback` ante cuota
-      // agotada, nunca ante un timeout).
+      // The initial attempt and `withTransientRetry`'s single retry
+      // have already exceeded the two [geminiRequestTimeout]s: no
+      // more retries here. It doesn't consume one of the session's
+      // questions (the counter only goes up after a `sendMessage` that
+      // succeeds) nor does it mark any model as exhausted (only
+      // `withGeminiModelFallback` does that, on exhausted quota,
+      // never on a timeout).
       throw const LlmGatewayException(
         'timeout',
         message: 'La IA no está disponible ahora mismo.',
       );
     } on FirebaseAIException catch (error) {
       if (isModelNotFoundError(error)) {
-        // Todos los modelos de `withGeminiModelFallback` han devuelto 404
-        // (ninguno existe ya en la API); cada uno ha quedado marcado como
-        // no disponible para el resto de la sesión, sin tocar el contador
-        // de preguntas ni reintentar con el mismo modelo.
+        // All of `withGeminiModelFallback`'s models have returned 404
+        // (none of them exist in the API anymore); each one has been
+        // marked as unavailable for the rest of the session, without
+        // touching the question counter or retrying with the same
+        // model.
         throw const LlmGatewayException(
           'model-not-found',
           message: 'La IA no está disponible ahora mismo.',
@@ -144,8 +147,8 @@ class GeminiChatGateway implements ChatGateway {
       }
       throw LlmGatewayException('service-error', message: 'Error de la IA: ${error.message}');
     } catch (error) {
-      // Fallos de red (sin conexión, timeout, etc.) llegan como excepciones
-      // del cliente HTTP, no de firebase_ai.
+      // Network failures (no connection, timeout, etc.) arrive as
+      // exceptions from the HTTP client, not from firebase_ai.
       throw const LlmGatewayException(
         'network-error',
         message: 'No se pudo contactar con la IA. Comprueba tu conexión e inténtalo de nuevo.',
@@ -164,29 +167,30 @@ class GeminiChatGateway implements ChatGateway {
       'No he podido generar una respuesta. Inténtalo de nuevo con otra pregunta.';
 }
 
-/// Un `Content` con todas las respuestas de función de un mismo turno, en
-/// el mismo orden en que se pidieron.
+/// A `Content` with all of a single turn's function responses, in the
+/// same order they were requested.
 ///
-/// Reemplaza a `Content.functionResponses` (y a `Content.functionResponse`)
-/// del paquete `firebase_ai`: en la versión instalada (4.0.0, ver
-/// `lib/src/content.dart` en `.pub-cache`), las dos fijan el rol a
-/// `'function'`, un rol que el backend de Gemini ya no acepta (devuelve
-/// 400 "Role 'function' is not supported..."). El propio error del backend
-/// lista `USER` como rol válido, que es además el que documenta la API de
-/// Gemini para las respuestas de función; se usa aquí con el constructor
-/// público `Content(role, parts)` del paquete, no un rol inventado.
+/// Replaces `Content.functionResponses` (and `Content.functionResponse`)
+/// from the `firebase_ai` package: in the installed version (4.0.0,
+/// see `lib/src/content.dart` in `.pub-cache`), both set the role to
+/// `'function'`, a role Gemini's backend no longer accepts (returns
+/// 400 "Role 'function' is not supported..."). The backend's own
+/// error lists `USER` as a valid role, which is also what the Gemini
+/// API documents for function responses; it's used here with the
+/// package's public `Content(role, parts)` constructor, not a made-up
+/// role.
 Content functionResponsesContent(List<FunctionResponse> responses) {
   return Content('user', responses);
 }
 
-/// Las `FunctionDeclaration` que puede pedir el chat, en una función libre
-/// (en vez de quedarse inline dentro de `_buildModel`) por el mismo motivo
-/// que [buildChatSystemInstruction]: `FunctionDeclaration` y `Schema` son
-/// clases de datos puras del paquete `firebase_ai` (no requieren Firebase
-/// inicializado para construirse), así que esta lista se puede comprobar
-/// con un test normal, sin tocar Gemini, igual que la instrucción de
-/// sistema que contiene la misma regla CANTIDAD/LISTADO (ver
-/// `buildChatSystemInstruction`).
+/// The `FunctionDeclaration`s the chat can request, in a free-standing
+/// function (instead of staying inline inside `_buildModel`) for the
+/// same reason as [buildChatSystemInstruction]: `FunctionDeclaration`
+/// and `Schema` are pure data classes from the `firebase_ai` package
+/// (they don't need Firebase initialized to be built), so this list
+/// can be checked with a normal test, without touching Gemini, same
+/// as the system instruction that contains the same CANTIDAD/LISTADO
+/// rule (see `buildChatSystemInstruction`).
 List<FunctionDeclaration> chatFunctionDeclarations() {
   return [
     FunctionDeclaration(
@@ -333,15 +337,15 @@ const _monthNames = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ];
 
-/// Instrucción de sistema del chat financiero, con la fecha de hoy y los
-/// periodos relativos que más se usan al hablar de dinero ("este mes", "el
-/// mes pasado", "este año") ya resueltos a valores concretos (año y mes
-/// como enteros), para que el modelo nunca tenga que deducirlos ni
-/// preguntar por ellos.
+/// System instruction for the financial chat, with today's date and
+/// the relative periods most used when talking about money ("este
+/// mes", "el mes pasado", "este año") already resolved to concrete
+/// values (year and month as integers), so the model never has to
+/// infer them or ask about them.
 ///
-/// Es una función pura (sin `firebase_ai` ni red) que solo depende de
-/// [clock], así se puede probar con un `FakeClock` sin un proyecto de
-/// Firebase real: ver `test/infrastructure/chat/`.
+/// It's a pure function (no `firebase_ai`, no network) that only
+/// depends on [clock], so it can be tested with a `FakeClock` without
+/// a real Firebase project: see `test/infrastructure/chat/`.
 String buildChatSystemInstruction(Clock clock) {
   final now = clock.now();
   final thisMonth = (year: now.year, month: now.month);

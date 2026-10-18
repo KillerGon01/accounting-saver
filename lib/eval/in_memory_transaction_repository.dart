@@ -5,19 +5,20 @@ import '../domain/transactions/transaction.dart';
 import '../domain/transactions/transaction_repository.dart';
 import '../domain/transactions/transaction_source.dart';
 
-/// Repositorio en memoria, solo para calcular en código los valores
-/// esperados de la evaluación del chat (ver `eval_cases.dart` y
-/// `docs/evaluation.md`): se le carga la misma semilla de datos de
-/// ejemplo que a la cuenta de evaluación real, y se le hacen las mismas
-/// preguntas a `BuildMonthlyReport`/`TransactionChatFunctions` que se le
-/// harán al Firestore real, para no escribir ningún importe a mano.
+/// In-memory repository, only to compute in code the chat
+/// evaluation's expected values (see `eval_cases.dart` and
+/// `docs/evaluation.md`): it's loaded with the same demo data seed
+/// as the real evaluation account, and asked the same questions to
+/// `BuildMonthlyReport`/`TransactionChatFunctions` that will be asked
+/// of the real Firestore, so as not to write any amount by hand.
 ///
-/// Deliberadamente no es el mismo `FakeTransactionRepository` de
-/// `test/fakes/`: ese vive en `test/`, que no se puede importar desde
-/// `lib/` (esto sí se ejecuta como parte de la app, con `eval_main.dart`).
-/// Mismo comportamiento que `FirestoreTransactionRepository` en lo que
-/// importa aquí: `findByDateRange` solo filtra por fecha y ordena
-/// descendente, sin ningún otro criterio.
+/// Deliberately not the same `FakeTransactionRepository` from
+/// `test/fakes/`: that one lives in `test/`, which can't be imported
+/// from `lib/` (this one does run as part of the app, with
+/// `eval_main.dart`). Same behavior as
+/// `FirestoreTransactionRepository` in what matters here:
+/// `findByDateRange` only filters by date and sorts descending, with
+/// no other criterion.
 class InMemoryTransactionRepository implements TransactionRepository {
   final Map<String, Map<String, Transaction>> _transactionsByUser = {};
   int _idCounter = 0;

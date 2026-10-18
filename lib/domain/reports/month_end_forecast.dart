@@ -1,7 +1,8 @@
-/// Un gasto recurrente que todavía no ha entrado este mes: su concepto,
-/// su importe exacto (el mismo que ya cobraba en meses anteriores) y el
-/// día del mes en que suele cobrarse ("día habitual" — ver
-/// `BuildMonthEndForecast`, que decide este valor).
+/// A recurring expense that hasn't come in yet this month: its
+/// description, its exact amount (the same it already charged in
+/// previous months), and the day of the month it usually charges on
+/// ("usual day" — see `BuildMonthEndForecast`, which decides this
+/// value).
 class PendingRecurringExpense {
   const PendingRecurringExpense({
     required this.description,
@@ -9,28 +10,28 @@ class PendingRecurringExpense {
     required this.usualDay,
   });
 
-  /// Ya normalizado (minúsculas, sin espacios de más).
+  /// Already normalized (lowercase, no extra spaces).
   final String description;
 
-  /// Magnitud positiva.
+  /// Positive magnitude.
   final int amountCentsAbs;
 
-  /// Día del mes en curso en que se espera este gasto, ya ajustado si el
-  /// mes en curso tiene menos días que el mes del que viene ese día (ver
-  /// `BuildMonthEndForecast`).
+  /// Day of the current month this expense is expected on, already
+  /// adjusted if the current month has fewer days than the month that
+  /// day comes from (see `BuildMonthEndForecast`).
   final int usualDay;
 }
 
-/// Previsión de fin de mes para el mes en curso, calculada en código a
-/// partir de los gastos recurrentes detectados en los meses anteriores
-/// (ver `BuildMonthEndForecast` y `findRecurringExpenses`). Solo existe
-/// para el mes en curso: no tiene sentido una previsión de un mes ya
-/// cerrado ni de uno futuro sin ningún movimiento todavía.
+/// Month-end forecast for the current month, computed in code from the
+/// recurring expenses detected in previous months (see
+/// `BuildMonthEndForecast` and `findRecurringExpenses`). Only exists for
+/// the current month: a forecast for an already-closed month, or for a
+/// future one with no transactions yet, makes no sense.
 ///
-/// Es una estimación, no un cálculo exacto: solo tiene en cuenta gastos
-/// recurrentes detectados (mismo concepto e importe en 2 o más de los 3
-/// meses anteriores). No prevé ingresos futuros ni gasto variable (ver
-/// docs/design.md, "Límites").
+/// It's an estimate, not an exact calculation: it only accounts for
+/// detected recurring expenses (same description and amount in 2 or
+/// more of the previous 3 months). It doesn't forecast future income or
+/// variable spending (see docs/design.md, "Límites").
 class MonthEndForecast {
   const MonthEndForecast({
     required this.year,
@@ -46,35 +47,37 @@ class MonthEndForecast {
   final int year;
   final int month;
 
-  /// Lo ya gastado este mes hasta hoy (magnitud positiva), tal cual lo
-  /// calcularía `MonthlySummary` sobre los movimientos del mes en curso.
+  /// What's already been spent this month up to today (positive
+  /// magnitude), exactly as `MonthlySummary` would compute it over the
+  /// current month's transactions.
   final int accumulatedExpenseCents;
 
-  /// Recurrentes cuyo día habitual todavía no ha llegado y que no se han
-  /// registrado ya este mes con ese mismo concepto e importe. Se suman al
-  /// gasto previsto.
+  /// Recurring expenses whose usual day hasn't arrived yet and that
+  /// haven't already been registered this month with that same
+  /// description and amount. Added to the forecast expense.
   final List<PendingRecurringExpense> pendingRecurringExpenses;
 
-  /// Recurrentes cuyo día habitual ya ha pasado pero que no se han
-  /// registrado este mes. Aparte, informativo: no se suman al gasto
-  /// previsto (no hay garantía de que vayan a llegar).
+  /// Recurring expenses whose usual day has already passed but that
+  /// haven't been registered this month. Separate, informative: not
+  /// added to the forecast expense (there's no guarantee they'll still
+  /// come in).
   final List<PendingRecurringExpense> overdueUnregisteredExpenses;
 
-  /// `accumulatedExpenseCents` + la suma de `pendingRecurringExpenses`.
+  /// `accumulatedExpenseCents` + the sum of `pendingRecurringExpenses`.
   final int forecastExpenseCents;
 
-  /// Ingresos ya registrados este mes (magnitud con signo, como
-  /// `MonthlySummary.incomeCents`): los ingresos que todavía no han
-  /// entrado no se incluyen en ningún cálculo de esta clase.
+  /// Income already registered this month (signed magnitude, like
+  /// `MonthlySummary.incomeCents`): income that hasn't come in yet isn't
+  /// included in any calculation of this class.
   final int registeredIncomeCents;
 
-  /// `true` si alguna de las consultas (mes en curso o los 3 anteriores)
-  /// llegó al tope de movimientos leídos: la previsión puede no reflejar
-  /// todos los movimientos.
+  /// `true` if either query (current month or the previous 3) hit the
+  /// cap on transactions read: the forecast may not reflect every
+  /// transaction.
   final bool truncated;
 
-  /// `registeredIncomeCents - forecastExpenseCents`: los ingresos que aún
-  /// no hayan entrado no se incluyen.
+  /// `registeredIncomeCents - forecastExpenseCents`: income that
+  /// hasn't come in yet isn't included.
   int get forecastBalanceCents => registeredIncomeCents - forecastExpenseCents;
 
   int get pendingTotalCents => pendingRecurringExpenses.fold(0, (sum, p) => sum + p.amountCentsAbs);
