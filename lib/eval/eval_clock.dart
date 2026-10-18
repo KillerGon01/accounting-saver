@@ -1,12 +1,12 @@
 import '../domain/common/clock.dart';
 
-/// Reloj fijo para que la evaluación de calidad del chat (ver
-/// `docs/evaluation.md`) sea reproducible: el executor de funciones del
-/// chat (`TransactionChatFunctions`) y la instrucción de sistema de Gemini
-/// (`buildChatSystemInstruction`, en `GeminiChatGateway`) reciben ambos la
-/// misma fecha, en vez del reloj real del dispositivo que ejecute el
-/// harness. Vive en `lib/` (no en `test/`) porque la usa `eval_main.dart`,
-/// que no es un test.
+/// Fixed clock so the chat's quality evaluation (see
+/// `docs/evaluation.md`) is reproducible: the chat's function
+/// executor (`TransactionChatFunctions`) and Gemini's system
+/// instruction (`buildChatSystemInstruction`, in `GeminiChatGateway`)
+/// both receive the same date, instead of the real clock of the
+/// device running the harness. Lives in `lib/` (not in `test/`)
+/// because `eval_main.dart` uses it, which isn't a test.
 class FixedClock implements Clock {
   const FixedClock(this._now);
 

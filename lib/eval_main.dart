@@ -1,18 +1,18 @@
-// Herramienta de evaluación local de la calidad del chat con Gemini real
-// (ver docs/evaluation.md). NO es parte de la app: no se publica, no se
-// incluye en ningún build de producción ni en el Dockerfile, y no la
-// ejecuta ni `flutter test` ni el CI (`.github/workflows/ci.yml`) — solo
-// se compila si se la pasa explícitamente a `flutter run -t`:
+// Local tool for evaluating the chat's quality against real Gemini
+// (see docs/evaluation.md). NOT part of the app: it isn't published,
+// isn't included in any production build or in the Dockerfile, and
+// neither `flutter test` nor the CI (`.github/workflows/ci.yml`) run
+// it — it only compiles if explicitly passed to `flutter run -t`:
 //
 //   flutter run -t lib/eval_main.dart -d chrome --web-port=5000 \
 //     --dart-define=ENABLE_AI=true \
 //     --dart-define=EVAL_ACCOUNT_EMAIL=<correo-de-la-cuenta-de-evaluación>
 //
-// --web-port=5000 porque la clave de navegador de Firebase solo admite
-// ese puerto en local (ver docs/security.md). El correo de la cuenta de
-// evaluación nunca se escribe en el código ni en los docs: solo se pasa
-// en este --dart-define, y esta herramienta se niega a borrar o escribir
-// nada si el correo de la sesión no coincide exactamente con él (ver
+// --web-port=5000 because Firebase's browser key only allows that
+// port locally (see docs/security.md). The evaluation account's
+// email is never written in the code or the docs: it's only passed
+// in this --dart-define, and this tool refuses to delete or write
+// anything if the session's email doesn't exactly match it (see
 // `lib/eval/eval_runner.dart`).
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -27,9 +27,9 @@ import 'presentation/auth/login_screen.dart';
 import 'presentation/theme/app_theme.dart';
 import 'presentation/transactions/transaction_providers.dart';
 
-/// Correo de la única cuenta sobre la que esta herramienta puede borrar o
-/// escribir algo. Vacío por defecto: sin `--dart-define=EVAL_ACCOUNT_EMAIL`
-/// no hay ninguna cuenta válida, nunca "la que esté disponible".
+/// Email of the only account this tool can delete or write anything
+/// to. Empty by default: without `--dart-define=EVAL_ACCOUNT_EMAIL`
+/// there's no valid account, never "whichever is available".
 const _evalAccountEmail = String.fromEnvironment('EVAL_ACCOUNT_EMAIL');
 
 Future<void> main() async {
@@ -70,11 +70,11 @@ class _EvalGate extends ConsumerWidget {
   }
 }
 
-/// Pantalla de la herramienta, solo tras iniciar sesión. Si el correo no
-/// es exactamente [_evalAccountEmail], no deja pulsar "Ejecutar
-/// evaluación": el botón ni siquiera se activa, para que la comprobación
-/// de la cuenta sea visible antes de intentar nada (la comprobación real
-/// e innegociable está en `runEval`, por si esta pantalla cambiara).
+/// The tool's screen, only after signing in. If the email isn't
+/// exactly [_evalAccountEmail], it won't allow pressing "Ejecutar
+/// evaluación": the button isn't even enabled, so the account check
+/// is visible before trying anything (the real, non-negotiable check
+/// is in `runEval`, in case this screen were to change).
 class _EvalRunnerScreen extends ConsumerStatefulWidget {
   const _EvalRunnerScreen({required this.user});
 

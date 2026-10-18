@@ -1,23 +1,22 @@
-// Herramienta de evaluación local de la calidad de la redacción con IA de
-// las sugerencias de ahorro (ver docs/evaluation.md, "Sugerencias de
-// ahorro con IA"). NO es parte de la app: no se publica, no se incluye en
-// ningún build de producción ni en el Dockerfile, y no la ejecuta ni
-// `flutter test` ni el CI — solo se compila si se la pasa explícitamente
-// a `flutter run -t`:
+// Local tool for evaluating the quality of the AI write-up of
+// savings suggestions (see docs/evaluation.md, "Sugerencias de
+// ahorro con IA"). NOT part of the app: it isn't published, isn't
+// included in any production build or in the Dockerfile, and
+// neither `flutter test` nor the CI run it — it only compiles if
+// explicitly passed to `flutter run -t`:
 //
 //   flutter run -t lib/eval_savings_suggestions_main.dart -d chrome \
 //     --web-port=5000 --dart-define=ENABLE_AI=true
 //
-// --web-port=5000 por el mismo motivo que `eval_main.dart` (la clave de
-// navegador de Firebase solo admite ese puerto en local, ver
-// docs/security.md).
+// --web-port=5000 for the same reason as `eval_main.dart` (Firebase's
+// browser key only allows that port locally, see docs/security.md).
 //
-// A diferencia de `eval_main.dart` (chat), esta herramienta **no pide
-// iniciar sesión y no toca Firestore en ningún momento**:
-// `GeminiSavingsSuggestionsGateway` es una sola llamada sobre un resumen
-// ya construido en memoria (`SavingsSuggestionsSummary`), sin ninguna
-// cuenta ni ningún movimiento de por medio — así que no hay nada que
-// verificar ni que borrar/sembrar antes de ejecutar.
+// Unlike `eval_main.dart` (chat), this tool **doesn't ask to sign in
+// and never touches Firestore**: `GeminiSavingsSuggestionsGateway` is
+// a single call over a summary already built in memory
+// (`SavingsSuggestionsSummary`), with no account or transaction
+// involved — so there's nothing to check or delete/seed before
+// running.
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
@@ -97,9 +96,10 @@ class _EvalRunnerScreenState extends State<_EvalRunnerScreen> {
       print(report);
       setState(() => _report = report);
     } on EvalCaseFilterError catch (error) {
-      // Mismo tratamiento que `eval_main.dart` ante un filtro mal escrito:
-      // mensaje claro (`EvalCaseFilterError.toString()` ya es texto en
-      // español listo para mostrarse), sin haber llamado a Gemini.
+      // Same handling as `eval_main.dart` for a badly-written
+      // filter: a clear message (`EvalCaseFilterError.toString()` is
+      // already Spanish-language text ready to display), without
+      // having called Gemini.
       onProgress('Error: $error');
     } catch (error) {
       onProgress('Error: $error');
