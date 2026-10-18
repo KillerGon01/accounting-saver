@@ -185,6 +185,12 @@ npm install
 npm run test:emulator
 ```
 
+### APK de Android
+
+Última release: <https://github.com/KillerGon01/accounting-saver/releases/latest>. Al instalarla hay que permitir la instalación desde orígenes desconocidos en Android.
+
+El APK se entrega sin IA porque Android no tiene proveedor de App Check de producción (haría falta Play Integrity, que requiere publicar la app en Google Play). Las funciones de IA están disponibles en la web: <https://accounting-saver.web.app/>.
+
 ## Ejecución con Docker
 
 ```bash
