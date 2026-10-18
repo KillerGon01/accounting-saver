@@ -97,7 +97,7 @@ void main() {
 
     // 360x640 (instead of 360x740) leaves, with the keyboard open (300px
     // inset), only 44px for the transactions list (284px body minus
-    // 64px for `_MonthNavigator` and 176px for the summary card): exactly
+    // 64px for `MonthNavigator` and 176px for the summary card): exactly
     // what the day header takes up, with no room for any `ListTile`
     // (~56-72px), so that widget never gets built inside the `ListView`
     // and the test would fail even without an overflow. 360x740 is

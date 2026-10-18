@@ -64,7 +64,14 @@ una inicialización que falla por falta de client ID), dejando la app en blanco.
 (ver docs/design.md, "Bug: `GoogleSignIn` se instanciaba también en web"); y, nuevo, todos los
 comentarios y doc comments (`//`/`///`) del código Dart traducidos al inglés, por lotes con
 commit propio y verificación de que el código no cambió (ver docs/design.md, "Idioma del
-código"); el resto (interfaz, README, docs/) sigue en castellano. Tests: 708.
+código"); el resto (interfaz, README, docs/) sigue en castellano; y, nuevo, un refactor sin
+cambios de comportamiento ni de interfaz pública de los archivos más grandes (rama
+chore/split-large-files, sin commit todavía): `TransactionChatFunctions` (615 líneas) es ahora
+una fachada fina sobre `lib/application/chat/functions/` (`listing_functions.dart`,
+`breakdown_functions.dart`, `comparison_functions.dart`, `shared.dart`), y los widgets privados
+de `monthly_report_screen.dart` (821) y `transactions_screen.dart` (750) se movieron a
+`widgets/` dentro de cada carpeta de pantalla (ver docs/design.md, "Organización de archivos
+grandes"). Tests: 708.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
 abierto, `thinkingConfig`, CI para `firestore-tests/`, cuota compartida entre nóminas, chat,
 lenguaje natural, resumen mensual y sugerencias de ahorro) más los riesgos/límites ya
