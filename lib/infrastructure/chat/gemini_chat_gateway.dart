@@ -118,8 +118,8 @@ class GeminiChatGateway implements ChatGateway {
     } on TimeoutException {
       // The initial attempt and `withTransientRetry`'s single retry
       // have already exceeded the two [geminiRequestTimeout]s: no
-      // more retries here. It doesn't consume one of the 8 questions
-      // (the counter only goes up after a `sendMessage` that
+      // more retries here. It doesn't consume one of the session's
+      // questions (the counter only goes up after a `sendMessage` that
       // succeeds) nor does it mark any model as exhausted (only
       // `withGeminiModelFallback` does that, on exhausted quota,
       // never on a timeout).
