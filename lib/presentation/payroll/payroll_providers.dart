@@ -9,11 +9,12 @@ final payrollGatewayProvider = Provider<PayrollGateway>(
   (ref) => GeminiPayrollGateway(availability: ref.watch(geminiModelAvailabilityProvider)),
 );
 
-/// Una instancia por usuario (familia por `userId`), igual que
-/// `sendChatMessageProvider`: así el tope de 5 lecturas por sesión
-/// (`ParsePayroll.maxReadsPerSession`) es efectivo aunque la pantalla se
-/// cierre y se reabra para el mismo usuario, y no se comparte entre dos
-/// usuarios que usen la app en la misma pestaña sin reiniciarla.
+/// One instance per user (a family by `userId`), same as
+/// `sendChatMessageProvider`: this way the cap of 5 readings per
+/// session (`ParsePayroll.maxReadsPerSession`) stays in effect even
+/// if the screen is closed and reopened for the same user, and isn't
+/// shared between two users who use the app in the same tab without
+/// restarting it.
 final parsePayrollProvider = Provider.family<ParsePayroll, String>((ref, userId) {
   return ParsePayroll(ref.watch(payrollGatewayProvider));
 });

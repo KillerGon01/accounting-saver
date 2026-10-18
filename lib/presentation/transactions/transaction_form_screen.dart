@@ -25,17 +25,17 @@ class TransactionFormScreen extends ConsumerStatefulWidget {
 
   final String userId;
 
-  /// Movimiento existente a editar.
+  /// Existing transaction to edit.
   final Transaction? transaction;
 
-  /// Propuesta de la IA para un movimiento nuevo, pendiente de confirmar.
-  /// Se ignora si [transaction] no es `null`.
+  /// AI draft for a new transaction, pending confirmation. Ignored
+  /// if [transaction] isn't `null`.
   final ParsedTransaction? initialDraft;
 
-  /// Origen a usar al guardar [initialDraft], si se indica (por ejemplo,
-  /// [TransactionSource.payroll] desde la pantalla de lectura de nóminas).
-  /// Si es `null`, se mantiene el comportamiento de siempre: `manual` sin
-  /// [initialDraft], `naturalLanguage` con él (ver `_save`).
+  /// Source to use when saving [initialDraft], if given (for example,
+  /// [TransactionSource.payroll] from the payroll reading screen). If
+  /// `null`, the usual behavior is kept: `manual` without
+  /// [initialDraft], `naturalLanguage` with it (see `_save`).
   final TransactionSource? initialSource;
 
   @override

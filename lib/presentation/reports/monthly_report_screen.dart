@@ -24,15 +24,16 @@ const _slowReplyWarningDelay = Duration(seconds: 10);
 const _verySlowReplyWarningDelay = Duration(seconds: 45);
 const _extremelySlowReplyWarningDelay = Duration(seconds: 120);
 
-/// Pantalla de resumen mensual: totales, gasto por categoría, comparación
-/// con el mes anterior y, si [showAiComment] lo permite, un comentario de
-/// la IA sobre esas mismas cifras.
+/// Monthly report screen: totals, expense by category, comparison
+/// with the previous month and, if [showAiComment] allows it, an AI
+/// comment on those same figures.
 ///
-/// [showAiComment] es opcional y por defecto toma [effectiveEnableAi] (lo
-/// mismo que ya decide si se muestran el chat o la entrada en lenguaje
-/// natural): solo existe como parámetro para poder probar en los tests
-/// la pantalla con y sin la sección de IA sin depender de con qué
-/// `--dart-define=ENABLE_AI` se haya lanzado `flutter test`.
+/// [showAiComment] is optional and defaults to [effectiveEnableAi]
+/// (the same thing that already decides whether the chat or natural
+/// language input are shown): it only exists as a parameter so tests
+/// can test the screen with and without the AI section without
+/// depending on which `--dart-define=ENABLE_AI` `flutter test` was
+/// launched with.
 class MonthlyReportScreen extends ConsumerStatefulWidget {
   MonthlyReportScreen({super.key, required this.userId, bool? showAiComment})
     : showAiComment = showAiComment ?? effectiveEnableAi;
@@ -95,8 +96,8 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       _isExtremelySlowReply = false;
     });
 
-    // Timers, no un `Future.delayed` esperado: no bloquean nada (mismo
-    // patrón que `ChatScreen`).
+    // Timers, not an awaited `Future.delayed`: they block nothing
+    // (same pattern as `ChatScreen`).
     _slowReplyTimer = Timer(_slowReplyWarningDelay, () {
       if (!mounted || !_isGenerating) return;
       setState(() => _isSlowReply = true);
@@ -150,15 +151,15 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
       month: _selectedMonth.month,
     );
     final reportAsync = ref.watch(monthlyReportProvider(params));
-    // `.value` (nullable, no lanza), nunca `.when`/`.requireValue`: si
-    // falla el cálculo de la previsión (las consultas extra de los 3
-    // meses anteriores), el resto del resumen mensual sigue funcionando
-    // con normalidad y la tarjeta de previsión simplemente no aparece
-    // (ver docs/design.md, "Riesgos").
+    // `.value` (nullable, doesn't throw), never `.when`/`.requireValue`:
+    // if the forecast calculation fails (the extra queries over the
+    // previous 3 months), the rest of the monthly report keeps
+    // working normally and the forecast card simply doesn't appear
+    // (see docs/design.md, "Riesgos").
     final forecast = ref.watch(monthEndForecastProvider(params)).value;
-    // Mismo motivo que `forecast`: si falla el cálculo (ver
-    // docs/design.md, "Riesgos"), el resto del resumen sigue funcionando
-    // y la tarjeta de gastos inusuales simplemente no aparece.
+    // Same reason as `forecast`: if the calculation fails (see
+    // docs/design.md, "Riesgos"), the rest of the report keeps
+    // working and the unusual expenses card simply doesn't appear.
     final unusualExpenses = ref.watch(unusualExpensesProvider(params)).value;
 
     return Scaffold(
@@ -245,13 +246,13 @@ class _ReportBody extends StatelessWidget {
 
   final MonthlyReport report;
 
-  /// `null` si el mes mostrado no es el mes en curso, o si falló el
-  /// cálculo (ver `MonthlyReportScreen.build`): en los dos casos, sin
-  /// tarjeta de previsión.
+  /// `null` if the month shown isn't the current one, or if the
+  /// calculation failed (see `MonthlyReportScreen.build`): in both
+  /// cases, no forecast card.
   final MonthEndForecast? forecast;
 
-  /// `null` si el mes mostrado no es el mes en curso, o si falló el
-  /// cálculo: en los dos casos, sin tarjeta de gastos inusuales.
+  /// `null` if the month shown isn't the current one, or if the
+  /// calculation failed: in both cases, no unusual expenses card.
   final UnusualExpensesResult? unusualExpenses;
   final bool showAiComment;
   final String? comment;
@@ -308,12 +309,13 @@ class _ReportBody extends StatelessWidget {
                       ),
                       Expanded(
                         child: _SummaryTile(
-                          // Con signo, igual que en la pantalla de movimientos
-                          // (`_SummaryCard`/`_SummaryItem`) y que cada
-                          // movimiento individual (`_TransactionTile`):
-                          // `report.expenseCents` es una magnitud positiva en
-                          // dominio (ver `MonthlySummary`/`MonthlyReport`), y
-                          // aquí solo se decide cómo mostrarla.
+                          // Signed, same as in the transactions screen
+                          // (`_SummaryCard`/`_SummaryItem`) and each
+                          // individual transaction (`_TransactionTile`):
+                          // `report.expenseCents` is a positive
+                          // magnitude in the domain layer (see
+                          // `MonthlySummary`/`MonthlyReport`), and only
+                          // how to display it is decided here.
                           label: 'Gastos',
                           value: formatCents(-report.expenseCents),
                           color: finance.expense,
@@ -446,11 +448,12 @@ class _ReportBody extends StatelessWidget {
   }
 }
 
-/// Tarjeta "Previsión de fin de mes": gasto acumulado hasta hoy, cada
-/// recurrente pendiente con su importe y día, el gasto previsto (suma de
-/// los dos) y el balance previsto. Solo se muestra cuando
-/// `MonthlyReportScreen` recibe un [forecast] no nulo (mes en curso, y el
-/// cálculo no ha fallado — ver `report_providers.dart`).
+/// "Previsión de fin de mes" card: expense accumulated up to today,
+/// each pending recurring expense with its amount and day, the
+/// forecast expense (sum of the two), and the forecast balance. Only
+/// shown when `MonthlyReportScreen` receives a non-null [forecast]
+/// (current month, and the calculation hasn't failed — see
+/// `report_providers.dart`).
 class _MonthEndForecastCard extends StatelessWidget {
   const _MonthEndForecastCard({required this.forecast});
 
@@ -547,12 +550,12 @@ class _MonthEndForecastCard extends StatelessWidget {
   }
 }
 
-/// Tarjeta "Gastos inusuales": gastos del mes en curso cuyo importe
-/// destaca frente al histórico de su propia categoría (ver
+/// "Gastos inusuales" card: expenses in the current month whose
+/// amount stands out against its own category's history (see
 /// `detectUnusualExpenses`, docs/design.md "Detección de gastos
-/// inusuales"). Solo se muestra cuando `MonthlyReportScreen` recibe un
-/// [result] no nulo (mes en curso, y el cálculo no ha fallado — ver
-/// `report_providers.dart`).
+/// inusuales"). Only shown when `MonthlyReportScreen` receives a
+/// non-null [result] (current month, and the calculation hasn't
+/// failed — see `report_providers.dart`).
 class _UnusualExpensesCard extends StatelessWidget {
   const _UnusualExpensesCard({required this.result});
 
@@ -604,10 +607,11 @@ class _UnusualExpensesCard extends StatelessWidget {
   }
 }
 
-/// Una fila de `_UnusualExpensesCard`: el icono y el color del importe son
-/// un apoyo visual, nunca la única pista — el texto ya dice "inusual" de
-/// forma explícita a través de `Semantics.label`, y la comparación con la
-/// mediana va siempre en una segunda línea de texto, no solo en el color.
+/// A `_UnusualExpensesCard` row: the icon and the amount's color are
+/// visual support, never the only clue — the text already says
+/// "unusual" explicitly through `Semantics.label`, and the comparison
+/// with the median always goes in a second line of text, not just in
+/// the color.
 class _UnusualExpenseTile extends StatelessWidget {
   const _UnusualExpenseTile({required this.expense});
 
@@ -669,10 +673,10 @@ class _UnusualExpenseTile extends StatelessWidget {
   }
 }
 
-/// Una fila "etiqueta: importe" de la tarjeta de previsión. [indent]
-/// marca una línea del desglose (un recurrente pendiente) con una
-/// sangría, para distinguirla visualmente de los totales sin depender
-/// solo de un color.
+/// A "label: amount" row in the forecast card. [indent] marks a
+/// breakdown line (a pending recurring expense) with indentation, to
+/// visually distinguish it from the totals without relying only on a
+/// color.
 class _ForecastLine extends StatelessWidget {
   const _ForecastLine({
     required this.label,
@@ -779,9 +783,9 @@ class _ComparisonBody extends StatelessWidget {
   }
 }
 
-/// Fila de comparación: flecha + texto (nunca solo color ni solo la
-/// flecha) con la diferencia absoluta y, si se puede calcular, el
-/// porcentaje.
+/// Comparison row: arrow + text (never only color or only the arrow)
+/// with the absolute difference and, if it can be computed, the
+/// percentage.
 class _ComparisonRow extends StatelessWidget {
   const _ComparisonRow({required this.label, required this.deltaCents, required this.deltaPercent});
 

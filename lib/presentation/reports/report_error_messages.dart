@@ -2,11 +2,11 @@ import '../../domain/transactions/llm_gateway_exception.dart';
 
 const _genericMessage = 'La IA no está disponible ahora mismo.';
 
-/// Mensaje en español para un error al generar el comentario de IA del
-/// resumen mensual. Mismos textos que `chatErrorMessage` para los
-/// códigos compartidos (cuota, timeout, App Check); `comment-limit-reached`
-/// es el único propio de este caso de uso (equivalente a
-/// `session-limit-reached` en el chat).
+/// Spanish-language message for an error generating the monthly
+/// report's AI comment. Same texts as `chatErrorMessage` for the
+/// shared codes (quota, timeout, App Check); `comment-limit-reached`
+/// is the only one specific to this use case (equivalent to
+/// `session-limit-reached` in the chat).
 String reportErrorMessage(Object error) {
   if (error is StateError) return 'Espera a que termine de generarse el comentario anterior.';
   if (error is! LlmGatewayException) return _genericMessage;
@@ -17,10 +17,10 @@ String reportErrorMessage(Object error) {
       'No se pudo contactar con la IA. Comprueba tu conexión e inténtalo de nuevo.',
     'comment-limit-reached' =>
       'Has llegado al máximo de comentarios de esta sesión. Vuelve a abrir el resumen para seguir generando.',
-    // Mismo texto que el genérico, explícito por la misma razón que en
-    // `chatErrorMessage`: un token de App Check inválido o un timeout se
-    // traducen a este mensaje, nunca al JSON crudo ni a uno distinto
-    // sobre "tardando mucho".
+    // Same text as the generic one, explicit for the same reason as
+    // in `chatErrorMessage`: an invalid App Check token or a timeout
+    // are translated to this message, never to the raw JSON nor to a
+    // different one about "taking a long time".
     'app-check-failed' => _genericMessage,
     'timeout' => _genericMessage,
     'model-not-found' => _genericMessage,

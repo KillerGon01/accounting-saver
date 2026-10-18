@@ -39,10 +39,9 @@ final deleteSavingsGoalProvider = Provider<DeleteSavingsGoal>(
   (ref) => DeleteSavingsGoal(ref.watch(savingsGoalRepositoryProvider)),
 );
 
-/// Se llama bajo demanda, al pulsar "¿De dónde puedo ahorrar?" (ver
-/// `BuildSavingsSuggestions`): no hay ningún provider que mantenga su
-/// resultado en caché ni lo recalcule solo, a diferencia de
-/// `savingsGoalsStreamProvider`.
+/// Called on demand, when pressing "¿De dónde puedo ahorrar?" (see
+/// `BuildSavingsSuggestions`): no provider keeps its result cached or
+/// recomputes it on its own, unlike `savingsGoalsStreamProvider`.
 final buildSavingsSuggestionsProvider = Provider<BuildSavingsSuggestions>(
   (ref) => BuildSavingsSuggestions(ref.watch(transactionRepositoryProvider)),
 );
@@ -51,9 +50,9 @@ final geminiSavingsSuggestionsGatewayProvider = Provider<SavingsSuggestionsGatew
   (ref) => GeminiSavingsSuggestionsGateway(availability: ref.watch(geminiModelAvailabilityProvider)),
 );
 
-/// Una instancia por usuario (familia por `userId`), igual que
-/// `explainMonthlyReportProvider`: su propia caché y su propio tope de 6
-/// resúmenes por sesión, aislados entre un usuario y otro.
+/// One instance per user (a family by `userId`), same as
+/// `explainMonthlyReportProvider`: its own cache and its own cap of 6
+/// write-ups per session, isolated between one user and another.
 final explainSavingsSuggestionsProvider = Provider.family<ExplainSavingsSuggestions, String>((ref, userId) {
   return ExplainSavingsSuggestions(
     ref.watch(geminiSavingsSuggestionsGatewayProvider),
@@ -61,10 +60,11 @@ final explainSavingsSuggestionsProvider = Provider.family<ExplainSavingsSuggesti
   );
 });
 
-/// En tiempo real (ver `SavingsGoalRepository.watchAll`): se actualiza
-/// sola al crear, editar o borrar una meta, sin necesitar invalidarla a
-/// mano. `Provider.family` por `userId`, igual que el resto de providers
-/// de datos del usuario: aislamiento automático al cambiar de cuenta.
+/// In real time (see `SavingsGoalRepository.watchAll`): updates on
+/// its own when a goal is created, edited, or deleted, with no need
+/// to invalidate it by hand. `Provider.family` by `userId`, same as
+/// the rest of the user's data providers: automatic isolation when
+/// switching accounts.
 final savingsGoalsStreamProvider = StreamProvider.family<List<SavingsGoal>, String>((ref, userId) {
   return ref.watch(listSavingsGoalsProvider)(userId: userId);
 });

@@ -1,7 +1,7 @@
-/// Formatea un porcentaje (0-100, o cualquier delta) a un decimal, con
-/// coma como separador decimal (igual que `formatCents`). El redondeo
-/// pasa aquí, solo al mostrar: `MonthlyReport`/`BuildMonthlyReport`
-/// guardan el valor en `double` sin redondear (ver
+/// Formats a percentage (0-100, or any delta) to one decimal, with a
+/// comma as the decimal separator (same as `formatCents`). Rounding
+/// happens here, only when displaying: `MonthlyReport`/`BuildMonthlyReport`
+/// store the value as `double` without rounding (see
 /// `domain/reports/monthly_report.dart`).
 String formatPercentage(double value) {
   final text = value.toStringAsFixed(1).replaceAll('.', ',');

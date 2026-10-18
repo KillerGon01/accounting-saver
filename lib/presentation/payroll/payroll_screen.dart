@@ -15,27 +15,27 @@ import 'payroll_error_messages.dart';
 import 'payroll_file_picker.dart';
 import 'payroll_providers.dart';
 
-/// Cuándo se añade cada aviso de progreso mientras se espera la respuesta,
-/// igual que en `ChatScreen`: solo texto para que la espera no parezca
-/// colgada, sin relación con el timeout real de la petición.
+/// When each progress notice is added while waiting for the reply,
+/// same as in `ChatScreen`: just text so the wait doesn't look stuck,
+/// unrelated to the request's real timeout.
 const _slowReadWarningDelay = Duration(seconds: 10);
 const _verySlowReadWarningDelay = Duration(seconds: 45);
 const _extremelySlowReadWarningDelay = Duration(seconds: 120);
 
-/// Texto del contador de lecturas restantes, con singular/plural correcto:
-/// "Te queda 1 lectura" (exactamente una), "Te quedan N lecturas" (más de
-/// una) o "No te quedan lecturas" (ninguna).
+/// Text for the remaining-readings counter, with correct
+/// singular/plural: "Te queda 1 lectura" (exactly one), "Te quedan N
+/// lecturas" (more than one), or "No te quedan lecturas" (none).
 String remainingReadsLabel(int remaining) {
   if (remaining <= 0) return 'No te quedan lecturas';
   if (remaining == 1) return 'Te queda 1 lectura';
   return 'Te quedan $remaining lecturas';
 }
 
-/// Lee una nómina en PDF con IA y propone un ingreso si sus cifras cuadran.
-/// Solo disponible en web (ver el botón que abre esta pantalla en
-/// `TransactionsScreen`). El PDF solo vive en memoria del navegador
-/// mientras dura esta pantalla: no se guarda en ningún sitio ni se
-/// registra en logs.
+/// Reads a payroll PDF with AI and proposes an income if its figures
+/// match. Only available on web (see the button that opens this
+/// screen in `TransactionsScreen`). The PDF only lives in the
+/// browser's memory for the duration of this screen: it isn't saved
+/// anywhere nor logged.
 class PayrollScreen extends ConsumerStatefulWidget {
   const PayrollScreen({super.key, required this.userId});
 

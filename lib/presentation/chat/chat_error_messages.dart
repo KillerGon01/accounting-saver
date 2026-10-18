@@ -2,8 +2,9 @@ import '../../domain/transactions/llm_gateway_exception.dart';
 
 const _genericMessage = 'La IA no está disponible ahora mismo.';
 
-/// Mensaje en español para un error del chat. Siempre genérico, para no
-/// trasladar detalles técnicos (ni el texto del usuario) a la interfaz.
+/// Spanish-language message for a chat error. Always generic, so as
+/// not to carry technical details (nor the user's text) over to the
+/// UI.
 String chatErrorMessage(Object error) {
   if (error is StateError) return 'Espera a que termine de responder.';
   if (error is! LlmGatewayException) return _genericMessage;
@@ -14,18 +15,19 @@ String chatErrorMessage(Object error) {
       'No se pudo contactar con la IA. Comprueba tu conexión e inténtalo de nuevo.',
     'session-limit-reached' =>
       'Has llegado al máximo de preguntas de esta sesión. Cierra y vuelve a abrir el chat para seguir preguntando.',
-    // Mismo texto que el genérico: se deja explícito (en vez de caer en
-    // el `_` de abajo) para que quede claro que un token de App Check
-    // inválido (403, "App attestation failed") se traduce a propósito a
-    // este mensaje, nunca al JSON crudo del error.
+    // Same text as the generic one: left explicit (instead of
+    // falling into the `_` below) to make clear that an invalid App
+    // Check token (403, "App attestation failed") is translated to
+    // this message on purpose, never to the error's raw JSON.
     'app-check-failed' => _genericMessage,
-    // Mismo texto que el genérico, explícito por la misma razón que
-    // 'app-check-failed': un timeout (150 s, sin reintento) también se
-    // traduce a este mensaje, no a uno distinto sobre "tardando mucho".
+    // Same text as the generic one, explicit for the same reason as
+    // 'app-check-failed': a timeout (150 s, no retry) is also
+    // translated to this message, not to a different one about
+    // "taking a long time".
     'timeout' => _genericMessage,
-    // Igual: un modelo retirado (404 "is not found for API version...",
-    // ver `isModelNotFoundError`) se traduce a este mismo mensaje, nunca
-    // al nombre del modelo ni al texto crudo del error.
+    // Same: a retired model (404 "is not found for API version...",
+    // see `isModelNotFoundError`) is translated to this same message,
+    // never to the model's name or the error's raw text.
     'model-not-found' => _genericMessage,
     _ => _genericMessage,
   };

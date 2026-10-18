@@ -7,7 +7,7 @@ class DayGroup {
   final List<Transaction> transactions;
 }
 
-/// Agrupa movimientos por día conservando el orden de la lista de entrada.
+/// Groups transactions by day, preserving the input list's order.
 List<DayGroup> groupByDay(List<Transaction> transactions) {
   final groups = <DayGroup>[];
   for (final transaction in transactions) {

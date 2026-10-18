@@ -3,13 +3,12 @@ import 'package:flutter/material.dart';
 import '../transactions/formatters.dart';
 import 'motion.dart';
 
-/// Cifra de balance que cuenta desde 0 hasta [cents] (p. ej. al abrir la
-/// pantalla o al cambiar de mes). Termina siempre exactamente en
-/// `formatCents(cents)` — el `Tween` tiene [cents] como límite superior,
-/// así que el último frame coincide con el valor real, nunca uno
-/// redondeado distinto. Con `MediaQuery.disableAnimations`, se muestra
-/// el valor final al instante, sin ningún `TweenAnimationBuilder` de por
-/// medio.
+/// Balance figure that counts from 0 to [cents] (e.g. when opening the
+/// screen or changing month). Always ends exactly at
+/// `formatCents(cents)` — the `Tween` has [cents] as its upper bound,
+/// so the last frame matches the real value, never a different
+/// rounded one. With `MediaQuery.disableAnimations`, the final value
+/// is shown instantly, with no `TweenAnimationBuilder` involved.
 class AnimatedBalanceText extends StatelessWidget {
   const AnimatedBalanceText({super.key, required this.cents, this.style});
 

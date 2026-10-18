@@ -4,11 +4,12 @@ import '../theme/app_theme.dart';
 import 'help_content.dart';
 import 'help_topic.dart';
 
-/// Abre la hoja de ayuda de [topic] (ver `help_content.dart`). Mismo patrón
-/// que el resto de hojas modales de la app (`TransactionFilterSheet`,
-/// `SavingsSuggestionsSheet`): `isScrollControlled` para no desbordar con
-/// el teclado, altura acotada y contenido siempre dentro de un
-/// `SingleChildScrollView` para no desbordar con texto grande.
+/// Opens [topic]'s help sheet (see `help_content.dart`). Same pattern
+/// as the rest of the app's modal sheets (`TransactionFilterSheet`,
+/// `SavingsSuggestionsSheet`): `isScrollControlled` so it doesn't
+/// overflow with the keyboard, capped height, and content always
+/// inside a `SingleChildScrollView` so it doesn't overflow with large
+/// text.
 Future<void> showHelpSheet(BuildContext context, HelpTopic topic) {
   return showModalBottomSheet(
     context: context,
@@ -85,8 +86,8 @@ class _HelpStep extends StatelessWidget {
   }
 }
 
-/// Icono de ayuda reutilizable para el `AppBar` de cada pantalla: tooltip y
-/// etiqueta semántica, siempre el mismo icono (`Icons.help_outline`).
+/// Reusable help icon for each screen's `AppBar`: tooltip and
+/// semantic label, always the same icon (`Icons.help_outline`).
 class HelpButton extends StatelessWidget {
   const HelpButton({super.key, required this.topic});
 

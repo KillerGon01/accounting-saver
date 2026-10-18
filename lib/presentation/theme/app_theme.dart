@@ -10,14 +10,15 @@ abstract final class AppSpacing {
   static const double xl = 32;
 }
 
-/// `AppTheme.dark()` es el único tema que usa la app (`MaterialApp` en
-/// `main.dart` fuerza `themeMode: ThemeMode.dark`): fondo casi negro con un
-/// tono verdoso muy sutil, superficies en capas, acento teal/menta e
-/// ingresos/gastos en verde/coral suaves (ver `FinanceColors`), siempre
-/// acompañados de signo o icono, nunca solo de color. `AppTheme.light()` se
-/// conserva (código muerto a propósito, por si se retoma el modo claro más
-/// adelante) pero ningún `MaterialApp` de la app lo usa; sí lo siguen usando
-/// los tests que montan su propio `MaterialApp` con `theme:` explícito.
+/// `AppTheme.dark()` is the only theme the app uses (`MaterialApp` in
+/// `main.dart` forces `themeMode: ThemeMode.dark`): a near-black
+/// background with a very subtle greenish tint, layered surfaces, a
+/// teal/mint accent, and soft green/coral income/expense colors (see
+/// `FinanceColors`), always accompanied by a sign or an icon, never
+/// color alone. `AppTheme.light()` is kept (dead code on purpose, in
+/// case light mode is picked back up later) but no `MaterialApp` in
+/// the app uses it; tests that build their own `MaterialApp` with an
+/// explicit `theme:` still do.
 abstract final class AppTheme {
   static ThemeData light() => _buildLight();
 
@@ -63,21 +64,22 @@ abstract final class AppTheme {
     );
   }
 
-  /// Paleta oscura a mano, no la generada por defecto de `ColorScheme.fromSeed`:
-  /// se parte del esquema derivado de la semilla (para que `primary`,
-  /// `secondary`, etc. sigan siendo coherentes entre sí) y se sobrescriben
-  /// con `copyWith` las superficies (fondo casi negro con un tono verdoso
-  /// apenas perceptible, en capas cada vez más claras) y los acentos
-  /// (teal/menta, coral suave en vez del rojo de Material por defecto).
-  /// Contraste comprobado a mano (fórmula WCAG de luminancia relativa):
-  /// `onSurface` da más de 16:1 sobre `surface`. `onSurfaceVariant` (las
-  /// etiquetas secundarias: "Balance del mes", fechas, "N movimientos"...)
-  /// se subió de `#A9BDB4` a `#BFD0C8` para ganar margen sobre el mínimo
-  /// AA de texto normal (4,5:1): da ahora casi 12:1 sobre `surface`, casi
-  /// 10:1 sobre `surfaceContainerHigh` y más de 9:1 sobre la superficie más
-  /// clara del tema (`surfaceContainerHighest`) — el peor de los tres
-  /// casos sigue más que duplicando el mínimo. Igual de holgado para
-  /// `income`, `expense`/`error` y `warning`.
+  /// Hand-built dark palette, not `ColorScheme.fromSeed`'s default
+  /// one: it starts from the scheme derived from the seed (so
+  /// `primary`, `secondary`, etc. stay coherent with each other) and
+  /// overrides with `copyWith` the surfaces (near-black background
+  /// with a barely perceptible greenish tint, in increasingly lighter
+  /// layers) and the accents (teal/mint, soft coral instead of
+  /// Material's default red). Contrast checked by hand (WCAG's
+  /// relative luminance formula): `onSurface` gives more than 16:1
+  /// over `surface`. `onSurfaceVariant` (the secondary labels:
+  /// "Balance del mes", dates, "N movimientos"...) was raised from
+  /// `#A9BDB4` to `#BFD0C8` to gain margin over the AA minimum for
+  /// normal text (4.5:1): it now gives almost 12:1 over `surface`,
+  /// almost 10:1 over `surfaceContainerHigh`, and more than 9:1 over
+  /// the theme's lightest surface (`surfaceContainerHighest`) — the
+  /// worst of the three cases still more than doubles the minimum.
+  /// Just as generous for `income`, `expense`/`error`, and `warning`.
   static ThemeData _buildDark() {
     const surface = Color(0xFF0B120F);
     const surfaceContainerLowest = Color(0xFF070B09);
@@ -92,8 +94,8 @@ abstract final class AppTheme {
     const onPrimary = Color(0xFF00201C);
     const secondary = Color(0xFF80CBC4);
     const onSecondary = Color(0xFF00201C);
-    // Coral suave: también `FinanceColors.expense` (ver más abajo), para
-    // que el gasto y "error" sean el mismo tono, nunca dos rojos distintos.
+    // Soft coral: also `FinanceColors.expense` (see below), so that
+    // expense and "error" are the same tone, never two different reds.
     const error = Color(0xFFF2967D);
     const onError = Color(0xFF3A0A00);
     const income = Color(0xFF7DD3A8);
@@ -132,17 +134,18 @@ abstract final class AppTheme {
       textTheme: base.textTheme.copyWith(
         titleMedium: base.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         titleSmall: base.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-        // Etiquetas pequeñas (p. ej. "Balance del mes" y las cabeceras de
-        // cada tarjeta del resumen mensual) en gris tenue, para que
-        // destaquen la cifra y el contenido, no el rótulo que los precede.
+        // Small labels (e.g. "Balance del mes" and each monthly
+        // report card's headers) in a muted gray, so the figure and
+        // the content stand out, not the label that precedes them.
         labelLarge: base.textTheme.labelLarge?.copyWith(color: onSurfaceVariant),
-        // Etiquetas secundarias (fechas, "N movimientos", pies de tarjeta...):
-        // mismo gris tenue que `labelLarge` y, por defecto, 12 px en vez de
-        // los 11 px por defecto de Material 3 — tamaño mínimo legible para
-        // texto que ya de por sí tiene menos contraste que el contenido
-        // principal. Algunas pantallas ya fijaban este mismo color a mano
-        // con `.copyWith(color: onSurfaceVariant)`; seguir haciéndolo no
-        // cambia nada (mismo color), así que no hizo falta tocarlas.
+        // Secondary labels (dates, "N movimientos", card footers...):
+        // same muted gray as `labelLarge` and, by default, 12 px
+        // instead of Material 3's default 11 px — the minimum
+        // legible size for text that already has less contrast than
+        // the main content. Some screens already set this same color
+        // by hand with `.copyWith(color: onSurfaceVariant)`;
+        // continuing to do so changes nothing (same color), so they
+        // didn't need to be touched.
         bodySmall: base.textTheme.bodySmall?.copyWith(color: onSurfaceVariant, fontSize: 12),
       ),
       appBarTheme: AppBarTheme(
@@ -193,15 +196,17 @@ abstract final class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(shape: pillShape),
       ),
-      // `width` fija un ancho máximo (y lo centra: ver `_ScaffoldLayout` en
-      // el SDK de Flutter, que calcula el offset horizontal solo cuando hay
-      // un ancho explícito) en vez de ocupar todo el ancho menos el margen,
-      // para que no cambie de tamaño entre pantallas con un `ConstrainedBox`
-      // más estrecho que otras. `insetPadding` fijo por el mismo motivo de
-      // estabilidad, aunque esto no evita el "salto" vertical que causa el
-      // `FloatingActionButton` (ver docs/design.md, "Aviso estable al
-      // navegar"): ese salto viene de dónde posiciona el `Scaffold` el
-      // aviso cuando hay un FAB visible, no del tema.
+      // `width` fixes a maximum width (and centers it: see
+      // `_ScaffoldLayout` in the Flutter SDK, which computes the
+      // horizontal offset only when there's an explicit width)
+      // instead of taking up the full width minus the margin, so it
+      // doesn't change size between screens with a narrower
+      // `ConstrainedBox` than others. `insetPadding` fixed for the
+      // same stability reason, though this doesn't prevent the
+      // vertical "jump" the `FloatingActionButton` causes (see
+      // docs/design.md, "Aviso estable al navegar"): that jump comes
+      // from where the `Scaffold` positions the notice when a FAB is
+      // visible, not from the theme.
       snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
@@ -222,18 +227,19 @@ abstract final class AppTheme {
   }
 }
 
-/// Colores de dominio financiero que no salen de un `ColorScheme` estándar
-/// de Material. Nunca es la única pista visual: en todas las pantallas que
-/// los usan, el signo (+/-) o un icono acompañan siempre al color (ver
-/// `docs/design.md`).
+/// Financial domain colors that don't come out of a standard Material
+/// `ColorScheme`. Never the only visual cue: on every screen that
+/// uses them, a sign (+/-) or an icon always accompanies the color
+/// (see `docs/design.md`).
 class FinanceColors extends ThemeExtension<FinanceColors> {
   const FinanceColors({required this.income, required this.expense, required this.warning});
 
   final Color income;
   final Color expense;
 
-  /// Metas de ahorro "por detrás" (ni al día ni vencidas): ámbar, distinto
-  /// de [income]/[expense] y siempre junto al icono y el texto del estado.
+  /// Savings goals "por detrás" (neither on track nor overdue): amber,
+  /// distinct from [income]/[expense] and always next to the status
+  /// icon and text.
   final Color warning;
 
   @override

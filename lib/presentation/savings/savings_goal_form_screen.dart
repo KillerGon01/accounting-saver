@@ -12,10 +12,10 @@ import '../help/help_topic.dart';
 import '../transactions/formatters.dart';
 import 'savings_goal_providers.dart';
 
-/// Alta (sin [goal]) o edición (con [goal]) de una meta de ahorro: nombre,
-/// importe objetivo y fecha límite. Lo ya ahorrado no se toca aquí —
-/// `UpdateSavedAmountDialog` es la vía para eso (ver
-/// `docs/design.md`, "Metas de ahorro").
+/// Creation (without [goal]) or editing (with [goal]) of a savings
+/// goal: name, target amount, and deadline. What's already saved
+/// isn't touched here — `UpdateSavedAmountDialog` is the way to do
+/// that (see `docs/design.md`, "Metas de ahorro").
 class SavingsGoalFormScreen extends ConsumerStatefulWidget {
   const SavingsGoalFormScreen({super.key, required this.userId, this.goal});
 
@@ -97,11 +97,11 @@ class _SavingsGoalFormScreenState extends ConsumerState<SavingsGoalFormScreen> {
         await ref.read(createSavingsGoalProvider)(userId: widget.userId, goal: goal);
       }
       if (!mounted) return;
-      // Microinteracción: un breve check antes de cerrar, en vez de
-      // volver directamente a la lista. La meta ya está guardada en este
-      // punto (el retraso es solo visual, no bloquea ningún guardado
-      // real); con `disableAnimations`, `delay` es cero y el pop ocurre
-      // en el mismo frame, como antes.
+      // Micro-interaction: a brief checkmark before closing, instead
+      // of going straight back to the list. The goal is already saved
+      // at this point (the delay is purely visual, it blocks no real
+      // save); with `disableAnimations`, `delay` is zero and the pop
+      // happens in the same frame, as before.
       setState(() {
         _isSaving = false;
         _justSaved = true;
@@ -113,10 +113,11 @@ class _SavingsGoalFormScreenState extends ConsumerState<SavingsGoalFormScreen> {
       if (!mounted) return;
       setState(() {
         _isSaving = false;
-        // `SavingsGoalLimitExceededException` ya es un mensaje en
-        // español, pensado para mostrarse tal cual (no es un error crudo
-        // de Firestore); cualquier otro error (permission-denied, red...)
-        // se traduce a un mensaje genérico, nunca el error crudo.
+        // `SavingsGoalLimitExceededException` is already a
+        // Spanish-language message, meant to be shown as-is (it isn't
+        // a raw Firestore error); any other error (permission-denied,
+        // network...) is translated to a generic message, never the
+        // raw error.
         _errorMessage = error is SavingsGoalLimitExceededException
             ? error.toString()
             : firestoreErrorMessage(

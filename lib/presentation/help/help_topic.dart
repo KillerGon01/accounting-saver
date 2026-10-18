@@ -1,6 +1,5 @@
-/// Una entrada del menú de ayuda por cada pantalla de la app (ver
-/// `help_content.dart`). Ninguna lógica aquí: solo el identificador de la
-/// pantalla.
+/// One help-menu entry per screen of the app (see `help_content.dart`).
+/// No logic here: just the screen's identifier.
 enum HelpTopic {
   transactions,
   chat,

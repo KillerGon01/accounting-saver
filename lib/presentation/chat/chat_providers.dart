@@ -12,10 +12,10 @@ final chatGatewayProvider = Provider<ChatGateway>(
   (ref) => GeminiChatGateway(availability: ref.watch(geminiModelAvailabilityProvider)),
 );
 
-/// Se le pasa el mismo `BuildMonthlyReport` que usa el resumen mensual
-/// (`buildMonthlyReportProvider`), no uno nuevo: así `getCategoryBreakdown`
-/// y `compareMonths` son, byte a byte, la misma fuente de verdad que la
-/// pantalla de resumen (ver docs/design.md).
+/// Passed the same `BuildMonthlyReport` the monthly report uses
+/// (`buildMonthlyReportProvider`), not a new one: this way
+/// `getCategoryBreakdown` and `compareMonths` are, byte for byte, the
+/// same source of truth as the report screen (see docs/design.md).
 final transactionChatFunctionsProvider = Provider<TransactionChatFunctions>(
   (ref) => TransactionChatFunctions(
     ref.watch(transactionRepositoryProvider),
@@ -23,14 +23,15 @@ final transactionChatFunctionsProvider = Provider<TransactionChatFunctions>(
   ),
 );
 
-/// Una instancia por usuario (familia por `userId`), no una sola por app:
-/// así su guarda de "una petición en curso", su tope de preguntas por
-/// sesión y su caché son efectivos aunque la pantalla de chat se cierre y
-/// se reabra para el mismo usuario (ver [SendChatMessage]), pero no se
-/// comparten entre dos usuarios que usen el chat en la misma app sin
-/// reiniciarla (cerrar sesión y entrar con otra cuenta): cada `userId`
-/// obtiene su propia instancia, con su propio contador a cero y su propia
-/// caché vacía (ver docs/security.md).
+/// One instance per user (a family by `userId`), not a single one
+/// per app: this way its "request in flight" guard, its cap on
+/// questions per session, and its cache stay in effect even if the
+/// chat screen is closed and reopened for the same user (see
+/// [SendChatMessage]), but aren't shared between two users who use
+/// the chat in the same app without restarting it (signing out and
+/// signing in with another account): each `userId` gets its own
+/// instance, with its own counter at zero and its own empty cache
+/// (see docs/security.md).
 final sendChatMessageProvider = Provider.family<SendChatMessage, String>((ref, userId) {
   return SendChatMessage(
     ref.watch(chatGatewayProvider),

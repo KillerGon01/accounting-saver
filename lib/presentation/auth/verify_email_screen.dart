@@ -28,7 +28,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   @override
   void initState() {
     super.initState();
-    // El correo se envía al registrarse, así que empieza la espera al abrir la pantalla.
+    // The email is sent on sign-up, so the wait starts when the screen opens.
     _startCooldown();
   }
 
@@ -87,16 +87,16 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
         });
         return;
       }
-      // AuthGate vuelve a leer el estado de sesión y muestra los movimientos.
+      // AuthGate re-reads the session state and shows the transactions.
       ref.invalidate(authStateChangesProvider);
     });
   }
 
   Future<void> _signOut() async {
-    // Única función compartida por los tres botones de cerrar sesión de
-    // la app (ver docs/design.md, "Avisos de sesión"): deja `signedOut`
-    // en `sessionFeedbackProvider` solo si el cierre de sesión termina
-    // con éxito.
+    // The only function shared by the app's three sign-out buttons
+    // (see docs/design.md, "Avisos de sesión"): leaves `signedOut`
+    // in `sessionFeedbackProvider` only if sign-out finishes
+    // successfully.
     await _run(() => ref.read(signOutWithFeedbackProvider)());
   }
 
