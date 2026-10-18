@@ -6,17 +6,17 @@ import '../../domain/savings/savings_suggestions_gateway.dart';
 import '../../domain/savings/savings_suggestions_summary.dart';
 import '../../domain/transactions/llm_gateway_exception.dart';
 
-/// Pide a la IA una redacción de las opciones de ahorro de una meta ya
-/// calculadas (ver `calculateSavingsSuggestions`/`summarizeSavingsSuggestions`),
-/// con el mismo patrón de cuota que `ExplainMonthlyReport`: como mucho
-/// [maxExplanationsPerSession] llamadas con éxito por sesión (una
-/// instancia), caché en memoria por meta y ninguna llamada simultánea.
+/// Asks the AI for a write-up of a goal's already-computed savings
+/// options (see `calculateSavingsSuggestions`/`summarizeSavingsSuggestions`),
+/// with the same quota pattern as `ExplainMonthlyReport`: at most
+/// [maxExplanationsPerSession] successful calls per session (one
+/// instance), an in-memory cache per goal, and no simultaneous calls.
 class ExplainSavingsSuggestions {
   ExplainSavingsSuggestions(this._gateway, [TransactionsChangeNotifier? changeNotifier])
     : _changeNotifier = changeNotifier ?? TransactionsChangeNotifier();
 
-  /// Mismo valor que `ExplainMonthlyReport.maxCommentsPerSession`: mismo
-  /// cupo diario compartido de Gemini, mismo criterio.
+  /// Same value as `ExplainMonthlyReport.maxCommentsPerSession`: same
+  /// shared daily Gemini quota, same criterion.
   static const maxExplanationsPerSession = 6;
 
   final SavingsSuggestionsGateway _gateway;
@@ -26,14 +26,15 @@ class ExplainSavingsSuggestions {
   bool _isGenerating = false;
   int _explanationsGenerated = 0;
 
-  /// Resúmenes que quedan en esta sesión antes de llegar a
-  /// [maxExplanationsPerSession]. Nunca negativo.
+  /// Write-ups left in this session before reaching
+  /// [maxExplanationsPerSession]. Never negative.
   int get remainingExplanations =>
       (maxExplanationsPerSession - _explanationsGenerated).clamp(0, maxExplanationsPerSession);
 
-  /// [suggestions] ya calculadas (ver `BuildSavingsSuggestions`, llamado
-  /// desde la pantalla, no desde aquí): este caso de uso no vuelve a leer
-  /// Firestore, solo redacta sobre lo que ya se le pasa.
+  /// [suggestions] already computed (see `BuildSavingsSuggestions`,
+  /// called from the screen, not from here): this use case doesn't
+  /// read Firestore again, it only writes up what's already passed to
+  /// it.
   Future<String> call({
     required SavingsGoal goal,
     required SavingsGoalProgress progress,
@@ -52,11 +53,12 @@ class ExplainSavingsSuggestions {
     _isGenerating = true;
     try {
       final cached = _cache[goal.id];
-      // Invalidada si cambian los movimientos (`transactionsVersion`) o la
-      // propia meta (`savedCents`/`targetCents`/`deadline`): comparación
-      // explícita campo a campo, no implícita en la igualdad de un
-      // resumen ya construido, para que quede claro de qué depende la
-      // caché sin tener que leer `summarizeSavingsSuggestions`.
+      // Invalidated if the transactions change (`transactionsVersion`)
+      // or the goal itself does (`savedCents`/`targetCents`/`deadline`):
+      // explicit field-by-field comparison, not implicit in an
+      // already-built summary's equality, so it's clear what the
+      // cache depends on without having to read
+      // `summarizeSavingsSuggestions`.
       if (cached != null &&
           cached.transactionsVersion == _changeNotifier.version &&
           cached.savedCents == goal.savedCents &&
@@ -68,9 +70,9 @@ class ExplainSavingsSuggestions {
       final summary = summarizeSavingsSuggestions(goal: goal, progress: progress, suggestions: suggestions);
       final explanation = await _gateway.explain(summary);
 
-      // Solo se cuenta aquí, tras una llamada al modelo que ha terminado
-      // con éxito: ni el acierto de caché de arriba ni un error más abajo
-      // (que se propaga sin pasar por esta línea) gastan un resumen.
+      // Only counted here, after a model call that has succeeded:
+      // neither the cache hit above nor an error below (which
+      // propagates without passing through this line) spend a write-up.
       _explanationsGenerated++;
       _cache[goal.id] = _CachedExplanation(
         explanation,

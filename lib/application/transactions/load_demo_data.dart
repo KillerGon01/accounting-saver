@@ -25,9 +25,9 @@ class LoadDemoData {
       final month = DateTime(now.year, now.month - monthsAgo);
       final lastDay = DateTime(month.year, month.month + 1, 0).day;
       final maxDay = monthsAgo == 0 ? now.day : lastDay;
-      // 0 para el mes más antiguo de los 3, 2 para el mes en curso: se usa
-      // para desplazar de forma determinista (sin aleatoriedad) el importe
-      // de las entradas que no deben repetirse igual mes a mes.
+      // 0 for the oldest of the 3 months, 2 for the current month:
+      // used to shift, deterministically (no randomness), the amount
+      // of entries that shouldn't repeat the same from month to month.
       final monthIndex = 2 - monthsAgo;
 
       for (final entry in _monthlyEntries) {
@@ -68,36 +68,36 @@ class _DemoEntry {
     this.monthlyShiftCents = 0,
   });
 
-  /// Días fijos del mes entre los que se elige; null reparte el movimiento al azar.
+  /// Fixed days of the month to choose from; null spreads the transaction randomly.
   final List<int>? days;
   final int amountCents;
   final String description;
   final Category category;
 
-  /// Cuánto cambia [amountCents] de un mes al siguiente (multiplicado por el
-  /// índice del mes: 0 para el más antiguo de los 3, 2 para el actual), para
-  /// que una entrada no tenga el mismo importe en dos meses distintos. Debe
-  /// ser distinto de cero en cualquier entrada que no deba considerarse un
-  /// gasto recurrente (ver `recurringExpenses`); las suscripciones y cargos
-  /// fijos (Alquiler, Gimnasio, Netflix, Spotify) lo dejan en 0 a propósito,
-  /// para que sigan teniendo el mismo importe los 3 meses y la función sí
-  /// los detecte como recurrentes.
+  /// How much [amountCents] changes from one month to the next
+  /// (multiplied by the month's index: 0 for the oldest of the 3, 2
+  /// for the current one), so an entry doesn't have the same amount in
+  /// two different months. Must be nonzero in any entry that shouldn't
+  /// count as a recurring expense (see `recurringExpenses`);
+  /// subscriptions and fixed charges (Alquiler, Gimnasio, Netflix,
+  /// Spotify) leave it at 0 on purpose, so they keep the same amount
+  /// for the 3 months and the function does detect them as recurring.
   final int monthlyShiftCents;
 }
 
 const _monthlyEntries = [
-  // Cargos fijos: mismo importe y mismo día los 3 meses, para que
-  // `recurringExpenses` los detecte de verdad (ver docs/design.md).
+  // Fixed charges: same amount and same day for the 3 months, so
+  // `recurringExpenses` genuinely detects them (see docs/design.md).
   _DemoEntry(days: [1], amountCents: -85000, description: 'Alquiler', category: Category.hogar),
   _DemoEntry(days: [1], amountCents: -3500, description: 'Gimnasio', category: Category.suscripciones),
   _DemoEntry(days: [5], amountCents: -1299, description: 'Netflix', category: Category.suscripciones),
   _DemoEntry(days: [12], amountCents: -1099, description: 'Spotify', category: Category.suscripciones),
-  // Ingresos: no entran en `recurringExpenses` (solo mira gastos), así que
-  // no necesitan variar de un mes a otro.
+  // Income: doesn't enter `recurringExpenses` (it only looks at
+  // expenses), so it doesn't need to vary from month to month.
   _DemoEntry(days: [1, 28], amountCents: 235000, description: 'Nómina', category: Category.nomina),
   _DemoEntry(amountCents: 45000, description: 'Proyecto freelance', category: Category.otros),
-  // Gastos variables: importe distinto cada mes (desplazamiento fijo, sin
-  // aleatoriedad), para que ninguno se confunda con un gasto recurrente.
+  // Variable expenses: different amount each month (fixed shift, no
+  // randomness), so none gets mistaken for a recurring expense.
   _DemoEntry(
     amountCents: -5480,
     description: 'Abono de transporte',

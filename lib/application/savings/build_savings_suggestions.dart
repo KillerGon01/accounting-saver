@@ -4,19 +4,19 @@ import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_repository.dart';
 import '../reports/build_month_end_forecast.dart';
 
-/// Calcula las opciones de ahorro de una meta (ver
-/// `calculateSavingsSuggestions`) a partir del histórico de los
-/// `BuildMonthEndForecast.recurringExpensesMonths` meses anteriores
-/// completos y de lo registrado en el mes en curso — la misma ventana, y
-/// con el mismo tope de seguridad (`BuildMonthEndForecast.maxFetchLimit`),
-/// que ya usan `BuildMonthEndForecast`/`BuildUnusualExpenses`.
+/// Computes a goal's savings options (see
+/// `calculateSavingsSuggestions`) from the history of the previous
+/// `BuildMonthEndForecast.recurringExpensesMonths` full months and
+/// what's registered in the current month — the same window, and with
+/// the same safety cap (`BuildMonthEndForecast.maxFetchLimit`), that
+/// `BuildMonthEndForecast`/`BuildUnusualExpenses` already use.
 ///
-/// Se llama bajo demanda, al pulsar el botón "¿De dónde puedo ahorrar?" de
-/// una meta, no al abrir la pantalla de metas: **añade 2 consultas a
-/// Firestore por apertura de la hoja** (las mismas dos, histórico y mes en
-/// curso, que ya hace `BuildUnusualExpenses` — no comparte sus resultados,
-/// mismo tradeoff ya aceptado entre los casos de uso del resumen mensual,
-/// ver docs/design.md).
+/// Called on demand, when pressing a goal's "¿De dónde puedo ahorrar?"
+/// button, not when opening the goals screen: **adds 2 queries to
+/// Firestore per sheet opening** (the same two, history and current
+/// month, that `BuildUnusualExpenses` already makes — it doesn't share
+/// its results, same tradeoff already accepted among the monthly
+/// report's use cases, see docs/design.md).
 class BuildSavingsSuggestions {
   BuildSavingsSuggestions(this._repository, [Clock clock = const SystemClock()]) : _clock = clock;
 

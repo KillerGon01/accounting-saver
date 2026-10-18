@@ -7,50 +7,50 @@ import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_repository.dart';
 import '../reports/build_monthly_report.dart';
 
-/// Ejecuta, validando antes, las funciones que el chat puede pedir sobre los
-/// movimientos de un usuario. Los argumentos vienen del modelo y no son de
-/// fiar: cada uno se valida antes de tocar Firestore y, si alguno es
-/// inválido, no se ejecuta ninguna consulta y se devuelve `{'error': ...}`
-/// para que el propio modelo se lo explique al usuario, en vez de lanzar
-/// una excepción.
+/// Runs, after validating, the functions the chat can request over a
+/// user's transactions. The arguments come from the model and aren't
+/// trustworthy: each one is validated before touching Firestore and,
+/// if one is invalid, no query runs and `{'error': ...}` is returned
+/// so the model itself can explain it to the user, instead of
+/// throwing.
 ///
-/// `TransactionRepository.findByDateRange` solo filtra por fecha en el
-/// servidor (ver su documentación): no depende de ningún índice compuesto
-/// de Firestore. Por eso todo lo demás —filtrar por categoría, separar
-/// ingresos de gastos por el signo del importe, sumar— se hace aquí, en
-/// Dart, sobre la lista ya descargada.
+/// `TransactionRepository.findByDateRange` only filters by date on
+/// the server (see its documentation): it doesn't depend on any
+/// Firestore composite index. That's why everything else — filtering
+/// by category, splitting income from expenses by the amount's sign,
+/// summing — is done here, in Dart, over the already-downloaded list.
 class TransactionChatFunctions {
-  /// [buildMonthlyReport] es opcional solo para no obligar a cada test que
-  /// no lo necesita a construir uno; en la app siempre se pasa el mismo
-  /// `BuildMonthlyReport` que ya usa el resumen mensual (ver
-  /// `chat_providers.dart`), para que `getCategoryBreakdown` y
-  /// `compareMonths` sean, byte a byte, la misma fuente de verdad que la
-  /// pantalla de resumen (ver docs/design.md: antes el chat improvisaba su
-  /// propio cálculo por categoría a partir de `listTransactions`, lo que
-  /// producía cifras distintas a las del resumen).
+  /// [buildMonthlyReport] is optional only so as not to force every
+  /// test that doesn't need one to build one; in the app, the same
+  /// `BuildMonthlyReport` the monthly report already uses is always
+  /// passed (see `chat_providers.dart`), so `getCategoryBreakdown` and
+  /// `compareMonths` are, byte for byte, the same source of truth as
+  /// the report screen (see docs/design.md: the chat used to improvise
+  /// its own per-category calculation from `listTransactions`, which
+  /// produced figures different from the report's).
   TransactionChatFunctions(TransactionRepository repository, [BuildMonthlyReport? buildMonthlyReport])
     : _repository = repository,
       _buildMonthlyReport = buildMonthlyReport ?? BuildMonthlyReport(repository);
 
-  /// Como máximo se devuelven 30 movimientos por resultado; la IA nunca ve
-  /// (ni hace falta que vea) listas más largas, y se le avisa si el rango
-  /// pedido tiene más movimientos que estos.
+  /// At most 30 transactions are returned per result; the AI never
+  /// sees (nor needs to see) longer lists, and it's told if the
+  /// requested range has more transactions than these.
   static const maxResults = 30;
 
-  /// Un rango de fechas no puede abarcar más de 5 años, igual que el margen
-  /// que ya se usa para validar fechas de la IA en la entrada en lenguaje
-  /// natural (ver `ParseNaturalLanguageTransaction`).
+  /// A date range can't span more than 5 years, same margin already
+  /// used to validate the AI's dates in natural language input (see
+  /// `ParseNaturalLanguageTransaction`).
   static const maxRangeYears = 5;
 
-  /// Tope de seguridad de documentos leídos de Firestore por consulta. Sin
-  /// él, un rango de fechas con muchísimos movimientos descargaría la
-  /// colección entera para sumarla en Dart. Si se alcanza, el resultado
-  /// avisa de que la cifra puede no incluir todo el rango en vez de
-  /// calcularla en silencio con datos parciales.
+  /// Safety cap on Firestore documents read per query. Without it, a
+  /// date range with a huge number of transactions would download the
+  /// entire collection to sum it in Dart. If it's reached, the result
+  /// warns that the figure may not include the whole range instead of
+  /// silently computing it with partial data.
   static const maxFetchLimit = 2000;
 
-  /// `recurringExpenses` analiza al menos los últimos 3 meses naturales
-  /// completos (sin contar el mes en curso, que todavía no ha terminado).
+  /// `recurringExpenses` analyzes at least the last 3 full calendar
+  /// months (not counting the current month, which hasn't ended yet).
   static const recurringExpensesMonths = 3;
 
   final TransactionRepository _repository;
@@ -151,10 +151,10 @@ class TransactionChatFunctions {
     final end = hasta.add(const Duration(days: 1));
     final fetch = await _fetchRange(userId: userId, start: desde, end: end);
 
-    // El filtro por categoría se aplica aquí, en Dart, sobre lo ya
-    // descargado (Firestore solo ha filtrado por fecha). El recorte a 30
-    // movimientos se hace DESPUÉS de este filtro, y las sumas se calculan
-    // sobre el conjunto filtrado completo, no sobre esos 30.
+    // The category filter is applied here, in Dart, over what's
+    // already downloaded (Firestore has only filtered by date). The
+    // cut to 30 transactions happens AFTER this filter, and the sums
+    // are computed over the full filtered set, not over those 30.
     final filtered = category == null
         ? fetch.transactions
         : fetch.transactions.where((t) => t.categoryId == category).toList();
@@ -186,15 +186,17 @@ class TransactionChatFunctions {
     };
   }
 
-  /// Un gasto es recurrente si, con el mismo concepto normalizado (en
-  /// minúsculas y sin espacios de más) y el mismo importe exacto, aparece
-  /// en 2 o más meses distintos dentro del rango analizado. Es una
-  /// definición determinista, calculada en código por [findRecurringExpenses]
-  /// (dominio, compartida con `BuildMonthEndForecast` — ver docs/design.md,
-  /// "Previsión de fin de mes"): el modelo no decide qué cuenta como
-  /// recurrente, solo lee la lista ya calculada. Esta función solo se
-  /// queda con el conjunto de meses de cada recurrente; el día de cada
-  /// aparición (que sí usa `BuildMonthEndForecast`) no hace falta aquí.
+  /// An expense is recurring if, with the same normalized description
+  /// (lowercase and no extra spaces) and the same exact amount, it
+  /// appears in 2 or more distinct months within the analyzed range.
+  /// A deterministic definition, computed in code by
+  /// [findRecurringExpenses] (domain layer, shared with
+  /// `BuildMonthEndForecast` — see docs/design.md, "Previsión de fin
+  /// de mes"): the model doesn't decide what counts as recurring, it
+  /// only reads the already-computed list. This function only keeps
+  /// each recurring expense's set of months; the day of each
+  /// occurrence (which `BuildMonthEndForecast` does use) isn't needed
+  /// here.
   Future<Map<String, Object?>> _recurringExpenses({required String userId, required DateTime now}) async {
     final thisMonthStart = DateTime(now.year, now.month);
     final start = DateTime(now.year, now.month - recurringExpensesMonths);
@@ -225,13 +227,13 @@ class TransactionChatFunctions {
     };
   }
 
-  /// Desglose de gasto por categoría de un mes, calculado por
-  /// [BuildMonthlyReport] (la misma fuente de verdad que el resumen
-  /// mensual: ver docs/design.md), no por el modelo. `rankingLines` es el
-  /// desglose ya redactado en texto plano ("1. Hogar: 938,90 € (62,2 %)",
-  /// de mayor a menor gasto) para que el modelo lo copie tal cual en
-  /// rankings; `categories` son los mismos datos en bruto, por si hace
-  /// falta un valor concreto que no está en una línea.
+  /// A month's expense breakdown by category, computed by
+  /// [BuildMonthlyReport] (the same source of truth as the monthly
+  /// report: see docs/design.md), not by the model. `rankingLines` is
+  /// the breakdown already written in plain text ("1. Hogar: 938,90 €
+  /// (62,2 %)", from highest to lowest expense) for the model to copy
+  /// as-is in rankings; `categories` is the same data raw, in case a
+  /// specific value is needed that isn't in a line.
   Future<Map<String, Object?>> _getCategoryBreakdown({
     required String userId,
     required Map<String, Object?> arguments,
@@ -279,13 +281,13 @@ class TransactionChatFunctions {
     };
   }
 
-  /// Compara dos meses cualesquiera (no necesariamente consecutivos): A es
-  /// el mes base ("antes"/"frente a") y B el que se evalúa, con el mismo
-  /// significado que "actual" y "anterior" en el resumen mensual (ver
-  /// [BuildMonthlyReport] y [compareCategoryBreakdowns]). Si A no tiene
-  /// ningún movimiento no se calcula ninguna comparación (igual que hace
-  /// el resumen con el mes anterior), para no inventar un delta del 100 %
-  /// o del -100 % que no refleja la ausencia de datos.
+  /// Compares any two months (not necessarily consecutive): A is the
+  /// base month ("before"/"versus") and B the one being evaluated,
+  /// with the same meaning as "current" and "previous" in the monthly
+  /// report (see [BuildMonthlyReport] and [compareCategoryBreakdowns]).
+  /// If A has no transactions, no comparison is computed (same as the
+  /// report does with the previous month), so as not to make up a
+  /// +100% or -100% delta that doesn't reflect the lack of data.
   Future<Map<String, Object?>> _compareMonths({
     required String userId,
     required Map<String, Object?> arguments,
@@ -347,11 +349,12 @@ class TransactionChatFunctions {
     };
   }
 
-  /// Delta de gasto total y por categoría entre dos informes ya calculados,
-  /// más las mismas cifras ya redactadas en texto plano ("Gastos: 1.508,59
-  /// € frente a 1.447,21 € (+4,2 %)") para que el modelo las copie tal
-  /// cual. Las categorías se ordenan por gasto de B (el mes evaluado), de
-  /// mayor a menor, igual que `rankingLines` en [_getCategoryBreakdown].
+  /// Delta of total and per-category expense between two
+  /// already-computed reports, plus the same figures already written
+  /// in plain text ("Gastos: 1.508,59 € frente a 1.447,21 € (+4,2 %)")
+  /// for the model to copy as-is. Categories are sorted by B's expense
+  /// (the evaluated month), from highest to lowest, same as
+  /// `rankingLines` in [_getCategoryBreakdown].
   Map<String, Object?> _buildComparisonJson(MonthlyReport reportA, MonthlyReport reportB) {
     final comparison = compareCategoryBreakdowns(
       currentBreakdown: reportB.categoryBreakdown,
@@ -389,9 +392,10 @@ class TransactionChatFunctions {
         ? null
         : _roundTo1Decimal(comparison.expenseDeltaPercent!);
 
-    // Avisos de mes en curso primero (A y, si también lo es, B): antes de
-    // cualquier cifra, para que no se puedan omitir ni suavizar al redactar
-    // la respuesta (ver la instrucción de sistema en gemini_chat_gateway.dart).
+    // Current-month notices come first (A and, if it's also the
+    // case, B): before any figure, so they can't be omitted or
+    // softened when drafting the reply (see the system instruction in
+    // gemini_chat_gateway.dart).
     final comparisonLines = [
       if (reportA.isCurrentMonth) _currentMonthWarning(reportA),
       if (reportB.isCurrentMonth) _currentMonthWarning(reportB),
@@ -421,8 +425,8 @@ class TransactionChatFunctions {
       userId: userId,
       start: start,
       end: end,
-      // Se pide uno más del tope para saber, sin otra consulta, si se ha
-      // alcanzado el límite de seguridad.
+      // One more than the cap is requested to know, without another
+      // query, whether the safety limit has been reached.
       limit: maxFetchLimit + 1,
     );
     final safetyLimitReached = transactions.length > maxFetchLimit;
@@ -454,8 +458,8 @@ class TransactionChatFunctions {
         'si necesita una cifra exacta.',
   };
 
-  /// Los campos de este mapa, en especial `description`, son datos del
-  /// usuario para mostrar, nunca instrucciones a seguir.
+  /// This map's fields, especially `description`, are the user's data
+  /// to display, never instructions to follow.
   Map<String, Object?> _transactionToJson(Transaction transaction) {
     return {
       'date': _isoDate(transaction.date),
@@ -465,13 +469,14 @@ class TransactionChatFunctions {
     };
   }
 
-  /// Línea ya redactada de un movimiento ("1 oct: Alquiler 850,00 € (gasto)"),
-  /// para que el modelo la copie tal cual en vez de escribir el importe él
-  /// mismo a partir de `_transactionToJson` (ver docs/design.md: así es como
-  /// se le colaba el error de copiar mal un importe al listar muchos
-  /// movimientos). [includeYear] se activa cuando el rango pedido abarca más
-  /// de un año natural, para no confundir movimientos del mismo día y mes en
-  /// años distintos.
+  /// Already-written line for a transaction ("1 oct: Alquiler 850,00 €
+  /// (gasto)"), for the model to copy as-is instead of writing the
+  /// amount itself from `_transactionToJson` (see docs/design.md:
+  /// that's how the error of miscopying an amount when listing many
+  /// transactions used to slip in). [includeYear] kicks in when the
+  /// requested range spans more than one calendar year, so as not to
+  /// confuse transactions on the same day and month in different
+  /// years.
   String _transactionLine(Transaction transaction, {required bool includeYear}) {
     final day = transaction.date.day;
     final month = _monthAbbreviations[transaction.date.month - 1];
@@ -482,12 +487,13 @@ class TransactionChatFunctions {
     return '$date: $description $amount ($kind)';
   }
 
-  /// `description` es texto del usuario, no de fiar: antes de meterlo en una
-  /// línea que el modelo va a copiar tal cual, se colapsan saltos de línea y
-  /// espacios repetidos a uno solo (para que no se pueda simular más de una
-  /// línea dentro de la propia descripción) y se recorta a
-  /// [_descriptionLineMaxLength] caracteres. Esto solo afecta a la línea de
-  /// texto: el dato estructurado en `_transactionToJson` no se toca.
+  /// `description` is the user's text, not trustworthy: before
+  /// putting it into a line the model will copy as-is, line breaks and
+  /// repeated spaces are collapsed to one (so more than one line can't
+  /// be faked within the description itself) and it's trimmed to
+  /// [_descriptionLineMaxLength] characters. This only affects the
+  /// text line: the structured data in `_transactionToJson` isn't
+  /// touched.
   String _sanitizeDescriptionForLine(String description) {
     final collapsed = description.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (collapsed.length <= _descriptionLineMaxLength) return collapsed;
@@ -523,12 +529,13 @@ class TransactionChatFunctions {
     return '$year-$month-$day';
   }
 
-  /// Mismas reglas que valida `_getMonthlySummary` desde siempre (año
-  /// dentro de los últimos [maxRangeYears] y mes entre 1 y 12), factorizadas
-  /// para que `getCategoryBreakdown` y, con dos pares de argumentos,
-  /// `compareMonths` no las repitan. [suffix] solo distingue en el mensaje
-  /// de error cuál de los dos meses de `compareMonths` falla (por ejemplo
-  /// "yearA"/"monthA" en vez de "year"/"month").
+  /// Same rules `_getMonthlySummary` has always validated (year
+  /// within the last [maxRangeYears] and month between 1 and 12),
+  /// factored out so `getCategoryBreakdown` and, with two pairs of
+  /// arguments, `compareMonths` don't repeat them. [suffix] only
+  /// distinguishes in the error message which of `compareMonths`'s
+  /// two months fails (for example "yearA"/"monthA" instead of
+  /// "year"/"month").
   Map<String, Object?>? _yearMonthError(int? year, int? month, DateTime now, [String suffix = '']) {
     if (year == null || month == null) {
       return {'error': 'Faltan los argumentos "year$suffix" y/o "month$suffix", o no son números enteros.'};
@@ -548,10 +555,10 @@ class TransactionChatFunctions {
     return null;
   }
 
-  /// Nombre en español de cada categoría para las líneas de texto que lee
-  /// el modelo. Duplica a propósito `CategoryLabel`
-  /// (`presentation/transactions/formatters.dart`): la aplicación no puede
-  /// depender de la capa de presentación (ver CLAUDE.md).
+  /// Each category's name in Spanish for the text lines the model
+  /// reads. Deliberately duplicates `CategoryLabel`
+  /// (`presentation/transactions/formatters.dart`): the application
+  /// layer can't depend on the presentation layer (see CLAUDE.md).
   String _categoryLabel(Category category) => switch (category) {
     Category.supermercado => 'Supermercado',
     Category.restaurantes => 'Restaurantes',
@@ -564,12 +571,13 @@ class TransactionChatFunctions {
     Category.otros => 'Otros',
   };
 
-  /// Igual que `formatCents` en presentación (signo, separador de miles,
-  /// dos decimales y "€"), duplicado aquí a propósito por la misma razón
-  /// que [_categoryLabel]. Solo para las líneas de texto ya redactadas de
-  /// `getCategoryBreakdown` y `compareMonths`; el resto de campos de este
-  /// archivo (por ejemplo `amountEuros` en `recurringExpenses`) usan
-  /// `formatEuroAmount`, sin separador de miles ni "€", sin cambios.
+  /// Same as `formatCents` in the presentation layer (sign, thousands
+  /// separator, two decimals and "€"), duplicated here on purpose for
+  /// the same reason as [_categoryLabel]. Only for the already-written
+  /// text lines of `getCategoryBreakdown` and `compareMonths`; the
+  /// rest of this file's fields (for example `amountEuros` in
+  /// `recurringExpenses`) use `formatEuroAmount`, with no thousands
+  /// separator or "€", unchanged.
   String _formatEurosWithSymbol(int amountCents) {
     final sign = amountCents < 0 ? '-' : '';
     final absolute = amountCents.abs();
@@ -589,14 +597,15 @@ class TransactionChatFunctions {
     return buffer.toString();
   }
 
-  /// Porcentaje ya redondeado a un decimal, sin signo (para
-  /// `percentageOfExpense`, que nunca es negativo).
+  /// Percentage already rounded to one decimal, unsigned (for
+  /// `percentageOfExpense`, which is never negative).
   String _formatPercent(double roundedValue) => '${roundedValue.toStringAsFixed(1).replaceAll('.', ',')} %';
 
-  /// Igual que [_formatPercent], pero con un "+" explícito si es positivo
-  /// (para que "más que el mes anterior" no se confunda con "menos"), y un
-  /// aviso en vez de una cifra cuando no hay base sobre la que calcular un
-  /// porcentaje (el mes o la categoría base no tenían gasto).
+  /// Same as [_formatPercent], but with an explicit "+" if positive
+  /// (so "more than the previous month" doesn't get confused with
+  /// "less"), and a notice instead of a figure when there's no base to
+  /// compute a percentage from (the base month or category had no
+  /// expense).
   String _formatDeltaPercent(double? roundedValue) {
     if (roundedValue == null) return 'sin gasto previo con el que comparar';
     final sign = roundedValue > 0 ? '+' : '';
@@ -605,12 +614,12 @@ class TransactionChatFunctions {
 
   double _roundTo1Decimal(double value) => double.parse(value.toStringAsFixed(1));
 
-  /// Primera línea obligatoria de `rankingLines`/`comparisonLines` cuando
-  /// el mes (o, en `compareMonths`, alguno de los dos) está en curso: sin
-  /// ella, una caída de gasto en un mes a medias se podría confundir con
-  /// que de verdad se ha gastado menos, cuando solo es que aún no han
-  /// entrado todos los cargos. La instrucción de sistema obliga a copiarla
-  /// tal cual, nunca a omitirla ni a suavizarla.
+  /// Mandatory first line of `rankingLines`/`comparisonLines` when the
+  /// month (or, in `compareMonths`, either of the two) is the current
+  /// one: without it, a drop in spending in a half-finished month
+  /// could be mistaken for genuinely having spent less, when really
+  /// not all charges have come in yet. The system instruction requires
+  /// copying it as-is, never omitting or softening it.
   String _currentMonthWarning(MonthlyReport report) {
     return 'Aviso: ${_monthLabel(report.year, report.month)} está en curso (datos hasta el '
         'día ${report.elapsedDays}), así que la comparación es parcial y las diferencias '

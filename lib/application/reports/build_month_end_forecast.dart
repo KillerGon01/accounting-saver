@@ -5,28 +5,29 @@ import '../../domain/transactions/recurring_expenses.dart';
 import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_repository.dart';
 
-/// Calcula la previsión de fin de mes (ver `MonthEndForecast`) a partir de
-/// los gastos recurrentes de los 3 meses anteriores completos y de lo ya
-/// registrado este mes. Solo tiene sentido para el mes en curso: para
-/// cualquier otro mes, [call] devuelve `null` sin consultar nada.
+/// Computes the month-end forecast (see `MonthEndForecast`) from the
+/// recurring expenses of the previous 3 full months and what's already
+/// registered this month. Only makes sense for the current month: for
+/// any other month, [call] returns `null` without querying anything.
 class BuildMonthEndForecast {
   BuildMonthEndForecast(this._repository, [Clock clock = const SystemClock()]) : _clock = clock;
 
-  /// Cuántos meses anteriores completos se analizan para detectar un
-  /// recurrente, igual que `TransactionChatFunctions.recurringExpensesMonths`
-  /// (mismo criterio, dos nombres porque son dos casos de uso distintos
-  /// que no comparten clase).
+  /// How many previous full months are analyzed to detect a recurring
+  /// expense, same as `TransactionChatFunctions.recurringExpensesMonths`
+  /// (same criterion, two names because they're two separate use cases
+  /// that don't share a class).
   static const recurringExpensesMonths = 3;
 
-  /// Mismo tope que `BuildMonthlyReport.maxFetchLimit`: una medida de
-  /// seguridad, no un límite que se espere alcanzar en el uso normal.
+  /// Same cap as `BuildMonthlyReport.maxFetchLimit`: a safety measure,
+  /// not a limit expected to be reached in normal use.
   static const maxFetchLimit = 2000;
 
   final TransactionRepository _repository;
   final Clock _clock;
 
-  /// [now] opcional, igual que `BuildMonthlyReport.call`: para que quien ya
-  /// tiene un `now` resuelto no tenga que pasar por un segundo `Clock`.
+  /// [now] optional, same as `BuildMonthlyReport.call`: so whoever
+  /// already has a resolved `now` doesn't have to go through a second
+  /// `Clock`.
   Future<MonthEndForecast?> call({
     required String userId,
     required int year,

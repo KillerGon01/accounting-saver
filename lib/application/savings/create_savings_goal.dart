@@ -1,8 +1,8 @@
 import '../../domain/savings/savings_goal.dart';
 import '../../domain/savings/savings_goal_repository.dart';
 
-/// Se lanza si el usuario ya tiene `CreateSavingsGoal.maxGoalsPerUser`
-/// metas al intentar crear una más (ver `CreateSavingsGoal`).
+/// Thrown if the user already has `CreateSavingsGoal.maxGoalsPerUser`
+/// goals when trying to create one more (see `CreateSavingsGoal`).
 class SavingsGoalLimitExceededException implements Exception {
   const SavingsGoalLimitExceededException(this.maxGoals);
 
@@ -12,23 +12,23 @@ class SavingsGoalLimitExceededException implements Exception {
   String toString() => 'No puedes tener más de $maxGoals metas de ahorro a la vez.';
 }
 
-/// Crea una meta nueva, con un máximo de `maxGoalsPerUser` por usuario.
+/// Creates a new goal, with a maximum of `maxGoalsPerUser` per user.
 ///
-/// **El máximo se valida aquí, en código, no en las reglas de Firestore,
-/// y la comprobación no es atómica.** `count()` y `add()` son dos
-/// operaciones separadas: si la misma cuenta crea dos metas casi a la vez
-/// desde dos pestañas (algo que esta app no hace hoy, pero que las reglas
-/// no impiden), las dos podrían leer un recuento de 9 y las dos
-/// terminarían creando la décima y la undécima. Aceptado a propósito,
-/// documentado en docs/security.md: un límite de cuota razonable, no una
-/// garantía de seguridad — nada grave depende de que sean exactamente 10
-/// y no 11.
+/// **The maximum is validated here, in code, not in Firestore's
+/// rules, and the check isn't atomic.** `count()` and `add()` are two
+/// separate operations: if the same account creates two goals almost
+/// at the same time from two tabs (something this app doesn't do
+/// today, but that the rules don't prevent), both could read a count
+/// of 9 and both would end up creating the tenth and the eleventh.
+/// Accepted on purpose, documented in docs/security.md: a reasonable
+/// quota limit, not a security guarantee — nothing serious depends on
+/// it being exactly 10 and not 11.
 class CreateSavingsGoal {
   CreateSavingsGoal(this._repository);
 
-  /// No tiene por qué coincidir con ningún límite de las reglas de
-  /// Firestore (no lo comprueban): es solo una cuota razonable para no
-  /// dejar crecer la lista sin límite.
+  /// Doesn't need to match any limit in Firestore's rules (they don't
+  /// check it): it's just a reasonable quota so the list doesn't grow
+  /// without limit.
   static const maxGoalsPerUser = 10;
 
   final SavingsGoalRepository _repository;

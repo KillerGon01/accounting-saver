@@ -4,27 +4,28 @@ import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_repository.dart';
 import 'build_month_end_forecast.dart';
 
-/// Calcula los gastos inusuales del mes en curso (ver `detectUnusualExpenses`)
-/// a partir del histórico de los `BuildMonthEndForecast.recurringExpensesMonths`
-/// meses anteriores completos — la misma ventana, y con el mismo tope de
-/// seguridad (`BuildMonthEndForecast.maxFetchLimit`), que ya usa
-/// `BuildMonthEndForecast` para detectar recurrentes. Solo tiene sentido
-/// para el mes en curso: para cualquier otro mes, [call] devuelve `null`
-/// sin consultar nada — igual que `BuildMonthEndForecast`.
+/// Computes the current month's unusual expenses (see
+/// `detectUnusualExpenses`) from the history of the previous
+/// `BuildMonthEndForecast.recurringExpensesMonths` full months — the
+/// same window, and with the same safety cap
+/// (`BuildMonthEndForecast.maxFetchLimit`), that `BuildMonthEndForecast`
+/// already uses to detect recurring expenses. Only makes sense for the
+/// current month: for any other month, [call] returns `null` without
+/// querying anything — same as `BuildMonthEndForecast`.
 ///
-/// **No comparte la misma lectura de Firestore que `BuildMonthEndForecast`**,
-/// aunque pida el mismo rango de fechas: hace sus propias dos consultas
-/// (ver docs/design.md, "Riesgos" — mismo tradeoff ya aceptado entre
-/// `BuildMonthlyReport` y `BuildMonthEndForecast`; el resumen del mes en
-/// curso pasa de 4 a 6 consultas por carga de pantalla con esta función
-/// activa).
+/// **Doesn't share the same Firestore read as `BuildMonthEndForecast`**,
+/// even though it requests the same date range: it makes its own two
+/// queries (see docs/design.md, "Riesgos" — same tradeoff already
+/// accepted between `BuildMonthlyReport` and `BuildMonthEndForecast`;
+/// the current month's report goes from 4 to 6 queries per screen load
+/// with this function active).
 class BuildUnusualExpenses {
   BuildUnusualExpenses(this._repository, [Clock clock = const SystemClock()]) : _clock = clock;
 
   final TransactionRepository _repository;
   final Clock _clock;
 
-  /// [now] opcional, igual que `BuildMonthEndForecast.call`.
+  /// [now] optional, same as `BuildMonthEndForecast.call`.
   Future<UnusualExpensesResult?> call({
     required String userId,
     required int year,

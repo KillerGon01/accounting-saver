@@ -5,29 +5,29 @@ import '../../domain/transactions/monthly_summary.dart';
 import '../../domain/transactions/transaction.dart';
 import '../../domain/transactions/transaction_repository.dart';
 
-/// Calcula el [MonthlyReport] de un mes a partir de los movimientos del
-/// usuario: una consulta por mes (este y el anterior) con
-/// `findByDateRange`, solo filtro por fecha — todo lo demás (totales,
-/// gasto por categoría, comparación) se calcula aquí, en código, en
-/// céntimos.
+/// Computes a month's [MonthlyReport] from the user's transactions:
+/// one query per month (this one and the previous one) with
+/// `findByDateRange`, filtering by date only — everything else
+/// (totals, expense by category, comparison) is computed here, in
+/// code, in cents.
 class BuildMonthlyReport {
   BuildMonthlyReport(this._repository, [Clock clock = const SystemClock()]) : _clock = clock;
 
-  /// Tope de movimientos leídos por consulta (este mes o el anterior),
-  /// igual que `TransactionChatFunctions.maxFetchLimit`: una medida de
-  /// seguridad, no un límite que se espere alcanzar nunca en el uso
-  /// normal de una persona.
+  /// Cap on transactions read per query (this month or the previous
+  /// one), same as `TransactionChatFunctions.maxFetchLimit`: a safety
+  /// measure, not a limit ever expected to be reached in a person's
+  /// normal use.
   static const maxFetchLimit = 2000;
 
   final TransactionRepository _repository;
   final Clock _clock;
 
-  /// [now] solo se usa para decidir [MonthlyReport.isCurrentMonth] y
-  /// [MonthlyReport.elapsedDays]. Es opcional (si no se pasa, se usa el
-  /// `Clock` del constructor, como siempre) para que quien ya tiene un
-  /// `now` resuelto para toda la petición (por ejemplo, el chat: ver
-  /// `TransactionChatFunctions`) pueda pasarlo sin que este caso de uso
-  /// tenga que guardar un segundo reloj con el mismo propósito.
+  /// [now] is only used to decide [MonthlyReport.isCurrentMonth] and
+  /// [MonthlyReport.elapsedDays]. It's optional (if not passed, the
+  /// constructor's `Clock` is used, as always) so whoever already has
+  /// a `now` resolved for the whole request (for example, the chat:
+  /// see `TransactionChatFunctions`) can pass it without this use case
+  /// having to keep a second clock for the same purpose.
   Future<MonthlyReport> call({
     required String userId,
     required int year,
@@ -102,11 +102,12 @@ class BuildMonthlyReport {
     return breakdown;
   }
 
-  /// Delega la aritmética en [compareCategoryBreakdowns] (dominio): este
-  /// método solo convierte las transacciones del mes anterior en su propio
-  /// desglose por categoría, con la misma `_breakdownByCategory` que ya se
-  /// usa para el mes actual, para no tener dos formas distintas de sumar
-  /// por categoría dentro de la misma clase.
+  /// Delegates the arithmetic to [compareCategoryBreakdowns] (domain
+  /// layer): this method only converts the previous month's
+  /// transactions into its own breakdown by category, with the same
+  /// `_breakdownByCategory` already used for the current month, so as
+  /// not to have two different ways of summing by category within the
+  /// same class.
   MonthlyComparison _buildComparison({
     required List<CategoryExpense> current,
     required int currentExpenseCents,

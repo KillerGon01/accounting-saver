@@ -14,9 +14,9 @@ const _monthNames = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ];
 
-/// Resultado de leer una nómina: la extracción tal cual, la validación en
-/// código, los avisos a mostrar y, solo si la validación cuadra, una
-/// propuesta de movimiento (todavía sin guardar: ver `ParsePayroll`).
+/// Result of reading a payroll: the extraction as is, the code-side
+/// validation, the warnings to show and, only if the validation
+/// matches, a transaction draft (not saved yet: see `ParsePayroll`).
 class ParsePayrollResult {
   const ParsePayrollResult({
     required this.extraction,
@@ -28,45 +28,45 @@ class ParsePayrollResult {
   final ExtractedPayroll extraction;
   final PayrollValidation validation;
 
-  /// En español, listos para mostrar tal cual: discrepancia del líquido,
-  /// anomalías que ha observado el modelo, texto con instrucciones
-  /// detectado en el documento, y conceptos de deducción sin descripción
-  /// en el glosario.
+  /// In Spanish, ready to show as-is: net pay discrepancy, anomalies
+  /// the model has observed, instruction-like text detected in the
+  /// document, and deduction concepts with no description in the
+  /// glossary.
   final List<String> warnings;
 
-  /// `null` si [validation] no cuadra: nunca se propone un ingreso con
-  /// cifras que no suman.
+  /// `null` if [validation] doesn't match: an income is never
+  /// proposed with figures that don't add up.
   final ParsedTransaction? proposedTransaction;
 }
 
-/// Lee un PDF de nómina con IA y lo convierte en un resultado validado en
-/// código (nunca se fía de ningún cálculo del modelo).
+/// Reads a payroll PDF with AI and turns it into a code-validated
+/// result (never trusts any calculation from the model).
 ///
-/// Como [SendChatMessage] (`lib/application/chat/send_chat_message.dart`),
-/// lleva su propio estado por instancia (el contador de lecturas de la
-/// sesión): cada usuario obtiene su propia instancia a través de un
-/// `Provider.family` por `userId` (ver `payrollProvider` en
-/// `lib/presentation/payroll/payroll_providers.dart`), así que el contador
-/// no se comparte entre dos usuarios ni se pierde al cerrar y reabrir la
-/// pantalla para el mismo usuario.
+/// Like [SendChatMessage] (`lib/application/chat/send_chat_message.dart`),
+/// it carries its own per-instance state (the session's reading
+/// counter): each user gets their own instance through a
+/// `Provider.family` by `userId` (see `payrollProvider` in
+/// `lib/presentation/payroll/payroll_providers.dart`), so the counter
+/// isn't shared between two users nor lost when closing and reopening
+/// the screen for the same user.
 class ParsePayroll {
   ParsePayroll(this._gateway);
 
-  /// Tamaño máximo admitido para el PDF, en bytes.
+  /// Maximum size allowed for the PDF, in bytes.
   static const maxPdfBytes = 3 * 1024 * 1024;
 
-  /// Tope de lecturas por sesión (una instancia de esta clase). Solo cuenta
-  /// una lectura cuya validación en código cuadra de verdad (ver
-  /// [PayrollValidation.matches]): ni un error del modelo, ni un timeout,
-  /// ni una lectura que no cuadra gastan una de las 5, porque ninguna de
-  /// las tres termina proponiendo un movimiento.
+  /// Cap on readings per session (one instance of this class). Only a
+  /// reading whose code-side validation truly matches counts (see
+  /// [PayrollValidation.matches]): neither a model error, nor a
+  /// timeout, nor a reading that doesn't match spend one of the 5,
+  /// because none of the three ends up proposing a transaction.
   static const maxReadsPerSession = 5;
 
   final PayrollGateway _gateway;
   int _readsUsed = 0;
 
-  /// Lecturas que quedan en esta sesión antes de llegar a
-  /// [maxReadsPerSession]. Nunca negativo.
+  /// Readings left in this session before reaching
+  /// [maxReadsPerSession]. Never negative.
   int get remainingReads => (maxReadsPerSession - _readsUsed).clamp(0, maxReadsPerSession);
 
   Future<ParsePayrollResult> call(Uint8List pdfBytes) async {
@@ -86,10 +86,11 @@ class ParsePayroll {
     final extraction = await _gateway.extractPayroll(pdfBytes);
     final validation = PayrollValidation.fromExtraction(extraction);
 
-    // Solo se cuenta aquí, y solo si la validación cuadra: una lectura que
-    // no cuadra ha gastado cuota de Gemini igual que una que cuadra, pero
-    // no gasta una de las 5 porque no termina proponiendo ningún
-    // movimiento (ver el docstring de `maxReadsPerSession`).
+    // Only counted here, and only if the validation matches: a
+    // reading that doesn't match has spent Gemini quota just like one
+    // that matches, but it doesn't spend one of the 5 because it
+    // doesn't end up proposing any transaction (see
+    // `maxReadsPerSession`'s docstring).
     if (validation.matches) _readsUsed++;
 
     return ParsePayrollResult(
@@ -127,9 +128,10 @@ class ParsePayroll {
     final documentInstructions = extraction.documentInstructions;
     final normalizedInstructions = documentInstructions?.trim().toLowerCase();
 
-    // Si el modelo ya ha descrito este mismo texto en `anomalies` (además
-    // de registrarlo en `instruccionesEnDocumento`), no se duplica como un
-    // segundo aviso: un único aviso por hecho, no dos sobre lo mismo.
+    // If the model has already described this same text in
+    // `anomalies` (besides recording it in `instruccionesEnDocumento`),
+    // it isn't duplicated as a second warning: a single warning per
+    // fact, not two about the same thing.
     for (final anomaly in extraction.anomalies) {
       final normalizedAnomaly = anomaly.trim().toLowerCase();
       final describesSameInstructions = normalizedInstructions != null &&

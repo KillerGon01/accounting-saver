@@ -7,9 +7,9 @@ class SignUpWithEmailAndPassword {
 
   final AuthRepository _authRepository;
 
-  /// Crea la cuenta y envía el correo de verificación. Si el envío falla, la
-  /// cuenta ya existe y la pantalla de verificación permite reenviarlo, así
-  /// que el error no se propaga.
+  /// Creates the account and sends the verification email. If sending
+  /// it fails, the account already exists and the verification screen
+  /// lets it be resent, so the error isn't propagated.
   Future<AppUser> call({required String email, required String password}) async {
     final user = await _authRepository.signUpWithEmailAndPassword(
       email: email,
@@ -18,7 +18,7 @@ class SignUpWithEmailAndPassword {
     try {
       await _authRepository.sendEmailVerification();
     } on AuthException {
-      // Se ignora a propósito: VerifyEmailScreen ofrece reenviar el correo.
+      // Ignored on purpose: VerifyEmailScreen offers to resend the email.
     }
     return user;
   }
