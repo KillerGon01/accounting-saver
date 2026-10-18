@@ -2,30 +2,30 @@ import 'package:firebase_ai/firebase_ai.dart';
 
 import '../../domain/common/clock.dart';
 
-/// Modelos de Gemini a probar en orden cuando el primero devuelve cuota
-/// agotada (429 / `RESOURCE_EXHAUSTED`), todos en el nivel gratuito de la
-/// Gemini Developer API. Lista única para que el chat y la entrada en
-/// lenguaje natural compartan el mismo criterio y, a través de
-/// [GeminiModelAvailability], la misma memoria de qué modelo está agotado:
-/// los dos gastan la misma cuota diaria del proyecto.
+/// Gemini models to try in order when the first one returns quota
+/// exhausted (429 / `RESOURCE_EXHAUSTED`), all on the Gemini Developer
+/// API's free tier. A single list so the chat and natural language
+/// input share the same criterion and, through
+/// [GeminiModelAvailability], the same memory of which model is
+/// exhausted: both spend the project's same daily quota.
 const geminiModelFallbacks = <String>[
   'gemini-3.5-flash-lite',
   'gemini-3.8-flash',
 ];
 
-/// Cuánto se recuerda que un modelo está agotado antes de volver a probarlo.
+/// How long a model is remembered as exhausted before trying it again.
 const geminiModelExhaustionDuration = Duration(hours: 1);
 
-/// Recuerda en memoria, durante [geminiModelExhaustionDuration] o hasta que
-/// se reinicie la app, qué modelos de [geminiModelFallbacks] han devuelto
-/// cuota agotada, para no gastar una petición reintentando un modelo que ya
-/// sabemos que va a fallar. También recuerda, hasta que se reinicie la app
-/// (sin expirar, a diferencia de la cuota agotada), qué modelos no existen
-/// ya en la API — ver [markUnavailableForSession].
+/// Remembers in memory, for [geminiModelExhaustionDuration] or until
+/// the app restarts, which of [geminiModelFallbacks] have returned
+/// quota exhausted, so as not to spend a request retrying a model
+/// already known to fail. Also remembers, until the app restarts
+/// (never expiring, unlike exhausted quota), which models no longer
+/// exist in the API — see [markUnavailableForSession].
 ///
-/// Pensada como una sola instancia compartida por toda la app (ver los
-/// providers): el chat y la entrada en lenguaje natural gastan la misma
-/// cuota diaria del proyecto, así que deben compartir esta memoria.
+/// Meant as a single instance shared across the whole app (see the
+/// providers): the chat and natural language input spend the
+/// project's same daily quota, so they must share this memory.
 class GeminiModelAvailability {
   // ignore: prefer_initializing_formals (el nombre público es `clock`, no `_clock`)
   GeminiModelAvailability({Clock clock = const SystemClock()}) : _clock = clock;
@@ -47,41 +47,44 @@ class GeminiModelAvailability {
     _exhaustedUntil[model] = _clock.now().add(geminiModelExhaustionDuration);
   }
 
-  /// Para un modelo que ya no existe en la API (404 `NOT_FOUND`, ver
-  /// [isModelNotFoundError]), no uno con la cuota agotada: reintentarlo no
-  /// va a hacer que empiece a existir, así que, a diferencia de
-  /// [markExhausted], esto no expira con el tiempo — solo se olvida al
-  /// reiniciar la app (una instancia nueva de [GeminiModelAvailability]).
+  /// For a model that no longer exists in the API (404 `NOT_FOUND`,
+  /// see [isModelNotFoundError]), not one with exhausted quota:
+  /// retrying it isn't going to make it start existing, so, unlike
+  /// [markExhausted], this doesn't expire over time — it's only
+  /// forgotten when the app restarts (a new [GeminiModelAvailability]
+  /// instance).
   void markUnavailableForSession(String model) {
     _unavailableForSession.add(model);
   }
 }
 
-/// `true` si [error] indica que un modelo de Gemini no existe o ya no está
-/// disponible en esta API. Dos formas vistas de verdad, ninguna del todo
-/// fiable por sí sola, así que se comprueban las dos:
-/// - Un modelo retirado de la API: "models/&lt;nombre&gt; is not found for
-///   API version...".
-/// - Un modelo ya no disponible para proyectos nuevos (así es como han
-///   empezado a devolver los `gemini-2.5-*`, antes de que la API los
-///   retire del todo): "This model models/&lt;nombre&gt; is no longer
+/// `true` if [error] indicates that a Gemini model doesn't exist or
+/// is no longer available in this API. Two forms actually seen,
+/// neither fully reliable on its own, so both are checked:
+/// - A model retired from the API: "models/&lt;nombre&gt; is not found
+///   for API version...".
+/// - A model no longer available to new projects (this is how
+///   `gemini-2.5-*` started responding, before the API retires them
+///   entirely): "This model models/&lt;nombre&gt; is no longer
 ///   available to new users. Please update your code to use
 ///   models/&lt;otro&gt; ...".
 ///
-/// El paquete `firebase_ai` (4.0.0, `lib/src/error.dart`, función
-/// `parseError`) no expone el código HTTP (404) ni el `status` del cuerpo
-/// del error ("NOT_FOUND"): los dos casos de arriba llegan como un 404 con
-/// cuerpo `{"error": {"code": 404, "message": "...", "status":
-/// "NOT_FOUND"}}`, pero el `switch` de `parseError` solo mira `message` (y,
-/// para otros tipos, `details`/`status` de casos muy concretos que no son
-/// este); cualquier error con un campo `message` de texto que no encaje en
-/// esos otros casos —éste incluido— cae en el `ServerException` genérico,
-/// que solo guarda ese texto. Comprobado con la fixture del propio paquete
-/// (`test/google_ai_response_parsing_test.dart`, caso "for general server
-/// errors"): no hay ningún campo de código o estado que mirar en el
-/// `error` de Dart, solo el texto. Así que, igual que [isTransientGeminiError]
-/// e `isAppCheckAttestationError`, hay que mirar el texto del mensaje en
-/// vez del tipo o de un código que el paquete no conserva.
+/// The `firebase_ai` package (4.0.0, `lib/src/error.dart`, function
+/// `parseError`) exposes neither the HTTP code (404) nor the error
+/// body's `status` ("NOT_FOUND"): both cases above arrive as a 404
+/// with body `{"error": {"code": 404, "message": "...", "status":
+/// "NOT_FOUND"}}`, but `parseError`'s `switch` only looks at `message`
+/// (and, for other types, `details`/`status` of very specific cases
+/// that aren't this one); any error with a text `message` field that
+/// doesn't fit those other cases — this one included — falls into the
+/// generic `ServerException`, which only stores that text. Checked
+/// against the package's own fixture
+/// (`test/google_ai_response_parsing_test.dart`, the "for general
+/// server errors" case): there's no code or status field to look at
+/// in Dart's `error`, only the text. So, same as
+/// [isTransientGeminiError] and `isAppCheckAttestationError`, the
+/// message's text has to be checked instead of the type or a code the
+/// package doesn't keep.
 bool isModelNotFoundError(Object error) {
   if (error is QuotaExceeded) return false;
   if (error is! FirebaseAIException) return false;
@@ -89,22 +92,24 @@ bool isModelNotFoundError(Object error) {
   return message.contains('is not found for API version') || message.contains('no longer available');
 }
 
-/// Prueba [attempt] con el primer modelo disponible de [models] según
-/// [availability]. Ante cuota agotada ([QuotaExceeded]), lo marca como
-/// agotado (temporalmente, [GeminiModelAvailability.markExhausted]) y
-/// reintenta con el siguiente modelo disponible de la lista. Ante un
-/// modelo inexistente ([isModelNotFoundError]), hace lo mismo pero lo marca
-/// como no disponible para toda la sesión
-/// ([GeminiModelAvailability.markUnavailableForSession], sin expirar). En
-/// los dos casos, así hasta que uno responda o se acaben los modelos: sin
-/// bucles, como mucho un intento por modelo de la lista en esta misma
-/// llamada. Cualquier otro error (503, timeout, 403 de App Check...) se
-/// relanza de inmediato, sin probar otro modelo — lo gestiona quien llame.
+/// Tries [attempt] with the first available model from [models]
+/// according to [availability]. On exhausted quota ([QuotaExceeded]),
+/// marks it as exhausted (temporarily,
+/// [GeminiModelAvailability.markExhausted]) and retries with the
+/// list's next available model. On a nonexistent model
+/// ([isModelNotFoundError]), does the same but marks it as
+/// unavailable for the whole session
+/// ([GeminiModelAvailability.markUnavailableForSession], never
+/// expiring). In both cases, this continues until one responds or the
+/// models run out: no loops, at most one attempt per model in the
+/// list within this same call. Any other error (503, timeout, App
+/// Check 403...) is rethrown immediately, without trying another
+/// model — the caller handles it.
 ///
-/// Lanza [QuotaExceeded] si no queda ningún modelo disponible (todos
-/// agotados o inexistentes ya) o si todos los intentos de esta llamada
-/// fallan con cuota agotada; relanza el error del último intento si todos
-/// fallan por ser modelos inexistentes.
+/// Throws [QuotaExceeded] if no model is left available (all already
+/// exhausted or nonexistent) or if every attempt in this call fails
+/// with exhausted quota; rethrows the last attempt's error if all fail
+/// because the models don't exist.
 Future<T> withGeminiModelFallback<T>({
   required GeminiModelAvailability availability,
   required Future<T> Function(String model) attempt,

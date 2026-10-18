@@ -11,10 +11,10 @@ import '../common/app_check_error.dart';
 import '../common/gemini_model_fallback.dart';
 import '../common/gemini_transient_retry.dart';
 
-/// Implementación de [LlmGateway] con el backend Gemini Developer API de
-/// Firebase AI Logic (no Vertex AI, para mantenerse en el nivel gratuito).
-/// Modelos disponibles en el nivel gratuito, con fallback entre ellos si
-/// alguno agota su cuota: ver [geminiModelFallbacks].
+/// [LlmGateway] implementation with Firebase AI Logic's Gemini
+/// Developer API backend (not Vertex AI, to stay on the free tier).
+/// Models available on the free tier, with fallback between them if
+/// one exhausts its quota: see [geminiModelFallbacks].
 class GeminiLlmGateway implements LlmGateway {
   GeminiLlmGateway({GeminiModelAvailability? availability})
     : _availability = availability ?? GeminiModelAvailability();
@@ -26,17 +26,18 @@ class GeminiLlmGateway implements LlmGateway {
       model: model,
       generationConfig: GenerationConfig(
         responseMimeType: 'application/json',
-        // Se probó a bajar el nivel de "pensamiento" a `low` para reducir la
-        // latencia, pero no se notó mejora (el cuello de botella no es el
-        // razonamiento) y sí empeoró la corrección: la documentación de
-        // Gemini pide el nivel por defecto o superior para tareas con
-        // cálculo (porcentajes, sumas), y con `low` llegó a interpretar
-        // "un 2% de 1000" como 2 en vez de 20. Se deja el nivel por defecto
-        // (`medium`), sin fijar `thinkingConfig`.
+        // Lowering the "thinking" level to `low` was tried to reduce
+        // latency, but no improvement showed up (the bottleneck isn't
+        // reasoning) and correctness did get worse: Gemini's
+        // documentation asks for the default level or higher for
+        // tasks with calculation (percentages, sums), and with `low`
+        // it went as far as interpreting "un 2% de 1000" as 2 instead
+        // of 20. The default level (`medium`) is kept, with no
+        // `thinkingConfig` set.
         //
-        // Temperatura a 0: esto es extracción de datos, no redacción. No
-        // queremos creatividad, sino la lectura más literal y repetible del
-        // texto.
+        // Temperature at 0: this is data extraction, not drafting. We
+        // don't want creativity, but the most literal and repeatable
+        // reading of the text.
         temperature: 0,
         responseSchema: Schema.object(
           properties: {
@@ -101,9 +102,9 @@ class GeminiLlmGateway implements LlmGateway {
             'Inténtalo más tarde o añade el movimiento a mano.',
       );
     } on TimeoutException {
-      // Igual que en `GeminiChatGateway._generate`: ya se agotaron el
-      // intento inicial y el único reintento de `withTransientRetry`, cada
-      // uno con su propio `geminiRequestTimeout`.
+      // Same as in `GeminiChatGateway._generate`: the initial attempt
+      // and `withTransientRetry`'s single retry have already been
+      // used up, each with its own `geminiRequestTimeout`.
       throw const LlmGatewayException(
         'timeout',
         message: 'La IA no está disponible ahora mismo.',
@@ -126,8 +127,8 @@ class GeminiLlmGateway implements LlmGateway {
         message: 'No se pudo generar el movimiento con la IA: ${error.message}',
       );
     } catch (error) {
-      // Fallos de red (sin conexión, timeout, etc.) llegan como excepciones
-      // del cliente HTTP, no de firebase_ai.
+      // Network failures (no connection, timeout, etc.) arrive as
+      // exceptions from the HTTP client, not from firebase_ai.
       throw const LlmGatewayException(
         'network-error',
         message: 'No se pudo contactar con la IA. Comprueba tu conexión e '
