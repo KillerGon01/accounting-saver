@@ -1,11 +1,11 @@
-/// Fuente de la fecha y hora actuales. Se inyecta en vez de llamar a
-/// `DateTime.now()` directamente, para poder fijarla en los tests (ver
-/// `FakeClock` en `test/fakes/`).
+/// Source of the current date and time. Injected instead of calling
+/// `DateTime.now()` directly, so it can be fixed in tests (see
+/// `FakeClock` in `test/fakes/`).
 abstract class Clock {
   DateTime now();
 }
 
-/// Implementación real: delega en `DateTime.now()`.
+/// Real implementation: delegates to `DateTime.now()`.
 class SystemClock implements Clock {
   const SystemClock();
 

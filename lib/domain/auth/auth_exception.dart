@@ -1,6 +1,7 @@
-/// Error de autenticación independiente del proveedor. La infraestructura
-/// traduce sus errores (p. ej. FirebaseAuthException) a este tipo, y la
-/// presentación decide el mensaje a mostrar a partir de [code].
+/// Provider-independent authentication error. The infrastructure layer
+/// translates its own errors (e.g. FirebaseAuthException) into this
+/// type, and the presentation layer decides the message to show based
+/// on [code].
 class AuthException implements Exception {
   const AuthException(this.code, {this.message});
 

@@ -1,10 +1,10 @@
-/// Etapa del borrado de cuenta en la que falló. Permite explicar al usuario
-/// qué ha quedado hecho y que basta con reintentar.
+/// Stage of account deletion where it failed. Lets the user be told
+/// what has already been done and that retrying is enough.
 enum AccountDeletionStage {
-  /// Falló el borrado de movimientos. La cuenta sigue intacta.
+  /// Deleting the transactions failed. The account is still intact.
   userData,
 
-  /// Los movimientos ya se borraron, pero la cuenta de Auth no.
+  /// The transactions were already deleted, but the Auth account wasn't.
   account,
 }
 

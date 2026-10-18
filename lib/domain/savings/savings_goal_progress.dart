@@ -1,17 +1,17 @@
 import 'savings_goal.dart';
 
-/// Estado de una meta de ahorro (ver [calculateSavingsGoalProgress]), por
-/// orden de prioridad: [completed] siempre gana (aunque la fecha límite ya
-/// haya pasado); si no se ha cumplido, [overdue] si la fecha ya pasó;
-/// si no, [onTrack]/[behind] según si lo ahorrado alcanza la parte
-/// proporcional esperada para hoy.
+/// Status of a savings goal (see [calculateSavingsGoalProgress]), in
+/// priority order: [completed] always wins (even if the deadline has
+/// already passed); if not met, [overdue] if the date has already
+/// passed; otherwise, [onTrack]/[behind] depending on whether what's
+/// saved reaches the proportional amount expected for today.
 enum SavingsGoalStatus { completed, onTrack, behind, overdue }
 
-/// Progreso de una meta, calculado en código (nunca a mano ni con IA): lo
-/// que queda, el porcentaje, los meses que quedan y cuánto habría que
-/// aportar cada mes para llegar a tiempo. Ver [calculateSavingsGoalProgress]
-/// para la fórmula exacta de cada campo (documentada también en
-/// docs/design.md, "Metas de ahorro").
+/// A goal's progress, computed in code (never by hand or with AI):
+/// what's left, the percentage, the months remaining, and how much
+/// would need to be contributed each month to arrive on time. See
+/// [calculateSavingsGoalProgress] for each field's exact formula (also
+/// documented in docs/design.md, "Metas de ahorro").
 class SavingsGoalProgress {
   const SavingsGoalProgress({
     required this.remainingCents,
@@ -24,61 +24,60 @@ class SavingsGoalProgress {
   /// `max(0, targetCents - savedCents)`.
   final int remainingCents;
 
-  /// Entero, 0-100: `savedCents / targetCents` redondeado al más cercano
-  /// (mitad hacia arriba), con tope en 100.
+  /// Integer, 0-100: `savedCents / targetCents` rounded to the nearest
+  /// (half up), capped at 100.
   final int percent;
 
-  /// Meses naturales completos que quedan hasta la fecha límite según el
-  /// `Clock` inyectable (nunca negativo; 0 si la fecha límite es este
-  /// mismo mes o ya ha pasado).
+  /// Full calendar months remaining until the deadline, according to
+  /// the injectable `Clock` (never negative; 0 if the deadline is this
+  /// same month or has already passed).
   final int monthsRemaining;
 
-  /// Cuánto habría que ahorrar cada mes para llegar a [remainingCents] en
-  /// [monthsRemaining] meses, redondeado hacia arriba. Con 0 meses, se
-  /// divide por 1 (hay que aportar todo el resto ahora mismo). 0 si
-  /// [remainingCents] ya es 0.
+  /// How much would need to be saved each month to reach
+  /// [remainingCents] in [monthsRemaining] months, rounded up. With 0
+  /// months, it's divided by 1 (the whole remainder has to be
+  /// contributed right now). 0 if [remainingCents] is already 0.
   final int monthlyContributionCents;
 
   final SavingsGoalStatus status;
 }
 
-/// Calcula el progreso de [goal] a fecha de [now] (siempre inyectado,
-/// nunca `DateTime.now()` dentro de esta función: ver `Clock`). Función
-/// pura, Dart puro, sin ningún `double`.
+/// Computes [goal]'s progress as of [now] (always injected, never
+/// `DateTime.now()` inside this function: see `Clock`). Pure function,
+/// pure Dart, no `double` at all.
 ///
-/// **Meses restantes.** Diferencia de año×12+mes entre [now] y
-/// `goal.deadline`, restando 1 si el día de `goal.deadline` todavía no se
-/// ha alcanzado este mes (p. ej., hoy 15 y la fecha límite es el día 20
-/// de un mes posterior, cuenta como "no completo" ese último tramo);
-/// nunca negativo (se recorta a 0).
+/// **Months remaining.** Year×12+month difference between [now] and
+/// `goal.deadline`, subtracting 1 if `goal.deadline`'s day hasn't been
+/// reached yet this month (e.g., today is the 15th and the deadline is
+/// the 20th of a later month, that last stretch counts as "not
+/// complete"); never negative (clamped to 0).
 ///
-/// **Aportación mensual necesaria.** `remainingCents` dividido entre
-/// `max(1, monthsRemaining)`, con división entera **hacia arriba**
-/// (`(remaining + divisor - 1) ~/ divisor`): sobraría dinero redondeando
-/// hacia abajo, así que se redondea al alza. Con 0 meses, se divide por 1
-/// (hay que aportar lo que falta ya, dentro de este mes).
+/// **Monthly contribution needed.** `remainingCents` divided by
+/// `max(1, monthsRemaining)`, with integer division **rounded up**
+/// (`(remaining + divisor - 1) ~/ divisor`): rounding down would leave
+/// money short, so it rounds up instead. With 0 months, it's divided
+/// by 1 (what's missing has to be contributed right now).
 ///
-/// **Porcentaje.** `savedCents * 100 / targetCents`, redondeado al entero
-/// más cercano con media entera hacia arriba (`(saved*100 + target/2) ~/
-/// target`), con tope en 100.
+/// **Percentage.** `savedCents * 100 / targetCents`, rounded to the
+/// nearest integer with the half rounded up (`(saved*100 + target/2)
+/// ~/ target`), capped at 100.
 ///
-/// **Estado**, por prioridad (ver [SavingsGoalStatus]):
-/// 1. [SavingsGoalStatus.completed] si `savedCents >= targetCents`,
-///    siempre, aunque la fecha límite ya haya pasado.
-/// 2. [SavingsGoalStatus.overdue] si no se ha cumplido y `now` es
-///    posterior a `deadline`.
-/// 3. En cualquier otro caso, se compara lo ahorrado con la parte
-///    proporcional del objetivo esperada para hoy, según cuánto tiempo ha
-///    pasado entre `createdAt` y `deadline` (en milisegundos): si
-///    `savedCents` alcanza esa parte, [SavingsGoalStatus.onTrack]; si no,
-///    [SavingsGoalStatus.behind].
+/// **Status**, by priority (see [SavingsGoalStatus]):
+/// 1. [SavingsGoalStatus.completed] if `savedCents >= targetCents`,
+///    always, even if the deadline has already passed.
+/// 2. [SavingsGoalStatus.overdue] if not met and `now` is after
+///    `deadline`.
+/// 3. Otherwise, what's saved is compared against the proportional
+///    part of the target expected for today, based on how much time
+///    has passed between `createdAt` and `deadline` (in
+///    milliseconds): if `savedCents` reaches that part,
+///    [SavingsGoalStatus.onTrack]; if not, [SavingsGoalStatus.behind].
 ///
-/// **Límite documentado:** si `deadline` no es posterior a `createdAt`
-/// (una meta degenerada, con la fecha límite en el pasado desde el
-/// principio o igual a su creación), la parte proporcional esperada es
-/// directamente el objetivo completo — equivale a exigir todo el ahorro
-/// desde el primer día, en vez de dividir por una duración de cero o
-/// negativa.
+/// **Documented limit:** if `deadline` isn't after `createdAt` (a
+/// degenerate goal, with the deadline in the past from the start or
+/// equal to its creation), the expected proportional part is directly
+/// the full target — equivalent to demanding the whole saving from day
+/// one, instead of dividing by a zero or negative duration.
 SavingsGoalProgress calculateSavingsGoalProgress(SavingsGoal goal, {required DateTime now}) {
   final remainingCents = goal.targetCents > goal.savedCents ? goal.targetCents - goal.savedCents : 0;
 

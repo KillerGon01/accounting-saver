@@ -3,19 +3,19 @@ import '../transactions/category.dart';
 import '../transactions/recurring_expenses.dart';
 import '../transactions/transaction.dart';
 
-/// Meses anteriores completos que se analizan como histórico, igual que
+/// Full previous months analyzed as history, same as
 /// `BuildMonthEndForecast.recurringExpensesMonths`/`unusualExpenseHistoryMonths`
-/// (mismo criterio, otro nombre porque es un caso de uso distinto que no
-/// comparte clase).
+/// (same criterion, different name because it's a separate use case
+/// that doesn't share a class).
 const savingsSuggestionHistoryMonths = 3;
 
-/// Porcentaje de recorte sugerido sobre la media mensual del gasto NO
-/// recurrente de una categoría (ver [calculateSavingsSuggestions]).
+/// Suggested cut percentage over the monthly average of a category's
+/// NON-recurring expense (see [calculateSavingsSuggestions]).
 const savingsSuggestionCutPercent = 20;
 
-/// Categorías en las que tiene sentido sugerir un recorte porcentual: gasto
-/// habitualmente variable y, en mayor o menor medida, evitable. Excluye
-/// explícitamente las de [savingsSuggestionExcludedCategories].
+/// Categories where a percentage cut makes sense to suggest: usually
+/// variable spending that is, to some degree, avoidable. Explicitly
+/// excludes those in [savingsSuggestionExcludedCategories].
 const savingsSuggestionCutCategories = {
   Category.restaurantes,
   Category.ocio,
@@ -23,37 +23,39 @@ const savingsSuggestionCutCategories = {
   Category.otros,
 };
 
-/// Categorías que nunca generan una sugerencia (ni recorte porcentual, ni
-/// recurrente, ni gasto puntual inusual): gasto fijo o necesario (vivienda,
-/// salud) o que no es un gasto del usuario sobre el que decidir recortar
-/// (la nómina es un ingreso con signo negativo por cómo se registra en
-/// algunos casos de uso, pero conceptualmente nunca es "ahorro posible").
+/// Categories that never generate a suggestion (no percentage cut, no
+/// recurring, no unusual one-off expense): fixed or necessary spending
+/// (housing, health), or not a user expense to decide a cut on
+/// (payroll is income with a negative sign because of how it's
+/// recorded in some use cases, but conceptually it's never "possible
+/// saving").
 const savingsSuggestionExcludedCategories = {
   Category.hogar,
   Category.salud,
   Category.nomina,
 };
 
-/// Tipo de sugerencia de ahorro (ver [calculateSavingsSuggestions]).
+/// Type of savings suggestion (see [calculateSavingsSuggestions]).
 enum SavingsSuggestionType {
-  /// Un gasto recurrente detectado (ver `findRecurringExpenses`): libera su
-  /// importe mensual completo si se cancela o se deja de pagar.
+  /// A detected recurring expense (see `findRecurringExpenses`): frees
+  /// its full monthly amount if cancelled or stopped.
   recurring,
 
-  /// Un recorte porcentual sobre la media mensual del gasto NO recurrente
-  /// de una categoría de [savingsSuggestionCutCategories].
+  /// A percentage cut over the monthly average of a
+  /// [savingsSuggestionCutCategories] category's NON-recurring expense.
   categoryCut,
 
-  /// Un gasto puntual del mes en curso que destacó frente al histórico de
-  /// su categoría (ver `detectUnusualExpenses`): el exceso sobre la
-  /// mediana, no el gasto completo. No cuenta para la cobertura mensual
-  /// (ver [SavingsSuggestionsResult.monthlyCoveredCents]): es un suceso de
-  /// este mes, no algo con lo que se pueda contar todos los meses.
+  /// A one-off expense in the current month that stood out against
+  /// its category's history (see `detectUnusualExpenses`): the excess
+  /// over the median, not the full expense. Doesn't count toward the
+  /// monthly coverage (see
+  /// [SavingsSuggestionsResult.monthlyCoveredCents]): it's an event of
+  /// this month, not something that can be counted on every month.
   oneOffExcess,
 }
 
-/// Una opción de dónde ahorrar para una meta, calculada en código (nunca
-/// con IA, ver docs/design.md "Sugerencias de ahorro por meta").
+/// An option of where to save for a goal, computed in code (never with
+/// AI, see docs/design.md "Sugerencias de ahorro por meta").
 class SavingsSuggestion {
   const SavingsSuggestion({
     required this.type,
@@ -64,24 +66,26 @@ class SavingsSuggestion {
 
   final SavingsSuggestionType type;
 
-  /// Magnitud positiva: importe mensual liberado ([recurring],
-  /// [categoryCut]) o importe del exceso puntual sobre la mediana
+  /// Positive magnitude: monthly amount freed up ([recurring],
+  /// [categoryCut]) or the one-off excess amount over the median
   /// ([oneOffExcess]).
   final int amountCents;
 
-  /// Solo para [recurring] (el concepto, ya normalizado) y [oneOffExcess]
-  /// (la descripción tal cual la escribió el usuario). `null` en
-  /// [categoryCut], que no viene de una transacción concreta.
+  /// Only for [recurring] (the description, already normalized) and
+  /// [oneOffExcess] (the description exactly as the user wrote it).
+  /// `null` in [categoryCut], which doesn't come from a specific
+  /// transaction.
   final String? description;
 
-  /// `null` en [recurring] si no se pudo determinar la categoría del
-  /// recurrente (ver "Límite" en [calculateSavingsSuggestions]).
+  /// `null` in [recurring] if the recurring expense's category
+  /// couldn't be determined (see "Límite" in
+  /// [calculateSavingsSuggestions]).
   final Category? categoryId;
 }
 
-/// Resultado de [calculateSavingsSuggestions]: las opciones, ya ordenadas
-/// de mayor a menor importe sin distinguir tipo, y cuánto de eso puede
-/// contarse cada mes.
+/// Result of [calculateSavingsSuggestions]: the options, already
+/// sorted from highest to lowest amount without distinguishing type,
+/// and how much of that can be counted on each month.
 class SavingsSuggestionsResult {
   const SavingsSuggestionsResult({
     required this.suggestions,
@@ -91,17 +95,18 @@ class SavingsSuggestionsResult {
 
   final List<SavingsSuggestion> suggestions;
 
-  /// Suma de los importes de las sugerencias [SavingsSuggestionType.recurring]
-  /// y [SavingsSuggestionType.categoryCut] únicamente: las
-  /// [SavingsSuggestionType.oneOffExcess] no se repiten todos los meses, así
-  /// que no suman aquí (ver [SavingsSuggestionType.oneOffExcess]).
+  /// Sum of the amounts of [SavingsSuggestionType.recurring] and
+  /// [SavingsSuggestionType.categoryCut] suggestions only: the
+  /// [SavingsSuggestionType.oneOffExcess] ones don't repeat every
+  /// month, so they don't add up here (see
+  /// [SavingsSuggestionType.oneOffExcess]).
   final int monthlyCoveredCents;
 
-  /// Igual que `MonthEndForecast.truncated`/`UnusualExpensesResult.truncated`:
-  /// si alguna de las dos consultas de `BuildSavingsSuggestions` llegó al
-  /// tope de seguridad. `false` por defecto para los tests de esta función,
-  /// que no pasan por ningún tope (lo pone `BuildSavingsSuggestions` tras
-  /// llamar aquí).
+  /// Same as `MonthEndForecast.truncated`/`UnusualExpensesResult.truncated`:
+  /// whether either of `BuildSavingsSuggestions`'s two queries hit the
+  /// safety cap. `false` by default for this function's tests, which
+  /// don't go through any cap (`BuildSavingsSuggestions` sets it after
+  /// calling this).
   final bool truncated;
 
   SavingsSuggestionsResult copyWith({bool? truncated}) {
@@ -113,47 +118,48 @@ class SavingsSuggestionsResult {
   }
 }
 
-/// Calcula las opciones de ahorro de una meta a partir de los
-/// [historyTransactions] (los [historyMonths] meses anteriores completos) y
-/// las [currentMonthTransactions] del mes en curso. Dart puro, sin fecha ni
-/// repositorio: decidir qué transacciones son histórico y cuáles son del
-/// mes en curso es cosa de quien llama (ver `BuildSavingsSuggestions`).
+/// Computes a goal's savings options from [historyTransactions] (the
+/// previous [historyMonths] full months) and [currentMonthTransactions]
+/// for the current month. Pure Dart, with no date or repository:
+/// deciding which transactions are history and which belong to the
+/// current month is the caller's job (see `BuildSavingsSuggestions`).
 ///
-/// Reutiliza `findRecurringExpenses` (para (a)) y `detectUnusualExpenses`
-/// (para (c)) tal cual, sin cambiar su contrato.
+/// Reuses `findRecurringExpenses` (for (a)) and `detectUnusualExpenses`
+/// (for (c)) as is, without changing their contract.
 ///
-/// **(a) Recurrentes.** Cada [RecurringExpense] de `findRecurringExpenses`
-/// libera su importe mensual completo, salvo que su categoría esté en
-/// [savingsSuggestionExcludedCategories].
+/// **(a) Recurring.** Each [RecurringExpense] from
+/// `findRecurringExpenses` frees its full monthly amount, unless its
+/// category is in [savingsSuggestionExcludedCategories].
 ///
-/// **Límite documentado:** un [RecurringExpense] no guarda su categoría
-/// (puede, en teoría, tener una categoría distinta en cada aparición). Aquí
-/// se usa la categoría de la aparición más reciente en [historyTransactions]
-/// con esa misma clave (concepto normalizado + importe exacto). Si el
-/// usuario cambia la categoría de un gasto recurrente de un mes a otro,
-/// esta función decide con la del último mes, no con la de todos; en el
-/// caso (infrecuente) de que esa categoría no pueda determinarse, la
-/// sugerencia se muestra igualmente, con `categoryId: null`, en vez de
-/// descartarla.
+/// **Documented limit:** a [RecurringExpense] doesn't store its
+/// category (it could, in theory, have a different category on each
+/// occurrence). Here, the category of the most recent occurrence in
+/// [historyTransactions] with that same key (normalized description +
+/// exact amount) is used. If the user changes a recurring expense's
+/// category from one month to another, this function decides with the
+/// last month's, not with all of them; in the (uncommon) case that
+/// category can't be determined, the suggestion is still shown, with
+/// `categoryId: null`, instead of being dropped.
 ///
-/// **(b) Recorte por categoría.** Para cada categoría de
-/// [savingsSuggestionCutCategories]: suma de sus gastos en
-/// [historyTransactions] que NO coincidan con una clave recurrente de (a)
-/// (sin doble cómputo), dividida entre [historyMonths] (división entera
-/// hacia abajo) para la media mensual, y de ahí el [cutPercent] % (de nuevo
-/// división entera hacia abajo). Si el recorte resultante es 0 (categoría
-/// sin gasto no recurrente, o media demasiado pequeña), no genera
-/// sugerencia.
+/// **(b) Category cut.** For each category in
+/// [savingsSuggestionCutCategories]: sum of its expenses in
+/// [historyTransactions] that do NOT match a recurring key from (a)
+/// (no double counting), divided by [historyMonths] (integer division,
+/// rounded down) for the monthly average, and from there the
+/// [cutPercent] % (again integer division, rounded down). If the
+/// resulting cut is 0 (category with no non-recurring expense, or too
+/// small an average), no suggestion is generated.
 ///
-/// **(c) Exceso puntual.** Cada gasto de `detectUnusualExpenses` sobre
-/// [currentMonthTransactions]/[historyTransactions], salvo que su categoría
-/// esté en [savingsSuggestionExcludedCategories]: el importe sugerido es el
-/// exceso sobre la mediana de su categoría (`amountCentsAbs -
-/// categoryMedianCentsAbs`), no el gasto completo.
+/// **(c) One-off excess.** Every expense from `detectUnusualExpenses`
+/// over [currentMonthTransactions]/[historyTransactions], unless its
+/// category is in [savingsSuggestionExcludedCategories]: the suggested
+/// amount is the excess over its category's median
+/// (`amountCentsAbs - categoryMedianCentsAbs`), not the full expense.
 ///
-/// El resultado va ordenado de mayor a menor importe, mezclando los tres
-/// tipos: no se agrupan por tipo porque lo que importa a quien mira la
-/// lista es cuánto libera cada opción, no de qué tipo es.
+/// The result is sorted from highest to lowest amount, mixing the
+/// three types together: they aren't grouped by type because what
+/// matters to whoever looks at the list is how much each option frees
+/// up, not which type it is.
 SavingsSuggestionsResult calculateSavingsSuggestions({
   required List<Transaction> historyTransactions,
   required List<Transaction> currentMonthTransactions,

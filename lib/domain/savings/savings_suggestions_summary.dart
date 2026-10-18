@@ -3,12 +3,12 @@ import 'savings_goal_progress.dart';
 import 'savings_suggestion.dart';
 import '../transactions/category.dart';
 
-/// Opciones de un mismo tipo ([SavingsSuggestionType]) agrupadas por
-/// categoría, con su importe agregado ya formateado en euros y una [line]
-/// ya redactada y lista para copiar tal cual en una respuesta (ver
-/// `summarizeSavingsSuggestions`/`GeminiSavingsSuggestionsGateway`): ni el
-/// modelo ni nadie tiene que calcular ni volver a formatear nada a partir
-/// de [amountFormatted].
+/// Options of the same type ([SavingsSuggestionType]) grouped by
+/// category, with their aggregated amount already formatted in euros
+/// and a [line] already written and ready to copy as-is into a reply
+/// (see `summarizeSavingsSuggestions`/`GeminiSavingsSuggestionsGateway`):
+/// neither the model nor anyone else has to compute or reformat
+/// anything from [amountFormatted].
 class SavingsSuggestionCategoryAggregate {
   const SavingsSuggestionCategoryAggregate({
     required this.category,
@@ -17,30 +17,31 @@ class SavingsSuggestionCategoryAggregate {
     required this.line,
   });
 
-  /// `null` solo puede pasar en un recurrente sin categoría determinable
-  /// (ver el límite documentado en `calculateSavingsSuggestions`).
+  /// `null` can only happen for a recurring expense with no
+  /// determinable category (see the documented limit in
+  /// `calculateSavingsSuggestions`).
   final Category? category;
 
-  /// Número de cargos agregados en este grupo. Solo se rellena para
-  /// [SavingsSuggestionType.recurring] (ver `summarizeSavingsSuggestions`):
-  /// un recorte o un exceso puntual son un único importe agregado por
-  /// categoría, no "cargos" que contar.
+  /// Number of charges aggregated in this group. Only filled in for
+  /// [SavingsSuggestionType.recurring] (see
+  /// `summarizeSavingsSuggestions`): a cut or a one-off excess are a
+  /// single aggregated amount per category, not "charges" to count.
   final int? count;
 
   final String amountFormatted;
 
-  /// Frase ya redactada en español, p. ej. "Recurrentes en Suscripciones:
-  /// 3 cargos, 58,98 €/mes.".
+  /// Sentence already written in Spanish, e.g. "Recurrentes en
+  /// Suscripciones: 3 cargos, 58,98 €/mes.".
   final String line;
 }
 
-/// Resumen agregado de la meta y de sus opciones de ahorro, pensado para
-/// enviarse tal cual a `SavingsSuggestionsGateway`: **ningún campo es
-/// texto libre del usuario** (ni el nombre de la meta, ni ningún concepto
-/// o descripción de movimiento) — solo cifras, el enum [Category] (9
-/// valores fijos del código) y el enum [SavingsGoalStatus]. No es un
-/// filtrado que pueda fallar: el tipo, literalmente, no tiene ningún campo
-/// por el que ese texto pudiera llegar aquí.
+/// Aggregated summary of the goal and its savings options, meant to be
+/// sent as-is to `SavingsSuggestionsGateway`: **no field is the user's
+/// free text** (not the goal's name, nor any transaction concept or
+/// description) — only figures, the [Category] enum (9 fixed values
+/// from the code), and the [SavingsGoalStatus] enum. It's not a
+/// filtering step that could fail: the type, literally, has no field
+/// that text could reach here through.
 class SavingsSuggestionsSummary {
   const SavingsSuggestionsSummary({
     required this.targetFormatted,
@@ -61,15 +62,16 @@ class SavingsSuggestionsSummary {
   final int monthsRemaining;
   final SavingsGoalStatus status;
 
-  /// Suma de recurrentes + recortes (ver
-  /// `SavingsSuggestionsResult.monthlyCoveredCents`), ya formateada.
+  /// Sum of recurring expenses + cuts (see
+  /// `SavingsSuggestionsResult.monthlyCoveredCents`), already
+  /// formatted.
   final String monthlyCoveredFormatted;
 
-  /// Frase ya redactada en español que relaciona [monthlyCoveredFormatted]
-  /// con [monthlyContributionFormatted] (ver [savingsSuggestionCoverageText]):
-  /// el mismo texto, palabra por palabra, que ya muestra la hoja de
-  /// sugerencias — así el modelo no tiene que relacionar los dos importes
-  /// por su cuenta, solo copiar esta línea.
+  /// Sentence already written in Spanish that relates
+  /// [monthlyCoveredFormatted] to [monthlyContributionFormatted] (see
+  /// [savingsSuggestionCoverageText]): the same text, word for word,
+  /// that the suggestions sheet already shows — so the model doesn't
+  /// have to relate the two amounts on its own, only copy this line.
   final String coverageLine;
 
   final List<SavingsSuggestionCategoryAggregate> recurringByCategory;
@@ -77,23 +79,25 @@ class SavingsSuggestionsSummary {
   final List<SavingsSuggestionCategoryAggregate> oneOffExcesses;
 }
 
-/// Frase ya redactada en español que relaciona lo que las opciones de
-/// ahorro cubrirían cada mes ([coveredCents]) con lo que la meta necesita
-/// cada mes ([neededCents]), en céntimos enteros. Dart puro, sin ningún
-/// `double`: la única lógica de "cuánto cubre" de toda la app, usada tanto
-/// por `SavingsSuggestionsSheet` (para mostrarla) como por
-/// `summarizeSavingsSuggestions` (para que viaje también al modelo como
-/// [SavingsSuggestionsSummary.coverageLine]) — un único sitio, no dos
-/// textos que puedan desincronizarse.
+/// Sentence already written in Spanish that relates what the savings
+/// options would cover each month ([coveredCents]) to what the goal
+/// needs each month ([neededCents]), in integer cents. Pure Dart, no
+/// `double` at all: the only "how much it covers" logic in the whole
+/// app, used both by `SavingsSuggestionsSheet` (to display it) and by
+/// `summarizeSavingsSuggestions` (so it also travels to the model as
+/// [SavingsSuggestionsSummary.coverageLine]) — a single place, not two
+/// texts that could drift apart.
 ///
-/// Tres casos:
-/// - [coveredCents] es 0 o menos (solo hay excesos puntuales, que no
-///   cuentan aquí): lo dice explícitamente, sin el molde "hasta X de Y".
-/// - [coveredCents] es menor que [neededCents]: "Podrías cubrir hasta X
-///   de los Y/mes que necesitas aportar.".
-/// - [coveredCents] alcanza o supera [neededCents]: una frase natural sin
-///   el molde "hasta X de Y" (decir "hasta 2.000 de los 500 €/mes" sonaría
-///   absurdo cuando ya se cubre de sobra).
+/// Three cases:
+/// - [coveredCents] is 0 or less (there are only one-off excesses,
+///   which don't count here): it says so explicitly, without the
+///   "up to X of Y" template.
+/// - [coveredCents] is less than [neededCents]: "Podrías cubrir hasta
+///   X de los Y/mes que necesitas aportar.".
+/// - [coveredCents] reaches or exceeds [neededCents]: a natural
+///   sentence without the "up to X of Y" template (saying "up to
+///   2,000 of the €500/month" would sound absurd when it's already
+///   covered with plenty to spare).
 String savingsSuggestionCoverageText(int coveredCents, int neededCents) {
   if (coveredCents <= 0) {
     return 'Estas opciones son gastos puntuales de este mes: no cubren nada de tu aportación mensual de '
@@ -106,13 +110,15 @@ String savingsSuggestionCoverageText(int coveredCents, int neededCents) {
   return 'Podrías cubrir hasta ${_euros(coveredCents)} de los ${_euros(neededCents)}/mes que necesitas aportar.';
 }
 
-/// Construye el [SavingsSuggestionsSummary] de [goal]/[progress]/[suggestions],
-/// con todas las cifras ya formateadas en euros y una [SavingsSuggestionCategoryAggregate.line]
-/// ya redactada por grupo. Dart puro: no importa nada de `presentation/`
-/// (el dominio no depende de la capa de presentación, aunque
-/// `CategoryLabel` en esa capa no tenga ningún import de Flutter) — las
-/// etiquetas de categoría se duplican aquí a propósito, mismo patrón que
-/// `_euros`/`_groupThousands` ya duplicados en `GeminiMonthlyReportGateway`.
+/// Builds the [SavingsSuggestionsSummary] of [goal]/[progress]/[suggestions],
+/// with every figure already formatted in euros and a
+/// [SavingsSuggestionCategoryAggregate.line] already written per
+/// group. Pure Dart: imports nothing from `presentation/` (the domain
+/// layer doesn't depend on the presentation layer, even though
+/// `CategoryLabel` in that layer has no Flutter import at all) — the
+/// category labels are duplicated here on purpose, same pattern as
+/// `_euros`/`_groupThousands`, already duplicated in
+/// `GeminiMonthlyReportGateway`.
 SavingsSuggestionsSummary summarizeSavingsSuggestions({
   required SavingsGoal goal,
   required SavingsGoalProgress progress,

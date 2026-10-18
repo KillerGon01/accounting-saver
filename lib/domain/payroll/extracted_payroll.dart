@@ -1,5 +1,5 @@
-/// Una deducción de la nómina, tal y como figura en el documento: el
-/// concepto y el importe son una copia literal, nunca un cálculo (ver
+/// A payroll deduction, exactly as it appears on the document: the
+/// concept and the amount are a literal copy, never a calculation (see
 /// [ExtractedPayroll]).
 class PayrollDeduction {
   const PayrollDeduction({required this.concept, required this.cents});
@@ -8,13 +8,13 @@ class PayrollDeduction {
   final int cents;
 }
 
-/// Lo que el modelo ha extraído de un PDF de nómina, sin ninguna
-/// validación todavía (ver `PayrollValidation` en
-/// `lib/domain/payroll/payroll_validation.dart`, que sí valida, en código,
-/// a partir de estos mismos campos). Todos los importes y textos deben ser
-/// una copia literal del documento: ni la infraestructura que rellena esta
-/// clase ni nadie más debe corregir ni recalcular nada aquí, ni siquiera
-/// cuando el líquido no cuadre con bruto menos deducciones.
+/// What the model extracted from a payroll PDF, with no validation yet
+/// (see `PayrollValidation` in `lib/domain/payroll/payroll_validation.dart`,
+/// which does validate, in code, from these same fields). All amounts
+/// and text must be a literal copy of the document: neither the
+/// infrastructure layer that fills this class nor anyone else should
+/// correct or recompute anything here, not even when the net pay
+/// doesn't match gross pay minus deductions.
 class ExtractedPayroll {
   const ExtractedPayroll({
     required this.periodStart,
@@ -27,36 +27,36 @@ class ExtractedPayroll {
     this.documentInstructions,
   });
 
-  /// Inicio del periodo que cubre la nómina, copiado del documento.
+  /// Start of the period the payroll covers, copied from the document.
   final DateTime periodStart;
 
-  /// Fin del periodo que cubre la nómina, copiado del documento. Es la
-  /// fecha que se propone para el movimiento (ver `ParsePayroll`).
+  /// End of the period the payroll covers, copied from the document.
+  /// It's the date proposed for the transaction (see `ParsePayroll`).
   final DateTime periodEnd;
 
-  /// Importe bruto, en céntimos, copiado literal del documento.
+  /// Gross amount, in cents, copied literally from the document.
   final int grossCents;
 
   final List<PayrollDeduction> deductions;
 
-  /// Importe líquido (neto) tal y como figura en el documento, copiado
-  /// literal aunque no cuadre con bruto menos deducciones: de eso se
-  /// encarga `PayrollValidation`, no esta clase ni quien la rellena.
+  /// Net pay amount exactly as it appears on the document, copied
+  /// literally even if it doesn't match gross pay minus deductions:
+  /// that's `PayrollValidation`'s job, not this class's or its filler's.
   final int netAsStatedCents;
 
-  /// Porcentaje de IRPF copiado del documento, si lo indica. `null` si el
-  /// documento no lo menciona.
+  /// IRPF percentage copied from the document, if it states one. `null`
+  /// if the document doesn't mention it.
   final double? irpfPercent;
 
-  /// Cosas que el propio modelo ha observado como raras o que no cuadran,
-  /// en texto. Puramente informativo: `PayrollValidation` no depende de
-  /// esta lista para decidir si cuadra o no.
+  /// Things the model itself has flagged as odd or not matching up, as
+  /// text. Purely informative: `PayrollValidation` doesn't rely on this
+  /// list to decide whether things match.
   final List<String> anomalies;
 
-  /// Si el documento contiene algo que parezca una instrucción dirigida al
-  /// modelo de IA (en vez de un dato de la nómina), su texto literal.
-  /// `null` si no se ha detectado ninguna. Señal auxiliar, no fiable del
-  /// todo (ver docs/security.md): no cambia ninguna cifra ni el
-  /// comportamiento de la app, solo se muestra como aviso.
+  /// If the document contains something that looks like an instruction
+  /// aimed at the AI model (rather than payroll data), its literal
+  /// text. `null` if none was detected. An auxiliary signal, not fully
+  /// reliable (see docs/security.md): it doesn't change any figure or
+  /// the app's behavior, it's only shown as a notice.
   final String? documentInstructions;
 }

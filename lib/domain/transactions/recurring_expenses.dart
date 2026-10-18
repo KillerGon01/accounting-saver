@@ -1,17 +1,18 @@
 import 'transaction.dart';
 
-/// Minúsculas, sin espacios al principio o al final, y sin espacios dobles
-/// en medio: así "Netflix", "netflix " y "netflix  " cuentan como el mismo
-/// concepto al buscar gastos recurrentes. La misma normalización que ya
-/// usaba `TransactionChatFunctions._normalizeDescription`, ahora aquí para
-/// que la use también `findRecurringExpenses`.
+/// Lowercase, no leading or trailing spaces, and no double spaces in
+/// between: so "Netflix", "netflix " and "netflix  " all count as the
+/// same description when looking for recurring expenses. The same
+/// normalization `TransactionChatFunctions._normalizeDescription`
+/// already used, now here so `findRecurringExpenses` can use it too.
 String normalizeExpenseDescription(String text) {
   return text.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
 }
 
-/// Una vez que un gasto (concepto normalizado + importe exacto) aparece en
-/// [minMonths] o más meses distintos de los analizados, cada aparición
-/// concreta: en qué mes (`isoMonth`, "AAAA-MM") y en qué día de ese mes.
+/// Once an expense (normalized description + exact amount) appears in
+/// [minMonths] or more distinct months of the ones analyzed, each
+/// specific occurrence: which month (`isoMonth`, "YYYY-MM") and which
+/// day of that month.
 class RecurringExpenseOccurrence {
   const RecurringExpenseOccurrence({required this.isoMonth, required this.day});
 
@@ -19,8 +20,9 @@ class RecurringExpenseOccurrence {
   final int day;
 }
 
-/// Un gasto recurrente ya detectado: mismo concepto normalizado y mismo
-/// importe exacto en 2 o más meses distintos (ver [findRecurringExpenses]).
+/// An already-detected recurring expense: same normalized description
+/// and same exact amount in 2 or more distinct months (see
+/// [findRecurringExpenses]).
 class RecurringExpense {
   const RecurringExpense({
     required this.description,
@@ -28,36 +30,38 @@ class RecurringExpense {
     required this.occurrences,
   });
 
-  /// Ya normalizado (ver [normalizeExpenseDescription]).
+  /// Already normalized (see [normalizeExpenseDescription]).
   final String description;
 
-  /// Magnitud positiva.
+  /// Positive magnitude.
   final int amountCentsAbs;
 
-  /// Ordenadas de mes más antiguo a más reciente.
+  /// Sorted from oldest to most recent month.
   final List<RecurringExpenseOccurrence> occurrences;
 
-  /// El día de la ocurrencia más reciente: si el día habitual ha cambiado
-  /// de un mes a otro, este es "el más reciente" (ver
-  /// `BuildMonthEndForecast`, que es quien le da este significado).
+  /// The day of the most recent occurrence: if the usual day has
+  /// changed from one month to another, this is "the most recent one"
+  /// (see `BuildMonthEndForecast`, which is what gives this meaning).
   int get mostRecentDay => occurrences.last.day;
 }
 
-/// Un gasto es recurrente si, con el mismo concepto normalizado (en
-/// minúsculas y sin espacios de más) y el mismo importe exacto, aparece en
-/// [minMonths] o más meses distintos entre [transactions]. Definición
-/// determinista, calculada aquí en código, no por ningún modelo de IA.
+/// An expense is recurring if, with the same normalized description
+/// (lowercase and no extra spaces) and the same exact amount, it
+/// appears in [minMonths] or more distinct months among
+/// [transactions]. A deterministic definition, computed here in code,
+/// not by any AI model.
 ///
-/// Extraída de `TransactionChatFunctions._recurringExpenses` (ver
-/// docs/design.md, "Previsión de fin de mes"): la única diferencia es que
-/// aquí cada aparición guarda también el día del mes, no solo el mes,
-/// porque `BuildMonthEndForecast` necesita saber el día habitual de cada
-/// recurrente para decidir si ya ha llegado o no dentro del mes en curso.
-/// `TransactionChatFunctions` solo necesita el conjunto de meses, así que
-/// se queda con `RecurringExpense.occurrences.map((o) => o.isoMonth)`.
+/// Extracted from `TransactionChatFunctions._recurringExpenses` (see
+/// docs/design.md, "Previsión de fin de mes"): the only difference is
+/// that here each occurrence also stores the day of the month, not
+/// just the month, because `BuildMonthEndForecast` needs to know each
+/// recurring expense's usual day to decide whether it has already
+/// arrived within the current month or not. `TransactionChatFunctions`
+/// only needs the set of months, so it just takes
+/// `RecurringExpense.occurrences.map((o) => o.isoMonth)`.
 ///
-/// Solo mira gastos (`amountCents < 0`); los ingresos nunca se consideran
-/// recurrentes aquí, aunque se repitan.
+/// Only looks at expenses (`amountCents < 0`); income is never
+/// considered recurring here, even if it repeats.
 List<RecurringExpense> findRecurringExpenses(
   List<Transaction> transactions, {
   int minMonths = 2,

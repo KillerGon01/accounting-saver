@@ -18,7 +18,7 @@ class MonthlySummary {
 
   final int incomeCents;
 
-  /// Magnitud positiva: el total gastado, sin signo.
+  /// Positive magnitude: the total spent, unsigned.
   final int expenseCents;
 
   int get balanceCents => incomeCents - expenseCents;

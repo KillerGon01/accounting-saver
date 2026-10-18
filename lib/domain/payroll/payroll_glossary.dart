@@ -1,19 +1,19 @@
-/// Aviso fijo que acompaña siempre al glosario en pantalla: es información
-/// general en lenguaje sencillo, no asesoramiento fiscal o laboral.
+/// Fixed notice that always accompanies the glossary on screen: it's
+/// general information in plain language, not tax or labor advice.
 const payrollGlossaryDisclaimer =
     'Estas descripciones son solo informativas, en lenguaje sencillo: no son '
     'asesoramiento fiscal ni laboral.';
 
-/// Texto para un concepto de deducción cuyo nombre no está en el glosario.
+/// Text for a deduction concept whose name isn't in the glossary.
 const payrollGlossaryUnknownDescription = 'sin descripción';
 
-/// Descripciones fijas, en lenguaje sencillo, de los conceptos de deducción
-/// que han aparecido hasta ahora en las nóminas de prueba. Deliberadamente
-/// sin tipos de cotización concretos (cambian con el tiempo y no son el
-/// objetivo de esta pantalla): solo qué es cada concepto, no cuánto se paga
-/// por él. Las claves están normalizadas (ver [normalizePayrollConcept]):
-/// minúsculas y sin acentos, para que "IRPF", "Irpf" o "irpf" encuentren la
-/// misma entrada.
+/// Fixed, plain-language descriptions of the deduction concepts that
+/// have shown up so far in test payrolls. Deliberately without
+/// specific contribution rates (they change over time and aren't this
+/// screen's purpose): only what each concept is, not how much is paid
+/// for it. The keys are normalized (see [normalizePayrollConcept]):
+/// lowercase and without accents, so "IRPF", "Irpf" or "irpf" all find
+/// the same entry.
 const _glossary = <String, String>{
   'contingencias comunes':
       'Parte de la cotización a la Seguridad Social que financia '
@@ -31,12 +31,12 @@ const _glossary = <String, String>{
       'circunstancias.',
 };
 
-/// Quita acentos, pasa a minúsculas y colapsa espacios de más, para que la
-/// búsqueda en el glosario no dependa de cómo haya copiado el modelo las
-/// tildes, las mayúsculas o los espacios.
+/// Strips accents, lowercases, and collapses extra spaces, so the
+/// glossary lookup doesn't depend on how the model copied accent marks,
+/// capitalization, or spacing.
 String normalizePayrollConcept(String concept) {
   var normalized = concept.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-  // Tras `toLowerCase()` solo pueden quedar minúsculas, acentuadas o no.
+  // After `toLowerCase()`, only lowercase letters can remain, accented or not.
   const withAccents = 'áéíóúñ';
   const withoutAccents = 'aeioun';
   for (var i = 0; i < withAccents.length; i++) {
@@ -45,21 +45,21 @@ String normalizePayrollConcept(String concept) {
   return normalized;
 }
 
-/// `true` si [text] (ya normalizado) contiene [key] como palabra o sigla
-/// completa: con un límite de palabra (`\b`) en los dos extremos, para que
-/// "mei" encuentre "... (mei)" o "mei ..." pero no "premeido" (donde "mei"
-/// es una subcadena sin límite de palabra a ningún lado).
+/// `true` if [text] (already normalized) contains [key] as a whole
+/// word or acronym: with a word boundary (`\b`) on both ends, so "mei"
+/// matches "... (mei)" or "mei ..." but not "premeido" (where "mei" is
+/// a substring with no word boundary on either side).
 bool _containsWholeWord(String text, String key) {
   return RegExp('\\b${RegExp.escape(key)}\\b').hasMatch(text);
 }
 
-/// Descripción en lenguaje sencillo para [concept], o
-/// [payrollGlossaryUnknownDescription] si ninguna clave del glosario
-/// aparece como palabra o sigla completa dentro de [concept] normalizado
-/// (ver [normalizePayrollConcept] y [_containsWholeWord]): el modelo suele
-/// devolver el nombre completo con la sigla entre paréntesis (por ejemplo
-/// "IRPF (retención a cuenta)"), que ya no es una igualdad exacta con
-/// ninguna clave, pero sí la contiene como palabra completa.
+/// Plain-language description for [concept], or
+/// [payrollGlossaryUnknownDescription] if no glossary key appears as a
+/// whole word or acronym inside normalized [concept] (see
+/// [normalizePayrollConcept] and [_containsWholeWord]): the model
+/// often returns the full name with the acronym in parentheses (for
+/// example "IRPF (retención a cuenta)"), which is no longer an exact
+/// match with any key, but does contain it as a whole word.
 String payrollGlossaryDescription(String concept) {
   final normalized = normalizePayrollConcept(concept);
   for (final entry in _glossary.entries) {
