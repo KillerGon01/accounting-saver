@@ -57,7 +57,11 @@ castellano, límites numéricos leídos de las constantes reales del código (ve
 `hideCurrentSnackBar` antes de cada `Navigator.push` que sale de esa pantalla, para que no
 salte de posición por el `FloatingActionButton` que tienen unas pantallas y no otras, más un
 ancho máximo (560 px, centrado) y un margen fijos en el tema (ver docs/design.md, "Aviso
-estable al navegar"). Tests: 705.
+estable al navegar"); y, nuevo, un bug de arranque en web: `FirebaseAuthRepository`
+instanciaba `GoogleSignIn()` siempre (también en web, donde su propio constructor dispara
+una inicialización que falla por falta de client ID), dejando la app en blanco. Arreglado con
+`createNativeGoogleCredential` + un `isWeb` inyectable, nunca se crea `GoogleSignIn` en web
+(ver docs/design.md, "Bug: `GoogleSignIn` se instanciaba también en web"). Tests: 708.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
 abierto, `thinkingConfig`, CI para `firestore-tests/`, cuota compartida entre nóminas, chat,
 lenguaje natural, resumen mensual y sugerencias de ahorro) más los riesgos/límites ya

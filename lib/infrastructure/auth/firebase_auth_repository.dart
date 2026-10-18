@@ -13,15 +13,29 @@ import 'native_google_credential.dart';
 /// conocen (ver docs/design.md, "Inicio de sesión con Google en
 /// Android"). [googleSignIn] es inyectable solo para los tests (un
 /// `GoogleSignIn` de verdad por defecto), igual que [firebaseAuth].
+///
+/// En web, [_nativeGoogle] es siempre `null` (ver
+/// `createNativeGoogleCredential`): nunca se instancia `GoogleSignIn` en
+/// esa plataforma, ni aunque nunca se vaya a usar — ver docs/design.md,
+/// "Bug: `GoogleSignIn` se instanciaba también en web". [isWeb] es
+/// inyectable solo para los tests, por el mismo motivo que en
+/// `createNativeGoogleCredential`.
 class FirebaseAuthRepository implements AuthRepository {
   FirebaseAuthRepository({
     firebase_auth.FirebaseAuth? firebaseAuth,
     GoogleSignIn? googleSignIn,
+    bool? isWeb,
   }) : _firebaseAuth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance,
-       _nativeGoogle = NativeGoogleCredential(googleSignIn ?? GoogleSignIn());
+       _isWeb = isWeb ?? kIsWeb,
+       _nativeGoogle = createNativeGoogleCredential(isWeb: isWeb ?? kIsWeb, googleSignIn: googleSignIn);
 
   final firebase_auth.FirebaseAuth _firebaseAuth;
-  final NativeGoogleCredential _nativeGoogle;
+  final bool _isWeb;
+
+  /// Siempre no nulo cuando [_isWeb] es `false` (ver
+  /// `createNativeGoogleCredential`): solo se usa en las ramas que ya
+  /// comprueban `!_isWeb` antes.
+  final NativeGoogleCredential? _nativeGoogle;
 
   @override
   Stream<AppUser?> authStateChanges() {
@@ -62,7 +76,7 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<AppUser> signInWithGoogle() {
     return _mapErrors(() async {
-      if (kIsWeb) {
+      if (_isWeb) {
         final userCredential = await _firebaseAuth.signInWithPopup(firebase_auth.GoogleAuthProvider());
         return _requireAppUser(userCredential.user);
       }
@@ -71,7 +85,7 @@ class FirebaseAuthRepository implements AuthRepository {
       // que `identitytoolkit` bloquea con 403 "Requests from this
       // Android client application <empty> are blocked" — ver
       // docs/security.md).
-      final credential = await _nativeGoogle();
+      final credential = await _nativeGoogle!();
       final userCredential = await _firebaseAuth.signInWithCredential(credential);
       return _requireAppUser(userCredential.user);
     });
@@ -122,7 +136,7 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<void> reauthenticateWithGoogle() {
     return _mapErrors(() async {
       final user = _currentUserOrThrow();
-      if (kIsWeb) {
+      if (_isWeb) {
         await user.reauthenticateWithPopup(firebase_auth.GoogleAuthProvider());
         return;
       }
@@ -130,7 +144,7 @@ class FirebaseAuthRepository implements AuthRepository {
       // de un usuario que entró con Google seguiría fallando en Android
       // (la reautenticación es obligatoria antes del borrado — ver
       // `DeleteAccount`).
-      final credential = await _nativeGoogle();
+      final credential = await _nativeGoogle!();
       await user.reauthenticateWithCredential(credential);
     });
   }
@@ -143,14 +157,14 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<void> signOut() async {
     await _firebaseAuth.signOut();
-    if (!kIsWeb) {
+    if (!_isWeb) {
       try {
         // Sin esto, el selector nativo de Google (`NativeGoogleCredential`)
         // podría recordar la cuenta y no volver a mostrar el selector en
         // el siguiente inicio de sesión. Un fallo aquí no deshace el
         // `signOut` de Firebase de arriba — la sesión de la app ya ha
         // terminado igualmente.
-        await _nativeGoogle.signOut();
+        await _nativeGoogle!.signOut();
       } catch (_) {
         // Ignorado a propósito: ver el comentario de arriba.
       }
