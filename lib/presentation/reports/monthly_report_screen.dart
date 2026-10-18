@@ -10,6 +10,8 @@ import '../../domain/reports/unusual_expenses.dart';
 import '../common/animated_balance_text.dart';
 import '../common/firestore_error_messages.dart';
 import '../common/staggered_entrance.dart';
+import '../help/help_sheet.dart';
+import '../help/help_topic.dart';
 import '../theme/app_theme.dart';
 import '../transactions/formatters.dart';
 import '../transactions/transaction_providers.dart';
@@ -160,7 +162,10 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
     final unusualExpenses = ref.watch(unusualExpensesProvider(params)).value;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Resumen del mes')),
+      appBar: AppBar(
+        title: const Text('Resumen del mes'),
+        actions: const [HelpButton(topic: HelpTopic.monthlyReport)],
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),

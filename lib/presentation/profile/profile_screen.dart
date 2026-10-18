@@ -7,6 +7,8 @@ import '../auth/auth_error_messages.dart';
 import '../auth/auth_providers.dart';
 import '../common/firestore_error_messages.dart';
 import '../common/session_feedback_providers.dart';
+import '../help/help_sheet.dart';
+import '../help/help_topic.dart';
 import '../theme/app_theme.dart';
 import '../transactions/formatters.dart';
 import 'account_deletion_messages.dart';
@@ -95,7 +97,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Stack(
         children: [
           Scaffold(
-            appBar: AppBar(title: const Text('Perfil')),
+            appBar: AppBar(
+              title: const Text('Perfil'),
+              actions: const [HelpButton(topic: HelpTopic.profile)],
+            ),
             body: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 560),

@@ -111,7 +111,10 @@ void main() {
       await tester.pump();
 
       expect(find.text('Consultando tus movimientos...'), findsOneWidget);
-      expect(tester.widget<IconButton>(find.byType(IconButton)).onPressed, isNull);
+      // `find.byType(IconButton)` ya no es único: el icono de ayuda del
+      // `AppBar` (ver docs/design.md, "Ayuda en pantalla") es también un
+      // `IconButton`. Se identifica el de enviar por su icono.
+      expect(tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.send)).onPressed, isNull);
       expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
       // El contador aún no ha bajado: la petición no ha terminado.
       expect(find.text('Te quedan 20 preguntas'), findsOneWidget);
@@ -149,7 +152,7 @@ void main() {
 
       expect(find.text('Respuesta tras la espera'), findsOneWidget);
       expect(find.text('Te quedan 19 preguntas'), findsOneWidget);
-      expect(tester.widget<IconButton>(find.byType(IconButton)).onPressed, isNotNull);
+      expect(tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.send)).onPressed, isNotNull);
       expect(tester.widget<TextField>(find.byType(TextField)).enabled, isTrue);
     },
   );
@@ -176,7 +179,8 @@ void main() {
 
     expect(find.text('La IA no está disponible ahora mismo.'), findsOneWidget);
     expect(find.text('Te quedan 20 preguntas'), findsOneWidget);
-    expect(tester.widget<IconButton>(find.byType(IconButton)).onPressed, isNotNull);
+    // Mismo motivo que arriba: se identifica el botón de enviar por su icono.
+    expect(tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.send)).onPressed, isNotNull);
   });
 
   group('pantalla pequeña con el teclado abierto', () {

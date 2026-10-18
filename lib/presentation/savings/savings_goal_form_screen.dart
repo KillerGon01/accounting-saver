@@ -7,6 +7,8 @@ import '../../domain/savings/savings_goal.dart';
 import '../../domain/transactions/amount_parser.dart';
 import '../common/firestore_error_messages.dart';
 import '../common/motion.dart';
+import '../help/help_sheet.dart';
+import '../help/help_topic.dart';
 import '../transactions/formatters.dart';
 import 'savings_goal_providers.dart';
 
@@ -146,7 +148,10 @@ class _SavingsGoalFormScreenState extends ConsumerState<SavingsGoalFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isEditing ? 'Editar meta' : 'Nueva meta de ahorro')),
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Editar meta' : 'Nueva meta de ahorro'),
+        actions: const [HelpButton(topic: HelpTopic.savingsGoalForm)],
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),

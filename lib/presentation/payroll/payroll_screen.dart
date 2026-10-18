@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/payroll/parse_payroll.dart';
 import '../../domain/payroll/payroll_glossary.dart';
 import '../../domain/transactions/transaction_source.dart';
+import '../help/help_sheet.dart';
+import '../help/help_topic.dart';
 import '../theme/app_theme.dart';
 import '../transactions/formatters.dart';
 import '../transactions/transaction_form_screen.dart';
@@ -175,7 +177,10 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     final limitReached = remaining <= 0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Leer nómina')),
+      appBar: AppBar(
+        title: const Text('Leer nómina'),
+        actions: const [HelpButton(topic: HelpTopic.payroll)],
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),

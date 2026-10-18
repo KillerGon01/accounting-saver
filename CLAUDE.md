@@ -47,9 +47,17 @@ visual y dos arreglos de autenticación en Android (detalle en docs/design.md/do
 tema oscuro forzado (`ThemeMode.dark`, paleta propia con contraste AA comprobado), icono propio
 en web y Android (adaptativo + monocromo, generado por `tool/generate_icons.dart`), avisos de
 sesión (cierre de sesión y borrado de cuenta, en memoria vía `sessionFeedbackProvider`) y
-animaciones con `AppMotion` (respeta `disableAnimations`); y el login con Google en Android, que
+animaciones con `AppMotion` (respeta `disableAnimations`); el login con Google en Android, que
 usaba `signInWithProvider` y lo bloqueaba un 403 de `identitytoolkit`, sustituido por el SDK
-nativo (`google_sign_in`, único paquete nuevo). Tests: 689.
+nativo (`google_sign_in`, único paquete nuevo); ayuda contextual (`lib/presentation/help/`):
+icono de ayuda en el `AppBar` de cada pantalla salvo login/crear cuenta/verificar correo (decisión
+explícita, en Movimientos dentro de "Más opciones"), hoja modal con el título y los pasos en
+castellano, límites numéricos leídos de las constantes reales del código (ver docs/design.md,
+"Ayuda contextual"); y, nuevo, un aviso (`SnackBar`) estable al navegar desde Movimientos:
+`hideCurrentSnackBar` antes de cada `Navigator.push` que sale de esa pantalla, para que no
+salte de posición por el `FloatingActionButton` que tienen unas pantallas y no otras, más un
+ancho máximo (560 px, centrado) y un margen fijos en el tema (ver docs/design.md, "Aviso
+estable al navegar"). Tests: 705.
 Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
 abierto, `thinkingConfig`, CI para `firestore-tests/`, cuota compartida entre nóminas, chat,
 lenguaje natural, resumen mensual y sugerencias de ahorro) más los riesgos/límites ya

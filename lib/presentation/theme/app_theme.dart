@@ -193,9 +193,20 @@ abstract final class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(shape: pillShape),
       ),
+      // `width` fija un ancho máximo (y lo centra: ver `_ScaffoldLayout` en
+      // el SDK de Flutter, que calcula el offset horizontal solo cuando hay
+      // un ancho explícito) en vez de ocupar todo el ancho menos el margen,
+      // para que no cambie de tamaño entre pantallas con un `ConstrainedBox`
+      // más estrecho que otras. `insetPadding` fijo por el mismo motivo de
+      // estabilidad, aunque esto no evita el "salto" vertical que causa el
+      // `FloatingActionButton` (ver docs/design.md, "Aviso estable al
+      // navegar"): ese salto viene de dónde posiciona el `Scaffold` el
+      // aviso cuando hay un FAB visible, no del tema.
       snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+        width: 560,
+        insetPadding: EdgeInsets.fromLTRB(AppSpacing.m, AppSpacing.xs, AppSpacing.m, AppSpacing.m),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: colorScheme.surfaceContainerLow,

@@ -43,6 +43,7 @@ Un asistente financiero personal que permite registrar movimientos (de forma man
 - **Metas de ahorro**: nombre, importe objetivo, lo ya ahorrado y una fecha límite, con el progreso calculado en código, en su propia colección de Firestore (máximo 10 por usuario, aplicado en código, no en las reglas).
 - **Sugerencias de ahorro**: por cada meta en camino o por detrás, opciones concretas de dónde liberar dinero (gastos recurrentes, recorte de categoría, exceso puntual), calculadas en código sin ningún modelo de IA de por medio. Opcionalmente, un botón "Redactar resumen con IA" pide a Gemini una redacción en prosa de esas mismas cifras, sin sustituir nunca la lista: solo recibe cifras ya formateadas en euros y categorías fijas del código, nunca el nombre de la meta ni ningún concepto o descripción de movimiento.
 - **Menú "Más opciones"**: agrupa "Perfil" y "Metas de ahorro" en un único icono del `AppBar`, sin sumar iconos nuevos a la barra.
+- **Ayuda contextual**: un icono de ayuda en cada pantalla (en Movimientos, dentro de "Más opciones") abre una hoja con el título y los pasos de esa pantalla, en castellano; detalle en `docs/design.md`, "Ayuda contextual".
 
 Detalle completo de requisitos y decisiones en `docs/analysis.md`.
 

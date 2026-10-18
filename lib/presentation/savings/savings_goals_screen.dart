@@ -7,6 +7,8 @@ import '../../domain/savings/savings_goal_progress.dart';
 import '../common/firestore_error_messages.dart';
 import '../common/motion.dart';
 import '../common/staggered_entrance.dart';
+import '../help/help_sheet.dart';
+import '../help/help_topic.dart';
 import '../theme/app_theme.dart';
 import '../transactions/formatters.dart';
 import 'savings_goal_form_screen.dart';
@@ -93,7 +95,10 @@ class SavingsGoalsScreen extends ConsumerWidget {
     final goalsAsync = ref.watch(savingsGoalsStreamProvider(userId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Metas de ahorro')),
+      appBar: AppBar(
+        title: const Text('Metas de ahorro'),
+        actions: const [HelpButton(topic: HelpTopic.savingsGoals)],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         tooltip: 'Añadir una meta',
         onPressed: () => _openForm(context),
