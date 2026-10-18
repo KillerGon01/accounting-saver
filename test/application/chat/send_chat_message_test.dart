@@ -150,8 +150,8 @@ void main() {
       await sendChatMessage(userId: userId, history: const [], message: '¿Cuánto gasté?');
       expect(sendChatMessage.remainingQuestions, SendChatMessage.maxQuestionsPerSession - 1);
 
-      // Repetida: la sirve la caché (mismo gateway.callCount), así que no
-      // debe restar otra pregunta del tope.
+      // Repeated: served by the cache (same gateway.callCount), so it
+      // shouldn't subtract another question from the limit.
       await sendChatMessage(userId: userId, history: const [], message: '¿Cuánto gasté?');
       expect(gateway.callCount, 1);
       expect(sendChatMessage.remainingQuestions, SendChatMessage.maxQuestionsPerSession - 1);

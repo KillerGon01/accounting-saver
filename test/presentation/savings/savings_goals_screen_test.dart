@@ -24,11 +24,11 @@ Future<void> _pump(
   String userId = _userId,
   required FakeClock clock,
 }) async {
-  // Un widget intermedio (no `SavingsGoalsScreen`) antes del de cada
-  // usuario, para que Flutter la desmonte de verdad en vez de reutilizar
-  // su `State` con otro `userId` — mismo motivo que en
-  // `chat_screen_test.dart` (así reproduce "cerrar sesión y entrar con
-  // otra cuenta sin reiniciar la app", como hace `AuthGate`).
+  // An intermediate widget (not `SavingsGoalsScreen`) before each
+  // user's, so Flutter genuinely unmounts it instead of reusing its
+  // `State` with a different `userId` — same reason as in
+  // `chat_screen_test.dart` (this reproduces "log out and log in with
+  // another account without restarting the app", as `AuthGate` does).
   await tester.pumpWidget(
     UncontrolledProviderScope(container: container, child: const MaterialApp(home: SizedBox.shrink())),
   );
@@ -85,8 +85,8 @@ void main() {
 
         expect(find.text('Vacaciones'), findsOneWidget);
         expect(find.textContaining('50 %'), findsOneWidget);
-        expect(find.textContaining(formatCents(50000)), findsOneWidget); // ahorrado
-        expect(find.textContaining(formatCents(100000)), findsOneWidget); // objetivo
+        expect(find.textContaining(formatCents(50000)), findsOneWidget); // saved
+        expect(find.textContaining(formatCents(100000)), findsOneWidget); // goal
         expect(find.text('En camino'), findsOneWidget);
       },
     );
@@ -107,9 +107,9 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      // Localizado dentro de la tarjeta de esta meta: puede haber otros
-      // `ScaleTransition` en el árbol (p. ej. de material propio de
-      // Flutter) ajenos a la celebración.
+      // Located inside this goal's card: there could be other
+      // `ScaleTransition`s in the tree (e.g. from Flutter's own
+      // material widgets) unrelated to the celebration.
       Finder scaleTransitionOfCard() => find.descendant(
         of: find.ancestor(of: find.text('Vacaciones'), matching: find.byType(Card)),
         matching: find.byType(ScaleTransition),
@@ -120,8 +120,8 @@ void main() {
       expect(tester.widget<ScaleTransition>(scaleTransitionOfCard()).scale.value, 1.0);
 
       await repository.update(userId: _userId, goal: goal.copyWith(savedCents: 100000));
-      await tester.pump(); // procesa el stream y reconstruye con el nuevo estado
-      await tester.pump(const Duration(milliseconds: 150)); // a mitad del rebote (400 ms)
+      await tester.pump(); // processes the stream and rebuilds with the new state
+      await tester.pump(const Duration(milliseconds: 150)); // halfway through the bounce (400 ms)
 
       expect(
         tester.widget<ScaleTransition>(scaleTransitionOfCard()).scale.value,
@@ -169,11 +169,11 @@ void main() {
         await tester.tap(find.text('Nueva meta').first);
         await tester.pumpAndSettle();
 
-        // Nombre vacío. "abc" no sirve para el importe: los
-        // `inputFormatters` del campo ya lo filtrarían a vacío antes de
-        // llegar al validador. "12,345" pasa el filtro de caracteres
-        // permitidos pero no el de `parseEurosToCents` (como mucho 2
-        // decimales).
+        // Empty name. "abc" doesn't work for the amount: the field's
+        // `inputFormatters` would already filter it down to empty
+        // before reaching the validator. "12,345" passes the
+        // allowed-character filter but not `parseEurosToCents`'s (at
+        // most 2 decimals).
         await tester.enterText(find.widgetWithText(TextFormField, 'Importe objetivo'), '12,345');
         await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
         await tester.pumpAndSettle();
@@ -182,7 +182,7 @@ void main() {
         expect(find.text('Formato no válido, por ejemplo 1.500,00'), findsOneWidget);
         expect(repository.goalsOf(_userId), isEmpty);
 
-        // Importe en 0: formato válido, pero no mayor que 0.
+        // Amount at 0: valid format, but not greater than 0.
         await tester.enterText(find.widgetWithText(TextFormField, 'Nombre'), 'Meta');
         await tester.enterText(find.widgetWithText(TextFormField, 'Importe objetivo'), '0');
         await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
@@ -251,7 +251,7 @@ void main() {
       await _pump(tester, container, userId: 'user-A', clock: FakeClock(DateTime(2026, 1, 1)));
       expect(find.text('Meta de A'), findsOneWidget);
 
-      // "Cierre de sesión y entrada de B": mismo container, pantalla nueva.
+      // "Log out and log in as B": same container, new screen.
       await _pump(tester, container, userId: 'user-B', clock: FakeClock(DateTime(2026, 1, 1)));
 
       expect(find.text('Meta de A'), findsNothing);

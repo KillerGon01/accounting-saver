@@ -56,7 +56,7 @@ void main() {
     final repository = FakeAuthRepository(initialUser: _user);
     await _pump(tester, repository);
 
-    // El correo se envió al registrarse: el contador empieza al abrir la pantalla.
+    // The email was sent on sign-up: the counter starts when the screen opens.
     expect(find.text('Reenviar correo (en 60 s)'), findsOneWidget);
     expect(_resend(tester).onPressed, isNull);
 

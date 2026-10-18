@@ -75,8 +75,8 @@ class FakeTransactionRepository implements TransactionRepository {
     return ActivitySummary.fromTransactions(transactionsOf(userId));
   }
 
-  /// Igual que `FirestoreTransactionRepository`: solo filtra por el rango
-  /// de fecha y ordena por fecha descendente, sin ningún otro `where`.
+  /// Same as `FirestoreTransactionRepository`: only filters by date range
+  /// and sorts by descending date, with no other `where`.
   @override
   Future<List<Transaction>> findByDateRange({
     required String userId,

@@ -86,7 +86,7 @@ Future<void> _seedTransactions() async {
   );
 }
 
-/// Abre el diálogo desde [buttonLabel], escribe el correo y la contraseña y confirma.
+/// Opens the dialog from [buttonLabel], types the email and password, and confirms.
 Future<void> _deleteFlow(
   WidgetTester tester, {
   String buttonLabel = 'Eliminar cuenta',
@@ -199,10 +199,10 @@ void main() {
   });
 
   group('aviso de sesión (sessionFeedbackProvider)', () {
-    // `ProviderScope.containerOf` lee el contenedor de verdad del árbol
-    // ya montado por `_pump` (que usa un `ProviderScope` normal, no
-    // `UncontrolledProviderScope`): ninguna de las pruebas de arriba
-    // necesita tocarse para esto.
+    // `ProviderScope.containerOf` reads the real container from the
+    // tree already mounted by `_pump` (which uses a normal
+    // `ProviderScope`, not `UncontrolledProviderScope`): none of the
+    // tests above need to be touched for this.
     ProviderContainer containerOf(WidgetTester tester) {
       return ProviderScope.containerOf(tester.element(find.byType(ProfileScreen)));
     }

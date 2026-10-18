@@ -1,10 +1,10 @@
 import 'package:accounting_saver/domain/payroll/payroll_glossary.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Los 5 conceptos literales que devuelve el modelo en las fixtures de la
-/// prueba de viabilidad (ver docs/evaluation.md): los dos últimos llevan
-/// un paréntesis explicativo o la sigla entre paréntesis, que es justo lo
-/// que rompía la igualdad exacta de antes.
+/// The 5 literal concepts the model returns in the feasibility
+/// spike's fixtures (see docs/evaluation.md): the last two carry an
+/// explanatory parenthetical or the acronym in parentheses, which
+/// is exactly what used to break the old exact equality.
 const _knownConcepts = [
   'Contingencias comunes',
   'Desempleo',
@@ -33,7 +33,7 @@ void main() {
       payrollGlossaryDescription('Mecanismo de Equidad Intergeneracional (MEI)'),
       allOf(contains('sistema de pensiones'), contains('varía según el año')),
     );
-    // Sin tipos de cotización concretos: ningún número de porcentaje en el texto.
+    // No specific contribution rates: no percentage number in the text.
     expect(payrollGlossaryDescription('IRPF (retención a cuenta)'), isNot(contains(RegExp(r'\d'))));
     expect(
       payrollGlossaryDescription('Mecanismo de Equidad Intergeneracional (MEI)'),
@@ -53,10 +53,10 @@ void main() {
     expect(payrollGlossaryDescription('MEI'), payrollGlossaryDescription('mei'));
     expect(payrollGlossaryDescription('Formación profesional'), payrollGlossaryDescription('formacion profesional'));
 
-    // Variantes con el paréntesis, mayúsculas distintas, acentos y espacios
-    // de más (incluidos dobles espacios y espacios alrededor del
-    // paréntesis) — el mismo texto que acompaña, normalizado, no debería
-    // cambiar la descripción encontrada.
+    // Variants with the parenthetical, different casing, accents,
+    // and extra spaces (including double spaces and spaces around
+    // the parenthesis) — the same accompanying text, normalized,
+    // shouldn't change the description found.
     expect(
       payrollGlossaryDescription('  IRPF   (Retención a Cuenta)  '),
       payrollGlossaryDescription('irpf (retencion a cuenta)'),
@@ -72,11 +72,11 @@ void main() {
   });
 
   test('no hay falso positivo cuando la sigla aparece como subcadena de otra palabra', () {
-    // "mei" es una subcadena literal de "premeido", pero no una palabra o
-    // sigla completa (sin límite de palabra a ningún lado): no debe
-    // coincidir con la entrada "mei" del glosario.
+    // "mei" is a literal substring of "premeido", but not a whole
+    // word or acronym (no word boundary on either side): it must
+    // not match the glossary's "mei" entry.
     expect(payrollGlossaryDescription('Premeido'), payrollGlossaryUnknownDescription);
-    // Mismo caso con "irpf" incrustado en otra palabra sin límites.
+    // Same case with "irpf" embedded in another word with no boundaries.
     expect(payrollGlossaryDescription('Birpfusion'), payrollGlossaryUnknownDescription);
   });
 }

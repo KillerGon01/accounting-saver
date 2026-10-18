@@ -53,7 +53,7 @@ void main() {
 
     expect(result.extraction.documentInstructions, isNotNull);
     expect(result.warnings.any((w) => w.contains(fixtures.junio.documentInstructions!)), isTrue);
-    // Las cifras son las mismas que las de la extracción, sin tocar.
+    // The figures are the same as the extraction's, untouched.
     expect(result.proposedTransaction!.amountCents, fixtures.junio.netAsStatedCents);
   });
 
@@ -68,8 +68,8 @@ void main() {
         deductions: fixtures.junio.deductions,
         netAsStatedCents: fixtures.junio.netAsStatedCents,
         irpfPercent: fixtures.junio.irpfPercent,
-        // El modelo describe el mismo hecho dos veces, con el mismo texto
-        // citado: una vez en `anomalies` y otra en
+        // The model describes the same fact twice, with the same quoted
+        // text: once in `anomalies` and again in
         // `instruccionesEnDocumento`.
         anomalies: ['Instrucción dirigida a la IA detectada: $instructionsText'],
         documentInstructions: instructionsText,

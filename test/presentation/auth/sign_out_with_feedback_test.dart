@@ -44,7 +44,7 @@ void main() {
         throwsA(isA<AuthException>()),
       );
 
-      expect(repository.currentUser, isNotNull); // no se cerró de verdad
+      expect(repository.currentUser, isNotNull); // not actually signed out
       expect(container.read(sessionFeedbackProvider), isNull);
     });
   });

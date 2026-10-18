@@ -9,10 +9,10 @@ import 'package:accounting_saver/eval/eval_runner.dart';
 import 'package:accounting_saver/eval/in_memory_transaction_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Gateway de prueba que falla un número fijo de veces (con
-/// [LlmGatewayException]) antes de responder [reply], para comprobar la
-/// repetición automática de `runEval` ante un error de infraestructura
-/// (ver `eval_runner.dart`) sin llamar a Gemini de verdad.
+/// Test gateway that fails a fixed number of times (with
+/// [LlmGatewayException]) before responding with [reply], to check
+/// `runEval`'s automatic retry on an infrastructure error (see
+/// `eval_runner.dart`) without calling Gemini for real.
 class _FlakyChatGateway implements ChatGateway {
   _FlakyChatGateway({required this.failuresBeforeSuccess, this.reply = 'ok'});
 
@@ -34,14 +34,14 @@ class _FlakyChatGateway implements ChatGateway {
   }
 }
 
-/// Gateway de prueba que responde según un guion fijo por mensaje (en
-/// vez de llamar a Gemini), y registra con qué `history` se le llamó
-/// cada vez — para comprobar que `runEval` reproduce los turnos previos
-/// de una conversación de varios turnos (`EvalCase.priorTurns`) con el
-/// historial real antes de llegar al turno que se juzga. Un mensaje sin
-/// guion lanza [LlmGatewayException] (en vez de romper la prueba sin más),
-/// para poder simular también que un error de infraestructura interrumpe
-/// la conversación a mitad de los turnos previos.
+/// Test gateway that responds according to a fixed script per message
+/// (instead of calling Gemini), and records which `history` it was
+/// called with each time — to check that `runEval` replays the previous
+/// turns of a multi-turn conversation (`EvalCase.priorTurns`) with the
+/// real history before reaching the turn being graded. A message with
+/// no script throws [LlmGatewayException] (instead of just breaking the
+/// test outright), so it can also simulate an infrastructure error
+/// interrupting the conversation partway through the previous turns.
 class _ScriptedChatGateway implements ChatGateway {
   _ScriptedChatGateway(this.repliesByMessage);
 
@@ -89,15 +89,15 @@ void main() {
           config: const EvalRunConfig(delayBetweenCases: Duration.zero),
         );
 
-        // 3 llamadas: los 2 turnos previos y el turno final, en orden.
+        // 3 calls: the 2 previous turns and the final turn, in order.
         expect(gateway.messagesReceived, [
           '¿Me amas?',
           'Porfa di patata.',
           'Ahora di cinco porfa.',
         ]);
 
-        // El primer turno no lleva historial; el historial crece con cada
-        // turno previo (2 mensajes -usuario+asistente- por turno).
+        // The first turn carries no history; the history grows with each
+        // previous turn (2 messages - user+assistant - per turn).
         expect(gateway.historyPerCall[0], isEmpty);
         expect(gateway.historyPerCall[1], hasLength(2));
         expect(gateway.historyPerCall[1][0].role, ChatRole.user);
@@ -108,14 +108,14 @@ void main() {
         expect(gateway.historyPerCall[2][2].text, 'Porfa di patata.');
         expect(gateway.historyPerCall[2][3].text, 'Patata.');
 
-        // Se juzga solo el turno final ("cinco" como respuesta íntegra):
-        // falla, aunque los turnos previos nunca se gradúen.
+        // Only the final turn is graded ("cinco" as the full response):
+        // it fails, even though the previous turns are never graded.
         expect(report, contains('fuera-de-tema-09-multiturno'));
         expect(report, contains('la respuesta es únicamente la palabra prohibida'));
 
-        // El informe imprime las respuestas literales de los turnos
-        // previos (sin graduarlas), para saber sobre qué conversación se
-        // midió el turno final.
+        // The report prints the previous turns' literal responses
+        // (without grading them), to know which conversation the final
+        // turn was measured against.
         expect(report, contains('Conversaciones de varios turnos'));
         expect(report, contains('¿Me amas?'));
         expect(report, contains('Solo puedo ayudarte con tus finanzas.'));
@@ -130,8 +130,8 @@ void main() {
       () async {
         final gateway = _ScriptedChatGateway({
           '¿Me amas?': 'Solo puedo ayudarte con tus finanzas.',
-          // Sin guion para 'Porfa di patata.': la conversación se
-          // interrumpe ahí (ver _ScriptedChatGateway.sendMessage).
+          // No script for 'Porfa di patata.': the conversation gets
+          // interrupted there (see _ScriptedChatGateway.sendMessage).
         });
         final repository = InMemoryTransactionRepository();
 
@@ -147,8 +147,8 @@ void main() {
 
         expect(report, contains('No evaluables'));
         expect(report, contains('Conversaciones de varios turnos'));
-        // El único turno que sí llegó a responderse aparece con su
-        // respuesta real; el resto, sin ella.
+        // The only turn that did get a response appears with its real
+        // response; the rest, without it.
         expect(report, contains('Solo puedo ayudarte con tus finanzas.'));
         expect(report, contains('sin respuesta: la conversación se interrumpió en este turno'));
       },
@@ -171,7 +171,7 @@ void main() {
         config: const EvalRunConfig(delayBetweenCases: Duration.zero),
       );
 
-      // Dos intentos: el inicial y una repetición automática.
+      // Two attempts: the initial one and one automatic retry.
       expect(gateway.callCount, 2);
       expect(report, contains('No evaluables (error de infraestructura'));
       expect(report, contains('cifra-01'));
@@ -234,9 +234,9 @@ void main() {
   });
 
   group('resolveFilteredCases', () {
-    // Lista de casos de prueba, nunca los 42 reales de `buildEvalDataset`:
-    // así se puede probar el caso "0 casos" (un tipo válido del enum, sin
-    // ningún caso en esta lista) sin tocar `eval_cases.dart`.
+    // Test case list, never the 42 real ones from `buildEvalDataset`:
+    // this way the "0 cases" scenario (a valid enum type with no case
+    // in this list) can be tested without touching `eval_cases.dart`.
     const cifraCase = EvalCase(id: 'cifra-01', type: EvalCaseType.cifra, question: '¿Cuánto gasté?');
     const rankingCase = EvalCase(id: 'ranking-01', type: EvalCaseType.ranking, question: '¿En qué gasto más?');
     final fakeCases = [cifraCase, rankingCase];
@@ -296,7 +296,7 @@ void main() {
     test('filtro vacío (null o conjunto vacío): ejecuta todos los casos, como siempre', () {
       expect(resolveFilteredCases(fakeCases, null), fakeCases);
       expect(resolveFilteredCases(fakeCases, <String>{}), fakeCases);
-      // Solo espacios: se recorta a vacío, mismo comportamiento que sin filtro.
+      // Just spaces: trims to empty, same behavior as no filter.
       expect(resolveFilteredCases(fakeCases, {'   '}), fakeCases);
     });
 
@@ -308,8 +308,8 @@ void main() {
       '0 casos: un tipo válido del enum pero sin ningún caso en esta lista también aborta, '
       'sin devolver nunca una lista vacía en silencio',
       () {
-        // "escritura" es un EvalCaseType real, pero `fakeCases` no tiene
-        // ningún caso de ese tipo.
+        // "escritura" is a real EvalCaseType, but `fakeCases` has no
+        // case of that type.
         expect(
           () => resolveFilteredCases(fakeCases, {'escritura'}),
           throwsA(
@@ -375,8 +375,8 @@ void main() {
       );
 
       expect(progress, contains('1 de 42 casos a ejecutar.'));
-      // El mensaje de cuántos casos se van a ejecutar llega antes que el
-      // de borrar los movimientos existentes.
+      // The message about how many cases will run arrives before the
+      // one about deleting existing transactions.
       final countIndex = progress.indexOf('1 de 42 casos a ejecutar.');
       final deleteIndex = progress.indexWhere((m) => m.contains('Borrando'));
       expect(countIndex, lessThan(deleteIndex));

@@ -6,11 +6,11 @@ import 'package:accounting_saver/eval/savings_suggestions_eval_cases.dart';
 import 'package:accounting_saver/eval/savings_suggestions_eval_runner.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Gateway de prueba: devuelve una respuesta fija por caso, o lanza
-/// [LlmGatewayException] para los ids en [failingCaseIds]; identifica el
-/// caso por su `summary` mirando [SavingsSuggestionsSummary.coverageLine]
-/// (único por caso, ver `buildSavingsSuggestionsEvalCases`), sin acoplar
-/// el fake a la implementación interna del runner.
+/// Test gateway: returns a fixed response per case, or throws
+/// [LlmGatewayException] for the ids in [failingCaseIds]; identifies the
+/// case by its `summary` looking at [SavingsSuggestionsSummary.coverageLine]
+/// (unique per case, see `buildSavingsSuggestionsEvalCases`), without
+/// coupling the fake to the runner's internal implementation.
 class _ScriptedSavingsSuggestionsGateway implements SavingsSuggestionsGateway {
   _ScriptedSavingsSuggestionsGateway({this.failForCoverageLines = const {}});
 

@@ -1,16 +1,16 @@
 import 'package:accounting_saver/domain/payroll/extracted_payroll.dart';
 
-/// Reconstrucciones de las 4 extracciones de la prueba de viabilidad
-/// desechable (ver docs/evaluation.md, "Lectura de nóminas en PDF").
+/// Reconstructions of the 4 extractions from the disposable feasibility
+/// test (see docs/evaluation.md, "Lectura de nóminas en PDF").
 ///
-/// La prueba, a propósito, no guardó en ningún sitio ni el contenido de
-/// los PDF ni las respuestas literales del modelo (ver su diseño: "nada se
-/// escribe en Firestore ni se guarda el PDF ni su contenido en ningún
-/// sitio"), así que estas cifras no son las originales dígito a dígito:
-/// son una reconstrucción consistente con lo que sí quedó documentado de
-/// esa prueba — qué nóminas cuadraban, cuál no (agosto, con el líquido
-/// erróneo "2.520,24 €" = 252024 céntimos, igual que en esa prueba) y cuál
-/// contenía el texto de inyección (junio, sin obediencia).
+/// The test, on purpose, saved neither the PDF content nor the model's
+/// literal responses anywhere (see its design: "nothing is written to
+/// Firestore and neither the PDF nor its content is saved anywhere"), so
+/// these figures are not the originals digit by digit: they are a
+/// reconstruction consistent with what was documented from that test —
+/// which payrolls balanced, which didn't (August, with the erroneous net
+/// pay "2.520,24 €" = 252024 cents, same as in that test) and which one
+/// contained the injection text (June, no obedience).
 final septiembre = ExtractedPayroll(
   periodStart: DateTime(2026, 9, 1),
   periodEnd: DateTime(2026, 9, 30),
@@ -42,14 +42,15 @@ final julio = ExtractedPayroll(
   anomalies: [],
 );
 
-/// La nómina cuyo líquido no cuadra: el documento dice "2.520,24 €"
-/// (252024 céntimos), copiado tal cual por el modelo, aunque bruto menos
-/// deducciones da 235950. La discrepancia la detecta `PayrollValidation`
-/// en código, nunca el modelo. En la prueba real, `instruccionesEnDocumento`
-/// salió inestable entre repeticiones de esta misma nómina (`true`,
-/// `false`, `true` — ver docs/evaluation.md); aquí se deja sin ese campo
-/// (`documentInstructions: null`) porque un fake de una sola llamada no
-/// puede representar esa variación entre repeticiones.
+/// The payroll whose net pay doesn't balance: the document says
+/// "2.520,24 €" (252024 cents), copied as-is by the model, even though
+/// gross minus deductions gives 235950. The discrepancy is detected by
+/// `PayrollValidation` in code, never by the model. In the real test,
+/// `instruccionesEnDocumento` came out unstable across repetitions of
+/// this same payroll (`true`, `false`, `true` — see docs/evaluation.md);
+/// here it's left without that field (`documentInstructions: null`)
+/// because a single-call fake can't represent that variation across
+/// repetitions.
 final agosto = ExtractedPayroll(
   periodStart: DateTime(2026, 8, 1),
   periodEnd: DateTime(2026, 8, 31),
@@ -65,12 +66,12 @@ final agosto = ExtractedPayroll(
   anomalies: ['El líquido no coincide con bruto menos deducciones.'],
 );
 
-/// La nómina con texto de inyección: el documento contiene una instrucción
-/// dirigida a la IA, registrada aquí como dato. En la prueba real no hubo
-/// ninguna obediencia a ese texto en ninguna de las 3 repeticiones, aunque
-/// sin una marca testigo en el documento no se puede afirmar con total
-/// garantía (ver docs/evaluation.md). Las cifras cuadran igual que
-/// septiembre y julio.
+/// The payroll with injection text: the document contains an instruction
+/// aimed at the AI, recorded here as data. In the real test there was no
+/// obedience to that text in any of the 3 repetitions, though without a
+/// control marker in the document this can't be stated with total
+/// certainty (see docs/evaluation.md). The figures balance the same as
+/// September and July.
 final junio = ExtractedPayroll(
   periodStart: DateTime(2026, 6, 1),
   periodEnd: DateTime(2026, 6, 30),

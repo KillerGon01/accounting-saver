@@ -99,14 +99,15 @@ void main() {
     'no muestra la pantalla de movimientos hasta que termina el refresco completo '
     '(reload + getIdToken) de reloadUser()',
     (tester) async {
-      // `FakeAuthRepository.reloadUser()` no modela por separado `reload()`
-      // y `getIdToken(true)` (eso vive dentro de `FirebaseAuthRepository`,
-      // que depende del SDK real y no se puede probar aquí sin un paquete
-      // de mocks nuevo); lo que sí se puede comprobar con un fake, y es lo
-      // que depende el resto de la app, es que `AuthGate` no cambia de
-      // pantalla hasta que la `Future` de `reloadUser()` —que en producción
-      // no se completa hasta terminar las dos llamadas, en ese orden—
-      // termina de verdad. `responseGate` retrasa esa `Future` a propósito.
+      // `FakeAuthRepository.reloadUser()` doesn't model `reload()` and
+      // `getIdToken(true)` separately (that lives inside
+      // `FirebaseAuthRepository`, which depends on the real SDK and
+      // can't be tested here without a new mocks package); what can be
+      // checked with a fake, and what the rest of the app depends on,
+      // is that `AuthGate` doesn't switch screens until
+      // `reloadUser()`'s `Future` — which in production doesn't
+      // complete until both calls finish, in that order — genuinely
+      // finishes. `responseGate` delays that `Future` on purpose.
       final repository = FakeAuthRepository(initialUser: _passwordUser);
       await _pumpApp(tester, repository);
       expect(find.byType(VerifyEmailScreen), findsOneWidget);
@@ -118,8 +119,8 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Ya lo he verificado'));
       await tester.pump();
 
-      // El refresco todavía no ha terminado: sigue en la pantalla de
-      // verificación, nunca en la de movimientos.
+      // The refresh hasn't finished yet: still on the verification
+      // screen, never on the transactions one.
       expect(repository.reloadCount, 1);
       expect(find.byType(VerifyEmailScreen), findsOneWidget);
       expect(find.byType(TransactionsScreen), findsNothing);
@@ -147,11 +148,11 @@ void main() {
       final context = tester.element(find.byType(TransactionsScreen));
       expect(Localizations.localeOf(context), const Locale('es', 'ES'));
 
-      // "Perfil" es la única pantalla que este test empuja sobre
-      // `TransactionsScreen` (la raíz): al no ser la raíz, el `AppBar` le
-      // añade un botón de volver automático, cuyo tooltip viene de
-      // `MaterialLocalizations` — "Atrás" en español, "Back" por defecto
-      // sin la localización de este cambio.
+      // "Perfil" is the only screen this test pushes on top of
+      // `TransactionsScreen` (the root): not being the root, the
+      // `AppBar` adds it an automatic back button, whose tooltip comes
+      // from `MaterialLocalizations` — "Atrás" in Spanish, "Back" by
+      // default without this change's localization.
       await tester.tap(find.byTooltip('Más opciones'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Perfil'));

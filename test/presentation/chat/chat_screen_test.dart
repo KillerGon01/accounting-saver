@@ -11,18 +11,18 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../fakes/fake_chat_gateway.dart';
 import '../../fakes/fake_transaction_repository.dart';
 
-/// Pumpa [ChatScreen] para [userId] dentro de [container], reutilizando el
-/// mismo contenedor de providers entre llamadas (como hace la app de
-/// verdad: un solo `ProviderScope` para toda su vida, ver `main.dart`), así
-/// la prueba reproduce de verdad "cerrar sesión y entrar con otra cuenta
-/// sin reiniciar la app", no una app nueva por usuario.
+/// Pumps [ChatScreen] for [userId] inside [container], reusing the same
+/// providers container between calls (as the real app does: a single
+/// `ProviderScope` for its whole life, see `main.dart`), so the test
+/// genuinely reproduces "log out and log in with another account
+/// without restarting the app", not a new app per user.
 Future<void> _pump(WidgetTester tester, ProviderContainer container, String userId) async {
-  // Un widget intermedio distinto (no `ChatScreen`) antes de pumpar el de
-  // cada usuario, para que Flutter desmonte de verdad el `ChatScreen`
-  // anterior en vez de reutilizar su `State` con un `userId` nuevo —
-  // justo lo que hace `AuthGate` al pasar por `LoginScreen` entre dos
-  // usuarios distintos (`main.dart`), nunca actualiza un `TransactionsScreen`
-  // ni un `ChatScreen` ya montado con otro `userId`.
+  // A different intermediate widget (not `ChatScreen`) before pumping
+  // each user's, so Flutter genuinely unmounts the previous
+  // `ChatScreen` instead of reusing its `State` with a new `userId` —
+  // exactly what `AuthGate` does by going through `LoginScreen` between
+  // two different users (`main.dart`), never updating an already
+  // mounted `TransactionsScreen` or `ChatScreen` with a different `userId`.
   await tester.pumpWidget(
     UncontrolledProviderScope(container: container, child: const MaterialApp(home: SizedBox.shrink())),
   );
@@ -60,7 +60,7 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      // Usuario A pregunta y la respuesta queda cacheada para él.
+      // User A asks and the response is cached for them.
       await _pump(tester, container, 'user-A');
       await _ask(tester, '¿Cuánto gasté?');
 
@@ -68,23 +68,23 @@ void main() {
       expect(find.text('Te quedan 19 preguntas'), findsOneWidget);
       expect(gateway.callCount, 1);
 
-      // "Cierre de sesión y entrada de usuario B": la app real nunca
-      // recrea el ProviderScope (ver main.dart), así que esto pumpa un
-      // ChatScreen nuevo para otro userId sobre el MISMO container, igual
-      // que AuthGate al pasar de un usuario a otro.
+      // "Log out and log in as user B": the real app never recreates
+      // the ProviderScope (see main.dart), so this pumps a new
+      // ChatScreen for another userId on the SAME container, just like
+      // AuthGate does when switching from one user to another.
       await _pump(tester, container, 'user-B');
 
-      // Historial vacío: el estado vacío con su propio texto, sin rastro
-      // del mensaje de A.
+      // Empty history: the empty state with its own text, with no
+      // trace of A's message.
       expect(find.text('Pregúntame sobre tus movimientos'), findsOneWidget);
       expect(find.text('¿Cuánto gasté?'), findsNothing);
       expect(find.text('Respuesta del modelo'), findsNothing);
 
-      // Contador de B a cero gastado (las 20 enteras disponibles).
+      // B's counter at zero spent (all 20 available).
       expect(find.text('Te quedan 20 preguntas'), findsOneWidget);
 
-      // La misma pregunta de B no debe devolver la respuesta cacheada de
-      // A: tiene que volver a llamar al gateway (callCount sube a 2).
+      // B asking the same question shouldn't return A's cached response:
+      // it has to call the gateway again (callCount goes up to 2).
       await _ask(tester, '¿Cuánto gasté?');
 
       expect(find.text('Respuesta del modelo'), findsOneWidget);
@@ -111,12 +111,12 @@ void main() {
       await tester.pump();
 
       expect(find.text('Consultando tus movimientos...'), findsOneWidget);
-      // `find.byType(IconButton)` ya no es único: el icono de ayuda del
-      // `AppBar` (ver docs/design.md, "Ayuda en pantalla") es también un
-      // `IconButton`. Se identifica el de enviar por su icono.
+      // `find.byType(IconButton)` is no longer unique: the help icon in
+      // the `AppBar` (see docs/design.md, "Ayuda en pantalla") is also
+      // an `IconButton`. The send one is identified by its icon.
       expect(tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.send)).onPressed, isNull);
       expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
-      // El contador aún no ha bajado: la petición no ha terminado.
+      // The counter hasn't gone down yet: the request hasn't finished.
       expect(find.text('Te quedan 20 preguntas'), findsOneWidget);
 
       await tester.pump(const Duration(seconds: 10));
@@ -124,8 +124,8 @@ void main() {
         find.text('Consultando tus movimientos... Esto está tardando más de lo normal...'),
         findsOneWidget,
       );
-      // Sigue sin bloquear el resto de la app: el contador se puede seguir
-      // leyendo con normalidad.
+      // Still not blocking the rest of the app: the counter can still
+      // be read normally.
       expect(find.text('Te quedan 20 preguntas'), findsOneWidget);
 
       await tester.pump(const Duration(seconds: 35));
@@ -179,7 +179,7 @@ void main() {
 
     expect(find.text('La IA no está disponible ahora mismo.'), findsOneWidget);
     expect(find.text('Te quedan 20 preguntas'), findsOneWidget);
-    // Mismo motivo que arriba: se identifica el botón de enviar por su icono.
+    // Same reason as above: the send button is identified by its icon.
     expect(tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.send)).onPressed, isNotNull);
   });
 

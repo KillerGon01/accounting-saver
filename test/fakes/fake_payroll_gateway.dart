@@ -3,8 +3,8 @@ import 'dart:typed_data';
 import 'package:accounting_saver/domain/payroll/extracted_payroll.dart';
 import 'package:accounting_saver/domain/payroll/payroll_gateway.dart';
 
-/// Fake configurable con un resultado o un error fijo, para probar
-/// [ParsePayroll] sin llamar a Gemini. Igual que [FakeLlmGateway].
+/// Configurable fake with a fixed result or error, for testing
+/// [ParsePayroll] without calling Gemini. Same as [FakeLlmGateway].
 class FakePayrollGateway implements PayrollGateway {
   FakePayrollGateway.returning(this._result) : _error = null;
 

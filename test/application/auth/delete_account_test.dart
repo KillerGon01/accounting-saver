@@ -121,7 +121,7 @@ void main() {
         ),
       ),
     );
-    // Lotes de 2: se borraron 2 de 5 antes del fallo.
+    // Batches of 2: 2 of 5 were deleted before the failure.
     expect(transactions.transactionsOf('user-1'), hasLength(3));
     expect(auth.accountDeleted, isFalse);
 
@@ -209,12 +209,12 @@ void main() {
     });
 
     test('un fallo a mitad del borrado de metas deja los movimientos ya borrados y se puede reintentar', () async {
-      await seed('user-1', 2); // 1 solo lote de movimientos (batchSize 2)
+      await seed('user-1', 2); // 1 single batch of transactions (batchSize 2)
       await goals.add(userId: 'user-1', goal: goal('g1'));
       await goals.add(userId: 'user-1', goal: goal('g2'));
       await goals.add(userId: 'user-1', goal: goal('g3'));
-      // Los movimientos se borran en el primer lote (índice 0); el fallo
-      // afecta al primer lote de METAS, que es el segundo lote en total.
+      // Transactions are deleted in the first batch (index 0); the failure
+      // affects the first batch of GOALS, which is the second batch overall.
       userData.failBeforeBatch = 1;
 
       await expectLater(
@@ -224,7 +224,7 @@ void main() {
         ),
       );
       expect(transactions.transactionsOf('user-1'), isEmpty);
-      expect(goals.goalsOf('user-1'), hasLength(3)); // nada borrado todavía
+      expect(goals.goalsOf('user-1'), hasLength(3)); // nothing deleted yet
       expect(auth.accountDeleted, isFalse);
 
       await deleteAccount(password: 'secreta123');

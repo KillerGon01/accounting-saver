@@ -13,13 +13,14 @@ void main() {
       const userId = 'u1';
       final repository = FakeTransactionRepository();
 
-      // Uso real: los datos de ejemplo se cargan el mismo día en que se usa
-      // el chat, a finales de octubre, así que cubren agosto, septiembre y
-      // octubre de 2026. `recurringExpenses` analiza los 3 meses completos
-      // *anteriores* al actual (julio, agosto, septiembre): de los meses
-      // generados, solo agosto y septiembre caen dentro de ese rango (julio
-      // no tiene datos, y octubre queda fuera por ser el mes en curso). Por
-      // eso cada recurrente esperado aparece en exactamente 2 meses, no 3.
+      // Real usage: the sample data is loaded the same day the chat is
+      // used, in late October, so it covers August, September and
+      // October 2026. `recurringExpenses` analyzes the 3 full months
+      // *before* the current one (July, August, September): of the
+      // generated months, only August and September fall within that
+      // range (July has no data, and October is excluded as the current
+      // month). That's why each expected recurring expense appears in
+      // exactly 2 months, not 3.
       final now = DateTime(2026, 10, 31);
       await LoadDemoData(repository)(userId: userId, now: now);
       final clock = FakeClock(now);
@@ -46,9 +47,9 @@ void main() {
         'spotify': ('10,99', ['2026-08', '2026-09']),
       };
 
-      // Exactamente estos 4: ningún otro gasto de los datos de ejemplo
-      // (compra semanal, restaurantes, luz, agua, gasolina...) debe salir
-      // como recurrente, porque su importe varía cada mes a propósito.
+      // Exactly these 4: no other sample-data expense (weekly groceries,
+      // restaurants, electricity, water, gas...) should come out as
+      // recurring, because its amount varies each month on purpose.
       expect(byDescription.keys.toSet(), expected.keys.toSet());
 
       for (final MapEntry(key: description, value: (amountEuros, months)) in expected.entries) {

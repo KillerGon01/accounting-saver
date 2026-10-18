@@ -67,9 +67,9 @@ void main() {
         targetCents: 1000,
         savedCents: 500,
         createdAt: DateTime(2026, 1, 1),
-        deadline: DateTime(2026, 1, 11), // 10 días en total
+        deadline: DateTime(2026, 1, 11), // 10 days in total
       );
-      // 5 días de 10 transcurridos → se espera el 50 % (500).
+      // 5 of 10 days elapsed → 50% (500) is expected.
       final progress = calculateSavingsGoalProgress(goal, now: DateTime(2026, 1, 6));
 
       expect(progress.status, SavingsGoalStatus.onTrack);
@@ -97,9 +97,9 @@ void main() {
           createdAt: DateTime(2026, 1, 1),
           deadline: DateTime(2026, 1, 1),
         );
-        // `now` igual a `deadline`: todavía no es "posterior", así que no
-        // es `overdue`; pero la duración total es 0, así que se exige el
-        // objetivo completo de inmediato.
+        // `now` equal to `deadline`: it isn't "after" yet, so it
+        // isn't `overdue`; but the total duration is 0, so the full
+        // target is demanded immediately.
         final progress = calculateSavingsGoalProgress(goal, now: DateTime(2026, 1, 1));
 
         expect(progress.status, SavingsGoalStatus.behind);
@@ -116,7 +116,7 @@ void main() {
       final progress = calculateSavingsGoalProgress(goal, now: DateTime(2026, 10, 15));
 
       expect(progress.monthsRemaining, 0);
-      // Con 0 meses, se divide por 1: toda la cantidad que falta de una vez.
+      // With 0 months, it's divided by 1: the whole remaining amount at once.
       expect(progress.monthlyContributionCents, progress.remainingCents);
     });
 
@@ -125,11 +125,11 @@ void main() {
         createdAt: DateTime(2026, 1, 1),
         deadline: DateTime(2026, 12, 20),
       );
-      // De 15 a 20/12: 2 meses completos (noviembre y diciembre no
-      // llegan a contarse enteros hasta el día 20) — en concreto, aquí
-      // quedan 2 meses (oct→dic son 2 meses de diferencia, y el día 20
-      // de diciembre todavía no ha llegado respecto al día 15 de hoy, así
-      // que no se resta nada más).
+      // From the 15th to 12/20: 2 full months (November and
+      // December don't get counted in full until the 20th) — here,
+      // specifically, 2 months are left (oct→dec is a 2-month
+      // difference, and December's 20th hasn't arrived yet relative
+      // to today's 15th, so nothing more is subtracted).
       final progress = calculateSavingsGoalProgress(goal, now: DateTime(2026, 10, 15));
 
       expect(progress.monthsRemaining, 2);
@@ -142,11 +142,11 @@ void main() {
         createdAt: DateTime(2026, 1, 1),
         deadline: DateTime(2027, 1, 1),
       );
-      // De octubre a enero del año siguiente: 3 meses.
+      // From October to January of the following year: 3 months.
       final progress = calculateSavingsGoalProgress(goal, now: DateTime(2026, 10, 1));
 
       expect(progress.monthsRemaining, 3);
-      // 1000 / 3 = 333,33... → redondeado hacia arriba, 334 (no 333).
+      // 1000 / 3 = 333.33... → rounded up, 334 (not 333).
       expect(progress.monthlyContributionCents, 334);
     });
 

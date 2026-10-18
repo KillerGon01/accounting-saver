@@ -39,7 +39,7 @@ void main() {
         useCase(userId: 'u1', goal: _goal('g-de-mas')),
         throwsA(isA<SavingsGoalLimitExceededException>()),
       );
-      // Sigue habiendo 10, no 11: la undécima no llegó a escribirse.
+      // Still 10, not 11: the eleventh never got written.
       expect(repository.goalsOf('u1'), hasLength(CreateSavingsGoal.maxGoalsPerUser));
     });
 

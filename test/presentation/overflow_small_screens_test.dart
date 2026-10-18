@@ -24,21 +24,19 @@ import '../fakes/fake_transaction_repository.dart';
 const _userId = 'u1';
 const _smallScreens = [Size(360, 640), Size(407, 904)];
 
-/// Comentario de la IA deliberadamente largo y sin espacios donde
-/// cortar fácilmente, para forzar el peor caso de desbordamiento
-/// horizontal que una frase normal.
+/// AI comment deliberately long and with no easy place to wrap, to
+/// force a worse horizontal overflow case than a normal sentence would.
 const _longText =
     'Este es un comentario de prueba deliberadamente muy largo para forzar que '
     'cualquier fila sin Expanded, Flexible o Wrap se desborde en pantallas '
     'pequeñas con la escala de texto del sistema aumentada, incluyendo '
     'palabras-muy-largas-sin-espacios-donde-poder-partir-la-linea-con-normalidad';
 
-/// Pumpa [child] a tamaño [size] con la escala de texto del sistema a
-/// [textScale] (por defecto 1.3, como pediría un usuario con accesibilidad
-/// de texto grande activada), dentro de un [MaterialApp] con el tema de la
-/// app. Usa `MediaQuery` en el `builder` (no `tester.view`, que no expone
-/// la escala de texto) para no depender de ninguna API específica de una
-/// versión de Flutter.
+/// Pumps [child] at [size] with the system text scale set to
+/// [textScale] (1.3 by default, as a user with large-text accessibility
+/// enabled would request), inside a [MaterialApp] with the app's theme.
+/// Uses `MediaQuery` in the `builder` (not `tester.view`, which doesn't
+/// expose the text scale) to avoid depending on any Flutter-version-specific API.
 Future<void> _pumpAt(
   WidgetTester tester, {
   required Size size,
@@ -130,9 +128,9 @@ void main() {
       );
       expect(tester.takeException(), isNull);
 
-      // La pregunta usa un texto corto distinto de la respuesta para que
-      // `find.text(_longText)` solo encuentre la burbuja de la respuesta
-      // (el campo mantiene el texto introducido hasta que se envía).
+      // The question uses a short text different from the response so
+      // that `find.text(_longText)` only finds the response bubble (the
+      // field keeps the entered text until it's sent).
       await tester.enterText(find.byType(TextField), '¿Cuánto he gastado?');
       await tester.tap(find.byIcon(Icons.send));
       await tester.pumpAndSettle();
@@ -159,9 +157,9 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
 
-      // Abre el desplegable de categorías y selecciona la de etiqueta más
-      // larga ("Suscripciones"), que es la que de verdad fuerza el ancho
-      // máximo de la fila icono + texto dentro del campo.
+      // Opens the category dropdown and selects the one with the
+      // longest label ("Suscripciones"), which is the one that really
+      // forces the maximum width of the icon + text row inside the field.
       final field = find.widgetWithText(DropdownButtonFormField<Category>, 'Categoría');
       await tester.ensureVisible(field);
       await tester.tap(field);

@@ -95,14 +95,14 @@ void main() {
       await body();
     }
 
-    // 360x640 (en vez de 360x740) deja, con el teclado abierto (300px de
-    // inset), solo 44px para la lista de movimientos (284px de body menos
-    // 64px de `_MonthNavigator` y 176px de la tarjeta de resumen): justo
-    // lo que ocupa la cabecera del día, sin sitio para ningún `ListTile`
-    // (~56-72px), así que ese elemento nunca llega a construirse dentro
-    // del `ListView` y el test fallaba aun sin desbordamiento. 360x740
-    // sigue siendo un móvil pequeño real (p. ej. Pixel 6a en dp lógicos),
-    // pero deja margen de sobra para la fila.
+    // 360x640 (instead of 360x740) leaves, with the keyboard open (300px
+    // inset), only 44px for the transactions list (284px body minus
+    // 64px for `_MonthNavigator` and 176px for the summary card): exactly
+    // what the day header takes up, with no room for any `ListTile`
+    // (~56-72px), so that widget never gets built inside the `ListView`
+    // and the test would fail even without an overflow. 360x740 is
+    // still a real small phone (e.g. Pixel 6a in logical dp), but leaves
+    // plenty of margin for the row.
     for (final size in [const Size(360, 740), const Size(407, 904)]) {
       testWidgets(
         'estado vacío sin desbordamiento en ${size.width.toInt()}x${size.height.toInt()} con teclado',
@@ -234,8 +234,8 @@ void main() {
         );
         expect(find.text('Café con Marta'), findsNothing);
         expect(find.text('Gasolina'), findsNothing);
-        // El botón del estado vacío (no el de la barra de "N de M") es
-        // suficiente para comprobar que quita el filtro.
+        // The empty-state button (not the one in the "N of M" bar) is
+        // enough to check it removes the filter.
         await tester.tap(find.widgetWithText(OutlinedButton, 'Quitar filtros'));
         await tester.pumpAndSettle();
 
@@ -338,10 +338,10 @@ void main() {
   testWidgets('al pulsar "Nuevo" con un aviso visible, oculta el SnackBar antes de navegar', (tester) async {
     await _pump(tester, FakeTransactionRepository());
 
-    // "Cargar datos de ejemplo" deja un SnackBar visible (ver `_showMessage`
-    // en `TransactionsScreen`), con comportamiento flotante anclado por
-    // encima del FAB "Nuevo" (ver docs/design.md, "Aviso estable al
-    // navegar").
+    // "Cargar datos de ejemplo" leaves a SnackBar visible (see
+    // `_showMessage` in `TransactionsScreen`), with floating behavior
+    // anchored above the "Nuevo" FAB (see docs/design.md, "Aviso
+    // estable al navegar").
     await tester.tap(find.widgetWithText(FilledButton, 'Cargar datos de ejemplo'));
     await tester.pumpAndSettle();
     expect(find.byType(SnackBar), findsOneWidget);

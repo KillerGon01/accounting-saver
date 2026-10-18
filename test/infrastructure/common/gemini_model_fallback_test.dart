@@ -7,8 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../fakes/fake_clock.dart';
 
-/// Reloj mutable para simular el paso del tiempo en un mismo
-/// [GeminiModelAvailability], algo que [FakeClock] (fijo) no permite.
+/// Mutable clock for simulating the passage of time within a single
+/// [GeminiModelAvailability], something [FakeClock] (fixed) doesn't allow.
 class _MutableClock implements Clock {
   _MutableClock(this._now);
 
@@ -57,8 +57,8 @@ void main() {
       availability.markUnavailableForSession('gemini-2.5-flash');
       expect(availability.isAvailable('gemini-2.5-flash'), isFalse);
 
-      // A diferencia de `markExhausted`, no expira con el tiempo: una
-      // hora, un día, lo que sea, sigue sin estar disponible.
+      // Unlike `markExhausted`, it doesn't expire over time: an hour,
+      // a day, whatever, it stays unavailable.
       clock.advance(const Duration(days: 1));
       expect(availability.isAvailable('gemini-2.5-flash'), isFalse);
     });
@@ -75,12 +75,12 @@ void main() {
     });
 
     test('un 404 "no longer available to new users..." también lo es', () {
-      // Mensaje real devuelto por Gemini para un modelo retirado para
-      // proyectos nuevos (gemini-2.5-flash-lite), antes de que la API lo
-      // retire del todo con el otro mensaje de arriba. `ServerException`
-      // no expone el código HTTP (404) ni el "status" ("NOT_FOUND") del
-      // cuerpo del error (ver el comentario de `isModelNotFoundError`),
-      // solo este texto.
+      // Real message returned by Gemini for a model retired for new
+      // projects (gemini-2.5-flash-lite), before the API retires it
+      // completely with the other message above. `ServerException`
+      // doesn't expose the HTTP code (404) or the "status" ("NOT_FOUND")
+      // of the error body (see the comment on `isModelNotFoundError`),
+      // only this text.
       final error = ServerException(
         'This model models/gemini-2.5-flash-lite is no longer available to new users. '
         'Please update your code to use models/gemini-3.5-flash-lite before you make '
@@ -237,8 +237,8 @@ void main() {
 
       expect(result, 'respuesta de gemini-2.5-flash-lite');
       expect(tried, ['gemini-2.5-flash', 'gemini-2.5-flash-lite']);
-      // Marcado para toda la sesión (no 1 hora como `markExhausted`): no
-      // hay fecha de la que "volver a estar disponible".
+      // Marked for the whole session (not 1 hour like `markExhausted`):
+      // there's no date to "become available again".
       expect(availability.isAvailable('gemini-2.5-flash'), isFalse);
       expect(availability.isAvailable('gemini-2.5-flash-lite'), isTrue);
     });
@@ -316,7 +316,7 @@ void main() {
 
         expect(result, 'respuesta de gemini-3.5-flash-lite');
         expect(tried, ['gemini-2.5-flash-lite', 'gemini-3.5-flash-lite']);
-        // Marcado para toda la sesión, igual que el otro mensaje de 404.
+        // Marked for the whole session, same as the other 404 message.
         expect(availability.isAvailable('gemini-2.5-flash-lite'), isFalse);
         expect(availability.isAvailable('gemini-3.5-flash-lite'), isTrue);
       },
@@ -344,8 +344,8 @@ void main() {
         );
         expect(firstAttemptTried, ['gemini-2.5-flash-lite', 'gemini-3.5-flash-lite']);
 
-        // Una petición nueva con la misma `availability`: el modelo
-        // marcado por este mensaje no debería ni intentarse.
+        // A new request with the same `availability`: the model marked
+        // by this message shouldn't even be attempted.
         final secondAttemptTried = <String>[];
         final result = await withGeminiModelFallback(
           availability: availability,
@@ -380,8 +380,8 @@ void main() {
       );
       expect(firstAttemptTried, ['gemini-2.5-flash', 'gemini-2.5-flash-lite']);
 
-      // Una petición nueva (otra pregunta, otro movimiento...) con la misma
-      // `availability`: ya no debería ni intentar el modelo marcado.
+      // A new request (another question, another transaction...) with
+      // the same `availability`: it shouldn't even try the marked model anymore.
       final secondAttemptTried = <String>[];
       final result = await withGeminiModelFallback(
         availability: availability,

@@ -15,7 +15,7 @@ class FakeAuthRepository implements AuthRepository {
     this.signOutError,
   }) : currentUser = initialUser;
 
-  /// Si se asigna, la operación correspondiente lanza este error.
+  /// If set, the matching operation throws this error.
   Object? signInError;
   Object? signUpError;
   Object? resetPasswordError;
@@ -25,12 +25,13 @@ class FakeAuthRepository implements AuthRepository {
   Object? deleteAccountError;
   Object? signOutError;
 
-  /// Si se asigna, cada operación espera a que se complete antes de responder
-  /// (permite probar el estado de carga).
+  /// If set, every operation waits for it to complete before
+  /// responding (lets the loading state be tested).
   Future<void>? responseGate;
 
-  /// Simula que el usuario ya pulsó el enlace del correo: la siguiente recarga
-  /// devuelve el usuario con `emailVerified` a true.
+  /// Simulates that the user has already clicked the email's link:
+  /// the next reload returns the user with `emailVerified` set to
+  /// true.
   bool emailVerifiedOnReload = false;
 
   final List<({String email, String password})> signInCalls = [];

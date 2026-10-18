@@ -313,11 +313,11 @@ void main() {
   });
 
   group('aviso de sesión', () {
-    // Helper propio, aparte de `_pump`: necesita sembrar el estado de
-    // `sessionFeedbackProvider` antes del primer frame, así que monta con
-    // `UncontrolledProviderScope` + un `ProviderContainer` propio en vez
-    // del `ProviderScope` normal que usa `_pump` — ningún test de arriba
-    // se toca.
+    // Own helper, separate from `_pump`: it needs to seed
+    // `sessionFeedbackProvider`'s state before the first frame, so it
+    // mounts with `UncontrolledProviderScope` + its own
+    // `ProviderContainer` instead of the normal `ProviderScope` that
+    // `_pump` uses — none of the tests above are touched.
     Future<ProviderContainer> pumpWithFeedback(WidgetTester tester, SessionFeedbackKind? seeded) async {
       final container = ProviderContainer(
         overrides: [authRepositoryProvider.overrideWithValue(FakeAuthRepository())],
@@ -351,8 +351,8 @@ void main() {
       final container = await pumpWithFeedback(tester, SessionFeedbackKind.signedOut);
 
       expect(find.text('Has cerrado sesión'), findsOneWidget);
-      // Limpiado inmediatamente: un rebuild posterior de esta misma
-      // pantalla (o un hot reload) no vuelve a leer ningún aviso.
+      // Cleared immediately: a later rebuild of this same screen (or a
+      // hot reload) doesn't read any notice again.
       expect(container.read(sessionFeedbackProvider), isNull);
     });
 

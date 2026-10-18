@@ -46,11 +46,11 @@ void main() {
 
     test('el recorte del 20% de una categoría no cuenta el gasto ya contado como recurrente', () {
       final history = [
-        // Recurrente: no debe entrar en la media del recorte.
+        // Recurring: must not enter the cut's average.
         tx(amountCents: -2000, date: DateTime(2026, 7, 1), description: 'Spotify', category: Category.ocio),
         tx(amountCents: -2000, date: DateTime(2026, 8, 1), description: 'Spotify', category: Category.ocio),
         tx(amountCents: -2000, date: DateTime(2026, 9, 1), description: 'Spotify', category: Category.ocio),
-        // No recurrente, uno por mes, 3.000 en total -> media 1.000 -> recorte 20% = 200.
+        // Not recurring, one per month, 3,000 in total -> average 1,000 -> 20% cut = 200.
         tx(amountCents: -1000, date: DateTime(2026, 7, 15), description: 'Cine', category: Category.ocio),
         tx(amountCents: -1000, date: DateTime(2026, 8, 20), description: 'Bolera', category: Category.ocio),
         tx(amountCents: -1000, date: DateTime(2026, 9, 10), description: 'Escape room', category: Category.ocio),
@@ -87,9 +87,10 @@ void main() {
     );
 
     test('gasto inusual del mes en curso aparte: el importe es el exceso sobre la mediana, no el gasto completo', () {
-      // Categoría transporte (no está en savingsSuggestionCutCategories, no
-      // está excluida): así no se mezcla con un recorte porcentual (b) y la
-      // cobertura mensual solo puede venir de (a)/(b), nunca de (c).
+      // Transporte category (not in savingsSuggestionCutCategories,
+      // not excluded): this way it doesn't mix with a percentage
+      // cut (b) and the monthly coverage can only come from (a)/(b),
+      // never from (c).
       final history = [
         tx(amountCents: -800, date: DateTime(2026, 7, 10), category: Category.transporte),
         tx(amountCents: -900, date: DateTime(2026, 8, 10), category: Category.transporte),
@@ -104,9 +105,9 @@ void main() {
 
       final excess = result.suggestions.firstWhere((s) => s.type == SavingsSuggestionType.oneOffExcess);
       expect(excess.description, 'Concierto');
-      // Mediana del histórico: 1.000. Exceso: 5.000 - 1.000 = 4.000.
+      // History's median: 1,000. Excess: 5,000 - 1,000 = 4,000.
       expect(excess.amountCents, 4000);
-      // No suma a la cobertura mensual.
+      // Doesn't add to the monthly coverage.
       expect(result.monthlyCoveredCents, 0);
     });
 
@@ -143,7 +144,7 @@ void main() {
 
       final cut = result.suggestions.single;
       expect(cut.type, SavingsSuggestionType.categoryCut);
-      // Media: 297 ~/ 3 = 99. Recorte: 99 * 20 ~/ 100 = 19 (no 19,8 redondeado a 20).
+      // Average: 297 ~/ 3 = 99. Cut: 99 * 20 ~/ 100 = 19 (not 19.8 rounded to 20).
       expect(cut.amountCents, 19);
     });
 

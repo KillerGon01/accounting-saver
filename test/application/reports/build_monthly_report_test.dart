@@ -34,10 +34,10 @@ void main() {
       await repository.addAll(
         userId: userId,
         transactions: [
-          tx(amountCents: 150075, date: DateTime(2026, 10, 5)), // nómina de octubre
+          tx(amountCents: 150075, date: DateTime(2026, 10, 5)), // October payroll
           tx(amountCents: -3025, date: DateTime(2026, 10, 6), category: Category.supermercado),
           tx(amountCents: -1999, date: DateTime(2026, 10, 20), category: Category.ocio),
-          tx(amountCents: -500000, date: DateTime(2026, 9, 5)), // mes distinto, no cuenta
+          tx(amountCents: -500000, date: DateTime(2026, 9, 5)), // different month, doesn't count
         ],
       );
       final useCase = BuildMonthlyReport(repository, FakeClock(DateTime(2026, 11, 1)));
@@ -65,8 +65,8 @@ void main() {
       final report = await useCase(userId: userId, year: 2026, month: 10);
 
       expect(report.categoryBreakdown, hasLength(3));
-      // Tres categorías con el mismo importe: cada una es 1/3 del total,
-      // 33,333...%, no pre-redondeado a 33,3.
+      // Three categories with the same amount: each one is 1/3 of the
+      // total, 33.333...%, not pre-rounded to 33.3.
       for (final expense in report.categoryBreakdown) {
         expect(expense.percentageOfExpense, closeTo(100 / 3, 0.0001));
       }
@@ -152,7 +152,7 @@ void main() {
         userId: userId,
         transactions: [
           tx(amountCents: -1000, date: DateTime(2026, 10, 5), category: Category.ocio),
-          // El mes anterior solo tiene supermercado, nunca ocio.
+          // The previous month only has groceries, never leisure.
           tx(amountCents: -2000, date: DateTime(2026, 9, 5), category: Category.supermercado),
         ],
       );
@@ -194,10 +194,10 @@ void main() {
     });
 
     test('el parámetro now, si se pasa, decide isCurrentMonth/elapsedDays en vez del Clock', () async {
-      // Lo usa TransactionChatFunctions (getCategoryBreakdown/compareMonths),
-      // que ya tiene un `now` resuelto por petición y no quiere un segundo
-      // reloj con el mismo propósito; el Clock del constructor (aquí, a
-      // propósito, con un mes distinto) debe quedar sin usar.
+      // Used by TransactionChatFunctions (getCategoryBreakdown/compareMonths),
+      // which already resolves a `now` per request and doesn't want a
+      // second clock for the same purpose; the constructor's Clock (here,
+      // on purpose, with a different month) must end up unused.
       final repository = FakeTransactionRepository();
       final useCase = BuildMonthlyReport(repository, FakeClock(DateTime(2099, 1, 1)));
 
