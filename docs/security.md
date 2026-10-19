@@ -59,8 +59,8 @@ Casos cubiertos, los once ejecutados de verdad contra el emulador el 15/10/2026 
 
 ## Límites conocidos
 
-- **Registro abierto.** La aplicación tiene el caso de uso `SignUpWithEmailAndPassword`, aunque la pantalla de login no lo expone. Firebase Auth acepta altas por correo y contraseña mientras el proveedor esté habilitado, y la configuración web de Firebase es pública. Cualquiera con esa configuración podría crear cuentas en masa y consumir la cuota gratuita de Firestore. No he comprobado la configuración del proyecto en la consola de Firebase.
-- **App Check solo para Gemini, no para Firestore.** Se activa únicamente cuando `ENABLE_AI` es verdadero y solo con el proveedor de depuración (ver "App Check" más abajo). Firestore sigue sin ninguna comprobación de que las peticiones provienen de la aplicación; el punto anterior (registro abierto) sigue sin resolverse.
+- **Registro abierto.** `LoginScreen` expone el registro por correo y contraseña directamente, con un modo alternable ("Crear cuenta", ver `lib/presentation/auth/login_screen.dart` y docs/analysis.md). Firebase Auth acepta altas mientras el proveedor esté habilitado, y la configuración web de Firebase es pública: cualquiera con esa configuración puede crear cuentas en masa y consumir la cuota gratuita de Firestore. Lo mitiga, sin eliminarlo, que las reglas de Firestore exigen correo verificado para leer o escribir datos (`isVerified()`, ver "Reglas de Firestore" más arriba): una cuenta creada en masa no puede tocar datos sin verificar su correo, pero sigue pudiendo agotar cuota (de Auth, y de Firestore una vez verificada). No he comprobado la configuración del proyecto en la consola de Firebase. Decisión tomada, ver "Pendiente" más abajo.
+- **App Check solo para Gemini, no para Firestore.** Se activa únicamente cuando `effectiveEnableAi` es verdadero, con el proveedor que corresponda según build y plataforma (depuración en desarrollo; `ReCaptchaEnterpriseProvider` en release web con `RECAPTCHA_SITE_KEY`; en Android release no hay proveedor de producción y la IA se oculta en vez de activarlo — ver "App Check" más abajo, tabla completa). Firestore sigue sin ninguna comprobación de que las peticiones provienen de la aplicación; el punto anterior (registro abierto) es una decisión tomada (dejarlo abierto), no un pendiente — ver "Pendiente" más abajo.
 - **Sin límite de frecuencia.** Las reglas no limitan cuántos documentos puede escribir un usuario autenticado. Sin Cloud Functions, la única protección de cuota es la que aplique Firebase.
 - **Lista de valores fijos.** Las categorías y fuentes válidas están escritas en `firestore.rules`. Si se añade un valor al enum en Dart, hay que añadirlo también en las reglas.
 - **Detección del 503 de Gemini por texto, no por código.** `isTransientGeminiError` (`lib/infrastructure/common/gemini_transient_retry.dart`) reconoce un fallo transitorio del servidor buscando `UNAVAILABLE`, `Deadline expired` o `Server Error [503]` dentro del `message` de la excepción, porque el paquete `firebase_ai` no expone el código de estado HTTP como un campo propio para este caso (ver docs/design.md). Si Google cambia el texto exacto de este error, la detección deja de funcionar silenciosamente: el fallo pasaría a tratarse como cualquier otro `service-error`, sin reintento, pero sin romper nada más.
@@ -223,7 +223,7 @@ La seguridad de los datos y del uso de la IA la dan, en conjunto:
 **Riesgos conocidos, no resueltos:**
 
 - **La restricción por sitios web se puede falsificar desde un script.** La cabecera `Referer`/origen que Google comprueba la envía el propio cliente; quien llame a la API directamente (no desde un navegador, por ejemplo con `curl` o un script) puede falsificarla. La restricción frena el uso casual desde un sitio no autorizado, no a quien se moleste en imitar el origen.
-- **El registro abierto de cuentas por la API de Auth sigue pendiente de decisión** (ver "Límites conocidos" más abajo): nada en estas restricciones impide crear cuentas en masa por correo y contraseña mientras el proveedor esté habilitado.
+- **El registro abierto de cuentas por la API de Auth se deja abierto, por decisión** (ver "Límites conocidos" más arriba y "Pendiente" más abajo): nada en estas restricciones impide crear cuentas en masa por correo y contraseña mientras el proveedor esté habilitado.
 
 ## Escaneo de secretos (gitleaks)
 
@@ -312,10 +312,8 @@ Las tres capas lanzan el mismo tipo, `NotUnderstoodException`, con un mensaje pa
 
 ## Pendiente
 
-- **Pendiente de decisión antes de la entrega (26/10):** registro con email y contraseña. Opciones:
-  1. Dejarlo abierto y documentarlo como límite conocido (ya descrito arriba).
-  2. Cerrar el alta en la consola de Firebase (desactivar el proveedor de email/contraseña para nuevos usuarios o deshabilitar el registro), comprobando antes que el inicio de sesión sigue funcionando.
-- Tests automatizados de las reglas (ahora se verifican manualmente contra el emulador).
+- **Decisión tomada sobre el registro con email y contraseña: dejarlo abierto**, documentado como límite conocido (ver "Límites conocidos" más arriba). Justificación: los datos ya están protegidos por las reglas de Firestore y la exigencia de correo verificado (`isVerified()`), y cualquier corrector puede crear su propia cuenta para probar la app sin ninguna fricción añadida. El riesgo que queda es agotar la cuota gratuita compartida del proyecto, no un cargo económico: el proyecto está en el plan Spark de Firebase, sin facturación vinculada (ver CLAUDE.md).
+- Añadir las pruebas de reglas de Firestore (`firestore-tests/`) al CI (hoy se ejecutan a mano contra el emulador, ver "Pruebas de las reglas contra el emulador" más arriba).
 - Revisión de dependencias antes de la entrega.
-- Exigir correo verificado en las reglas de Firestore.
 - **App Check en producción para Android.** Resuelto para web (reCAPTCHA Enterprise / Fraud Defense, ver "App Check" más arriba). Para Android sigue pendiente: mientras no se configure, un release de Android no activa App Check y oculta la IA (`chooseAppCheckConfig`, ver "Android" más arriba), en vez de intentarlo y fallar. Para activarla de verdad haría falta registrar la huella SHA-256 de la build de release en Firebase Console, vincular la app en Play Console para que `AndroidPlayIntegrityProvider` funcione, y que `chooseAppCheckConfig` deje de ocultar la IA en release Android.
+- **Nombre de paquete de Android por renombrar.** El `applicationId` sigue siendo el que pone Flutter por defecto al crear el proyecto, `com.example.accounting_saver` (`android/app/build.gradle.kts`), pendiente de renombrar antes de publicar en Google Play (ver también "Android" más arriba).
