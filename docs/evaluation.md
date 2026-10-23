@@ -22,7 +22,7 @@ Todo el reloj de la evaluación es `evalNow = DateTime(2026, 12, 11, 12)` (`lib/
 
 Todas las preguntas usan mes y año explícitos ("en octubre de 2026"), nunca "el mes pasado", para que el resultado no dependa del día real en que se ejecute el harness.
 
-**Casos de "mes en curso":** en vez de un segundo reloj fijo distinto, se reutiliza `evalNow` pidiendo **diciembre de 2026** (que ya es "mes en curso" para esa fecha) en 2 casos (`ranking-04-mes-en-curso`, `comparacion-04-mes-en-curso`), y se comprueba que la respuesta incluye el aviso obligatorio de datos parciales (el texto que genera `_currentMonthWarning` en `TransactionChatFunctions`, con "Aviso:" o "está en curso"). Se documenta aquí esta decisión porque se desvía de la petición literal de "un reloj fijo distinto": no hacía falta uno, ya que diciembre ya es el mes en curso bajo `evalNow`.
+**Casos de "mes en curso":** en vez de un segundo reloj fijo distinto, se reutiliza `evalNow` pidiendo **diciembre de 2026** (que ya es "mes en curso" para esa fecha) en 2 casos (`ranking-04-mes-en-curso`, `comparacion-04-mes-en-curso`), y se comprueba que la respuesta incluye el aviso obligatorio de datos parciales (el texto que genera `_currentMonthWarning` en `TransactionChatFunctions`, con "Aviso:" o "está en curso"). Decisión: no hace falta un segundo reloj, porque diciembre ya es el mes en curso bajo `evalNow`.
 
 Tanto el ejecutor de funciones (`now: evalNow`, pasado explícitamente en cada llamada) como la instrucción de sistema de Gemini (`GeminiChatGateway(clock: FixedClock(evalNow))`, ver más abajo) usan la misma fecha, para que "hoy" signifique lo mismo en los dos sitios. Esto exigió un cambio mínimo en `GeminiChatGateway`: su parámetro de reloj se llamaba `_clock` (privado, no se podía pasar desde otro archivo); ahora se llama `clock` (público), sin cambiar su comportamiento por defecto (`SystemClock`) en el resto de la app.
 
@@ -156,7 +156,7 @@ flutter run -t lib/eval_main.dart -d chrome --web-port=5000 \
   --dart-define=EVAL_ACCOUNT_EMAIL=<correo-de-la-cuenta-de-evaluación>
 ```
 
-`--web-port=5000` porque la clave de navegador de Firebase solo admite ese puerto en local (ver `docs/security.md`, "Instalación y ejecución" en el README). Se abre la pantalla de login normal de la app; al iniciar sesión con la cuenta de evaluación (nunca la cuenta de prueba entregada al corrector), aparece el botón "Ejecutar evaluación". El informe en Markdown se imprime en la consola (`flutter run`) y también se muestra, seleccionable, en la propia pantalla, listo para pegar en la sección "Resultados" de abajo.
+`--web-port=5000` porque la clave de navegador de Firebase solo admite ese puerto en local (ver el README, "Instalación y ejecución", y `docs/security.md`). Se abre la pantalla de login normal de la app; al iniciar sesión con la cuenta de evaluación (nunca la cuenta de prueba entregada al corrector), aparece el botón "Ejecutar evaluación". El informe en Markdown se imprime en la consola (`flutter run`) y también se muestra, seleccionable, en la propia pantalla, listo para pegar en la sección "Resultados" de abajo.
 
 ## No se despliega
 
