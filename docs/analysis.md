@@ -1,5 +1,7 @@
 # Análisis
 
+> Este documento cubre el alcance del MVP inicial. El resto de funcionalidades (nóminas en PDF, previsión de fin de mes, búsqueda y filtros, gastos inusuales, metas de ahorro, sugerencias de ahorro, rediseño visual...) está documentado en `README.md` y `docs/design.md`.
+
 ## Problema
 
 Un asistente financiero personal que permita registrar movimientos de forma manual o en lenguaje natural, consultar el resumen mensual y preguntar sobre los propios datos, sin coste económico.
@@ -20,8 +22,8 @@ Un asistente financiero personal que permita registrar movimientos de forma manu
 | Perfil de usuario (datos de cuenta) | Hecho | `ProfileScreen`, acceso desde un icono de la barra superior. |
 | Resumen de actividad del histórico | Hecho | Consultas agregadas (`count` y `sum`); no lee todos los movimientos. |
 | Eliminar cuenta | Hecho | Reautenticación, borrado de movimientos en lotes y borrado de la cuenta de Auth. |
-| Entrada en lenguaje natural (JSON estructurado y validado) | Hecho | `LlmGateway`/`GeminiLlmGateway`, caso de uso `ParseNaturalLanguageTransaction`, campo en la pantalla de movimientos tras `ENABLE_AI`. |
-| Chat con function calling sobre Firestore | Hecho | `ChatGateway`/`GeminiChatGateway`, dos funciones (`getMonthlySummary`, `listTransactions`) validadas en `TransactionChatFunctions` antes de tocar Firestore. Pantalla de chat tras `ENABLE_AI`. |
+| Entrada en lenguaje natural (JSON estructurado y validado) | Hecho | `LlmGateway`/`GeminiLlmGateway`, caso de uso `ParseNaturalLanguageTransaction`, campo en la pantalla de movimientos tras `effectiveEnableAi`. |
+| Chat con function calling sobre Firestore | Hecho | `ChatGateway`/`GeminiChatGateway`, cinco funciones (`getMonthlySummary`, `listTransactions`, `recurringExpenses`, `getCategoryBreakdown`, `compareMonths`) validadas en `TransactionChatFunctions` antes de tocar Firestore. Pantalla de chat tras `effectiveEnableAi`. |
 
 Fuera de alcance: importación CSV, foto de ticket, presupuestos y multidivisa.
 
@@ -51,7 +53,7 @@ Fuera de alcance: importación CSV, foto de ticket, presupuestos y multidivisa.
 
 | Requisito | Decisión |
 |---|---|
-| Activación | Oculta por defecto; visible solo si `const bool.fromEnvironment('ENABLE_AI')` es verdadero (`--dart-define=ENABLE_AI=true`). |
+| Activación | Oculta por defecto; visible solo si `effectiveEnableAi` (`lib/app_check_config.dart`) es verdadero: requiere `--dart-define=ENABLE_AI=true` y, en una build de release, además una clave de reCAPTCHA (web) — en Android release es siempre falso, sin proveedor de App Check de producción. |
 | Backend de IA | Gemini Developer API a través de Firebase AI Logic (`FirebaseAI.googleAI()`), no Vertex AI, para mantenerse en el nivel gratuito sin facturación. |
 | Salida del modelo | JSON estructurado con `responseSchema` (`Schema.object`), no texto libre: importe en céntimos, fecha ISO, concepto y categoría (`Schema.enumString` con los valores de `Category`). |
 | Resultado tipado | `LlmGateway.extractTransaction` devuelve `RawParsedTransaction` (sin validar); `ParseNaturalLanguageTransaction` lo convierte en `ParsedTransaction` (validado) o lanza una excepción. |
@@ -68,8 +70,8 @@ Fuera de alcance: importación CSV, foto de ticket, presupuestos y multidivisa.
 
 | Requisito | Decisión |
 |---|---|
-| Activación | Oculta por defecto, igual que la entrada en lenguaje natural; visible solo con `ENABLE_AI`. |
-| Funciones expuestas al modelo | `getMonthlySummary(year, month)`, `listTransactions(desde, hasta, categoryId?)` y `recurringExpenses()` (sin argumentos), declaradas en `GeminiChatGateway` con los nombres de `ChatFunctions` (dominio). |
+| Activación | Oculta por defecto, igual que la entrada en lenguaje natural; visible solo con `effectiveEnableAi`. |
+| Funciones expuestas al modelo | `getMonthlySummary(year, month)`, `listTransactions(desde, hasta, categoryId?)`, `recurringExpenses()` (sin argumentos), `getCategoryBreakdown(year, month)` y `compareMonths(...)`, declaradas en `GeminiChatGateway` con los nombres de `ChatFunctions` (dominio). |
 | Gastos recurrentes | `recurringExpenses` analiza al menos los últimos 3 meses naturales completos (sin contar el mes en curso) y define "recurrente" de forma determinista en código: mismo concepto normalizado (minúsculas, sin espacios de más) e importe exacto en 2 o más meses distintos. Devuelve el concepto, el importe en euros (formateado como texto, nunca `double`) y los meses en los que aparece, además del rango analizado (`desde`/`hasta`) siempre, incluso cuando no hay ninguno. |
 | Argumentos no fiables | `TransactionChatFunctions` valida año, mes (1-12), fechas (`desde` ≤ `hasta`, máximo 5 años de rango) y `categoryId` contra el enum `Category` antes de tocar Firestore; si algo es inválido, devuelve `{'error': ...}` sin ejecutar ninguna consulta. |
 | "Este mes", "el mes pasado", "este año" | La instrucción de sistema resuelve estos periodos a valores concretos (`year`/`month` enteros) con la fecha de hoy, obtenida de un `Clock` inyectable y recalculada en cada petición; así el modelo nunca necesita preguntar por el año o el mes para deducirlos, ni se queda con la fecha del momento en que arrancó la app. |

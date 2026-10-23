@@ -22,7 +22,7 @@ Todo el reloj de la evaluación es `evalNow = DateTime(2026, 12, 11, 12)` (`lib/
 
 Todas las preguntas usan mes y año explícitos ("en octubre de 2026"), nunca "el mes pasado", para que el resultado no dependa del día real en que se ejecute el harness.
 
-**Casos de "mes en curso" (punto 1 pedido):** en vez de un segundo reloj fijo distinto, se reutiliza `evalNow` pidiendo **diciembre de 2026** (que ya es "mes en curso" para esa fecha) en 2 casos (`ranking-04-mes-en-curso`, `comparacion-04-mes-en-curso`), y se comprueba que la respuesta incluye el aviso obligatorio de datos parciales (el texto que genera `_currentMonthWarning` en `TransactionChatFunctions`, con "Aviso:" o "está en curso"). Se documenta aquí esta decisión porque se desvía de la petición literal de "un reloj fijo distinto": no hacía falta uno, ya que diciembre ya es el mes en curso bajo `evalNow`.
+**Casos de "mes en curso":** en vez de un segundo reloj fijo distinto, se reutiliza `evalNow` pidiendo **diciembre de 2026** (que ya es "mes en curso" para esa fecha) en 2 casos (`ranking-04-mes-en-curso`, `comparacion-04-mes-en-curso`), y se comprueba que la respuesta incluye el aviso obligatorio de datos parciales (el texto que genera `_currentMonthWarning` en `TransactionChatFunctions`, con "Aviso:" o "está en curso"). Decisión: no hace falta un segundo reloj, porque diciembre ya es el mes en curso bajo `evalNow`.
 
 Tanto el ejecutor de funciones (`now: evalNow`, pasado explícitamente en cada llamada) como la instrucción de sistema de Gemini (`GeminiChatGateway(clock: FixedClock(evalNow))`, ver más abajo) usan la misma fecha, para que "hoy" signifique lo mismo en los dos sitios. Esto exigió un cambio mínimo en `GeminiChatGateway`: su parámetro de reloj se llamaba `_clock` (privado, no se podía pasar desde otro archivo); ahora se llama `clock` (público), sin cambiar su comportamiento por defecto (`SystemClock`) en el resto de la app.
 
@@ -39,12 +39,13 @@ Generados en código por `buildEvalDataset()` (`lib/eval/eval_cases.dart`): cons
 
 | Tipo | Casos | Qué comprueba |
 |---|---|---|
-| cifra | 4 | Un importe concreto (gasto, ingreso, balance, un movimiento fijo). |
+| cifra | 6 | Un importe concreto (gasto, ingreso, balance, un movimiento fijo, y dos de seguimiento que reutilizan el mes/categoría de una pregunta anterior). |
 | ranking | 4 | Desglose por categoría; una de ellas en el mes en curso (diciembre). |
 | comparación | 4 | Comparación entre dos meses; una de ellas con el mes en curso. |
+| listado | 2 | Listado de movimientos uno por uno (no un total), distinguido explícitamente de una pregunta de cantidad. |
 | recurrentes | 3 | Gastos recurrentes (alquiler, gimnasio, Netflix, Spotify). |
 | rechazo | 4 | Premisa falsa (una cifra o un ingreso que no existen). |
-| fuera de tema | 3 | Preguntas sin relación con las finanzas. |
+| fuera de tema | 11 | Preguntas sin relación con las finanzas, incluidas conversaciones de varios turnos, saludos y agradecimientos. |
 | inyección | 4 | Instrucciones dentro de la pregunta, y una con el concepto malicioso de los datos. |
 | escritura | 4 | Peticiones de añadir/borrar/cambiar un movimiento desde el chat (el chat no tiene ninguna función de escritura). |
 
@@ -123,14 +124,14 @@ Tests con las 3 respuestas literales de la segunda ejecución (deben pasar) y co
 - Los importes recurrentes (`globalValidAmounts`) se consideran válidos en cualquier caso, no solo en los de tipo "recurrentes", para simplificar: una coincidencia casual en un caso de otro tipo se perdonaría igual, aunque es muy poco probable.
 - Un error de infraestructura (`LlmGatewayException`: red, cuota, autenticación...) no se intenta juzgar como respuesta: el caso se repite una vez automáticamente (mismo espaciado) y, si la repetición también falla, se marca "no evaluable" — ni acierto ni fallo de calidad (ver "El informe").
 
-## Cuenta de evaluación: nunca la de "Credenciales de prueba"
+## Cuenta de evaluación: nunca la cuenta de prueba entregada al corrector
 
-Esta evaluación borra y vuelve a sembrar los movimientos de la cuenta sobre la que se ejecuta, así que **nunca** debe apuntar a la cuenta de "Credenciales de prueba" del README (la que verá el corrector). Usa una cuenta de Firebase Auth distinta, solo para esto, cuyo correo:
+Esta evaluación borra y vuelve a sembrar los movimientos de la cuenta sobre la que se ejecuta, así que **nunca** debe apuntar a la cuenta de prueba entregada al corrector. Usa una cuenta de Firebase Auth distinta, solo para esto, cuyo correo:
 
 - **Nunca se escribe en el código ni en este documento.** Solo se pasa a `lib/eval_main.dart` con `--dart-define=EVAL_ACCOUNT_EMAIL=<correo>` en el momento de ejecutar.
 - Se compara, en `runEval` (`lib/eval/eval_runner.dart`), contra el correo de la sesión ya iniciada (`sessionEmail`, el de Firebase Auth, no un dato de configuración). Si no coincide exactamente —incluido el caso de que `EVAL_ACCOUNT_EMAIL` esté vacío—, lanza `WrongEvalAccountError` **antes de borrar o escribir nada**. `lib/eval_main.dart` además desactiva el botón de "Ejecutar evaluación" si el correo de la sesión no coincide, como primera barrera visible; la comprobación que de verdad importa es la de `runEval`.
 
-Comprobado (sin tocar `firestore.rules`): la regla actual ya permite el borrado de movimientos con una cuenta verificada —`allow read, delete: if isOwner(userId) && isVerified();`—, sin ninguna condición adicional; no hacía falta ningún cambio para que el harness pueda borrar los movimientos de la cuenta de evaluación (punto 3 pedido).
+Comprobado (sin tocar `firestore.rules`): la regla actual ya permite el borrado de movimientos con una cuenta verificada —`allow read, delete: if isOwner(userId) && isVerified();`—, sin ninguna condición adicional; no hacía falta ningún cambio para que el harness pueda borrar los movimientos de la cuenta de evaluación.
 
 ## Espaciado y tope de peticiones
 
@@ -155,7 +156,7 @@ flutter run -t lib/eval_main.dart -d chrome --web-port=5000 \
   --dart-define=EVAL_ACCOUNT_EMAIL=<correo-de-la-cuenta-de-evaluación>
 ```
 
-`--web-port=5000` porque la clave de navegador de Firebase solo admite ese puerto en local (ver `docs/security.md`, "Instalación y ejecución" en el README). Se abre la pantalla de login normal de la app; al iniciar sesión con la cuenta de evaluación (nunca la de "Credenciales de prueba"), aparece el botón "Ejecutar evaluación". El informe en Markdown se imprime en la consola (`flutter run`) y también se muestra, seleccionable, en la propia pantalla, listo para pegar en la sección "Resultados" de abajo.
+`--web-port=5000` porque la clave de navegador de Firebase solo admite ese puerto en local (ver el README, "Instalación y ejecución", y `docs/security.md`). Se abre la pantalla de login normal de la app; al iniciar sesión con la cuenta de evaluación (nunca la cuenta de prueba entregada al corrector), aparece el botón "Ejecutar evaluación". El informe en Markdown se imprime en la consola (`flutter run`) y también se muestra, seleccionable, en la propia pantalla, listo para pegar en la sección "Resultados" de abajo.
 
 ## No se despliega
 
@@ -335,7 +336,7 @@ Un id desconocido en el filtro (o un filtro que no selecciona ningún caso) abor
 
 ### Primera medición real — 16/10/2026, `gemini-3.5-flash-lite`
 
-3 ejecuciones de los 5 casos (5 peticiones cada una, 15 en total): **15 de 15 casos acertados, 0 fallos en ninguno de los 7 criterios** (`importes`, `palabras`, `conceptos`, `inversion`, `consejo`, `markdown`, `frases`).
+3 ejecuciones de los 5 casos (5 peticiones cada una, 15 en total): **15 de 15 respuestas acertadas (5 casos × 3 pasadas), 0 fallos en ninguno de los 7 criterios** (`importes`, `palabras`, `conceptos`, `inversion`, `consejo`, `markdown`, `frases`).
 
 **No hay una medición equivalente de la versión anterior de la instrucción de sistema** (antes de la estructura obligatoria (a)-(d) y de las prohibiciones de "necesaria"/estado de la meta/comparar importes, ver docs/design.md): el "antes" fue la prueba manual que motivó ese cambio, no una ejecución de este arnés — con la versión anterior, una respuesta típica tenía unas 6 frases (por encima del tope de 4) y no relacionaba explícitamente la cobertura con la aportación necesaria.
 
