@@ -12,7 +12,8 @@ Asistente financiero personal con IA (Gemini). Flutter + Firebase.
 ## Arquitectura (Clean Architecture)
 lib/domain (Dart puro, sin Firebase ni Flutter), lib/application (casos de uso),
 lib/infrastructure (Firestore, Gemini, Auth), lib/presentation (Riverpod).
-Gemini siempre detrás de la interfaz LlmGateway. Tests con fakes.
+Gemini siempre detrás de una interfaz de dominio (LlmGateway, ChatGateway,
+MonthlyReportGateway, PayrollGateway, SavingsSuggestionsGateway). Tests con fakes.
 
 ## Alcance MVP
 Login (email/contraseña y Google), movimientos manuales, entrada en lenguaje
@@ -41,44 +42,16 @@ description, categoryId, source, createdAt. Categorías fijas en código.
     cada funcionalidad, actualizar el documento que corresponda.
 
 ## Estado
-Hecho: todo lo anterior (MVP, nóminas en PDF, previsión de fin de mes, búsqueda y filtros,
-gastos inusuales, metas de ahorro, sugerencias de ahorro con y sin IA) y, nuevo, un rediseño
-visual y dos arreglos de autenticación en Android (detalle en docs/design.md/docs/security.md):
-tema oscuro forzado (`ThemeMode.dark`, paleta propia con contraste AA comprobado), icono propio
-en web y Android (adaptativo + monocromo, generado por `tool/generate_icons.dart`), avisos de
-sesión (cierre de sesión y borrado de cuenta, en memoria vía `sessionFeedbackProvider`) y
-animaciones con `AppMotion` (respeta `disableAnimations`); el login con Google en Android, que
-usaba `signInWithProvider` y lo bloqueaba un 403 de `identitytoolkit`, sustituido por el SDK
-nativo (`google_sign_in`, único paquete nuevo); ayuda contextual (`lib/presentation/help/`):
-icono de ayuda en el `AppBar` de cada pantalla salvo login/crear cuenta/verificar correo (decisión
-explícita, en Movimientos dentro de "Más opciones"), hoja modal con el título y los pasos en
-castellano, límites numéricos leídos de las constantes reales del código (ver docs/design.md,
-"Ayuda contextual"); y, nuevo, un aviso (`SnackBar`) estable al navegar desde Movimientos:
-`hideCurrentSnackBar` antes de cada `Navigator.push` que sale de esa pantalla, para que no
-salte de posición por el `FloatingActionButton` que tienen unas pantallas y no otras, más un
-ancho máximo (560 px, centrado) y un margen fijos en el tema (ver docs/design.md, "Aviso
-estable al navegar"); y, nuevo, un bug de arranque en web: `FirebaseAuthRepository`
-instanciaba `GoogleSignIn()` siempre (también en web, donde su propio constructor dispara
-una inicialización que falla por falta de client ID), dejando la app en blanco. Arreglado con
-`createNativeGoogleCredential` + un `isWeb` inyectable, nunca se crea `GoogleSignIn` en web
-(ver docs/design.md, "Bug: `GoogleSignIn` se instanciaba también en web"); y, nuevo, todos los
-comentarios y doc comments (`//`/`///`) del código Dart traducidos al inglés, por lotes con
-commit propio y verificación de que el código no cambió (ver docs/design.md, "Idioma del
-código"); el resto (interfaz, README, docs/) sigue en castellano; y, nuevo, un refactor sin
-cambios de comportamiento ni de interfaz pública de los archivos más grandes (rama
-chore/split-large-files, sin commit todavía): `TransactionChatFunctions` (615 líneas) es ahora
-una fachada fina sobre `lib/application/chat/functions/` (`listing_functions.dart`,
-`breakdown_functions.dart`, `comparison_functions.dart`, `shared.dart`), y los widgets privados
-de `monthly_report_screen.dart` (821) y `transactions_screen.dart` (750) se movieron a
-`widgets/` dentro de cada carpeta de pantalla (ver docs/design.md, "Organización de archivos
-grandes"). Tests: 708.
-Pendiente: lo de antes (ajustar `_checkMonthAttribution`, flutter_localizations, registro
-abierto, `thinkingConfig`, CI para `firestore-tests/`, cuota compartida entre nóminas, chat,
-lenguaje natural, resumen mensual y sugerencias de ahorro) más los riesgos/límites ya
-documentados en docs/design.md/docs/security.md (previsión de fin de mes, gastos inusuales,
-metas de ahorro, sugerencias de ahorro con y sin IA: nivel gratuito de Gemini, Google puede usar
-el contenido enviado) y, en Android, lo que sigue vigente: nombre de paquete por defecto
-(`com.example.accounting_saver`), sin proveedor de App Check de producción (Play Integrity sin
-vincular en Play Console) y `FirebaseAuthRepository` sin tests automatizados (verificado a mano
-en móvil).
-Siguiente: decidir los pendientes de seguridad antes de la entrega (26/10).
+Hecho: MVP completo (login email/Google, movimientos manuales, lenguaje natural, chat con
+function calling, resumen mensual) y todos los extras (nóminas en PDF, previsión de fin de mes,
+búsqueda y filtros, gastos inusuales, metas de ahorro, sugerencias de ahorro con y sin IA, tema
+oscuro, icono propio, ayuda contextual, Docker con nginx y CI en GitHub Actions); incluye el
+rediseño visual y los arreglos de autenticación/arranque en Android y web (Google Sign-In nativo,
+bug de `GoogleSignIn` en web) y el refactor de los archivos más grandes, ya fusionado en main
+(`chore/split-large-files`, PR #56) — detalle de todo ello en docs/design.md y docs/security.md.
+708 tests.
+Pendiente de verdad: renombrar `applicationId` (sigue en `com.example.accounting_saver`), App
+Check de producción en Android (Play Integrity sin vincular en Play Console), añadir
+`firestore-tests/` al CI, y ajustar `_checkMonthAttribution` (ver docs/evaluation.md). El resto
+de riesgos/límites ya documentados en docs/design.md/docs/security.md se asumen como están.
+Código congelado para la entrega salvo bugs bloqueantes.
