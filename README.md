@@ -19,10 +19,11 @@ Asistente financiero personal con IA (Gemini), hecho con Flutter y Firebase. Tra
 9. [Integración continua](#integración-continua)
 10. [Pruebas](#pruebas)
 11. [Estructura del repositorio](#estructura-del-repositorio)
-12. [Credenciales de prueba](#credenciales-de-prueba)
-13. [Convención de commits y ramas](#convención-de-commits-y-ramas)
-14. [Limitaciones conocidas y mejoras futuras](#limitaciones-conocidas-y-mejoras-futuras)
-15. [Licencia](#licencia)
+12. [Nóminas de ejemplo](#nóminas-de-ejemplo)
+13. [Credenciales de prueba](#credenciales-de-prueba)
+14. [Convención de commits y ramas](#convención-de-commits-y-ramas)
+15. [Limitaciones conocidas y mejoras futuras](#limitaciones-conocidas-y-mejoras-futuras)
+16. [Licencia](#licencia)
 
 ## Descripción y objetivo
 
@@ -273,6 +274,24 @@ Dockerfile, docker-compose.yml   Imagen para servir la web sin IA
 LICENSE                Licencia MIT
 CLAUDE.md              Instrucciones del proyecto para el asistente de IA usado en el desarrollo
 ```
+
+## Nóminas de ejemplo
+
+Los PDF de `samples/payrolls/` son ficticios (datos inventados, sin validez legal), pensados para
+probar la lectura de nóminas con IA. Solo se pueden probar en la web desplegada
+(<https://accounting-saver.web.app/>), porque esa función es solo web y exige App Check de
+producción, que en Android no está configurado (ver "Limitaciones conocidas y mejoras
+futuras").
+
+- `nomina_01_septiembre_2026.pdf`: cuadra (líquido = bruto − deducciones) y propone un ingreso.
+- `nomina_02_julio_2026_paga_extra.pdf`: cuadra, con una paga extra incluida, y propone un ingreso.
+- `nomina_03_con_error_en_liquido.pdf`: el líquido no coincide con bruto − deducciones; no cuadra,
+  así que la app bloquea el botón de añadir el ingreso y muestra el aviso con la diferencia.
+- `nomina_04_con_texto_malicioso.pdf`: cuadra, pero incluye en las observaciones una instrucción
+  de prompt injection. El prompt le pide al modelo que la trate como dato del documento, y la
+  validación de las cifras se hace en código, no depende del modelo. La app puede mostrar un
+  aviso informativo de que el documento contiene instrucciones; esa detección no es fiable y el
+  aviso no bloquea el botón.
 
 ## Credenciales de prueba
 
