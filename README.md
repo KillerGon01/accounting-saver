@@ -66,7 +66,7 @@ lib/
 
 - **Dinero en céntimos** (`int`), nunca `double`, en todo el proyecto (parseo, validación, cálculo y Firestore). Límite de 1.000.000 € en valor absoluto.
 - **Categorías fijas en código** (enum `Category`: `supermercado`, `restaurantes`, `transporte`, `suscripciones`, `ocio`, `salud`, `hogar`, `nomina`, `otros`), repetidas en `firestore.rules` para validarlas también en el servidor.
-- Gemini vive siempre detrás de una interfaz (`LlmGateway`, `ChatGateway`, `MonthlyReportGateway`), nunca se llama directamente desde la aplicación o la presentación, para poder sustituirlo por un fake en los tests.
+- Gemini vive siempre detrás de una interfaz (`LlmGateway`, `ChatGateway`, `MonthlyReportGateway`, `PayrollGateway`, `SavingsSuggestionsGateway`), nunca se llama directamente desde la aplicación o la presentación, para poder sustituirlo por un fake en los tests.
 
 Detalle completo (modelo de datos, decisiones de diseño por pantalla, formato de importes, tema visual...) en `docs/design.md`.
 
@@ -187,6 +187,8 @@ npm run test:emulator
 
 ### APK de Android
 
+Compilar para Android (`flutter build apk`/`flutter run` con un dispositivo o emulador Android) exige colocar tu propio `google-services.json` en `android/app/` (está en `.gitignore`, no se versiona — ver `docs/security.md`).
+
 Última release: <https://github.com/KillerGon01/accounting-saver/releases/latest>. Al instalarla hay que permitir la instalación desde orígenes desconocidos en Android.
 
 El APK se entrega sin IA porque Android no tiene proveedor de App Check de producción (haría falta Play Integrity, que requiere publicar la app en Google Play). Las funciones de IA están disponibles en la web: <https://accounting-saver.web.app/>.
@@ -215,7 +217,7 @@ Detalle completo (por qué no se usa una imagen de Docker con Flutter ya hecha, 
 - **`analyze_and_test`**: `flutter analyze` (falla con cualquier aviso) y `flutter test`.
 - **`build_web`**: `flutter build web --release`, sin ningún `--dart-define` de IA (comprueba solo que la web compila).
 
-Los dos jobs ejecutan sin `continue-on-error` (confirmado en el YAML), así que un fallo en cualquiera de los dos marca la ejecución del workflow como fallida. `main` está protegido por un *ruleset* (PR obligatoria y checks `analyze_and_test` y `build_web`); en repositorios públicos se aplica sin coste, en privados requiere un plan de pago, así que entra en vigor al hacer público el repositorio.
+Los dos jobs ejecutan sin `continue-on-error`, así que un fallo en cualquiera de los dos marca la ejecución del workflow como fallida. `main` está protegido por un *ruleset*, con PR obligatoria y los checks `analyze_and_test` y `build_web`.
 
 ## Pruebas
 
@@ -226,7 +228,7 @@ flutter analyze
 flutter test
 ```
 
-Detalle completo, archivo por archivo, en `docs/testing.md`. Aparte, `firestore-tests/` (Node, no `flutter test`) prueba `firestore.rules` contra el emulador real — ver `docs/security.md`.
+Detalle completo, resumen por archivo, en `docs/testing.md`. Aparte, `firestore-tests/` (Node, no `flutter test`) prueba `firestore.rules` contra el emulador real — ver `docs/security.md`.
 
 ### Evaluación de calidad contra Gemini real
 
@@ -250,29 +252,31 @@ Metodología, criterio de acierto de cada una y resultados en `docs/evaluation.m
 
 ```
 lib/
-  domain/            Entidades, interfaces de repositorio/gateway y reglas puras (auth, chat, reports, transactions, user_data, common)
-  application/       Casos de uso (auth, chat, reports, transactions)
-  infrastructure/    Firestore, Firebase Auth, Gemini (auth, chat, reports, transactions, user_data, common)
-  presentation/      Pantallas y providers de Riverpod (auth, chat, profile, reports, theme, transactions, common)
+  domain/            Entidades, interfaces de repositorio/gateway y reglas puras (auth, chat, payroll, reports, savings, transactions, user_data, common)
+  application/       Casos de uso (auth, chat, payroll, reports, savings, transactions)
+  infrastructure/    Firestore, Firebase Auth, Gemini (auth, chat, payroll, reports, savings, transactions, user_data, common)
+  presentation/      Pantallas y providers de Riverpod (auth, chat, help, payroll, profile, reports, savings, theme, transactions, common)
   eval/              Evaluación de calidad contra Gemini real: chat y sugerencias de ahorro (ver docs/evaluation.md)
   eval_main.dart     Punto de entrada de la evaluación del chat; local, no se despliega (ver arriba)
   eval_savings_suggestions_main.dart  Punto de entrada de la evaluación de sugerencias de ahorro; local, no se despliega (ver arriba)
 test/                Tests unitarios y de widgets, con fakes en test/fakes/ (incluye test/eval/)
+tool/                Scripts de desarrollo (hoy, generate_icons.dart; no se cuenta en la suite de tests)
 firestore-tests/     Tests de firestore.rules contra el emulador (Node, independiente del proyecto Flutter)
 docs/                analysis.md, design.md, testing.md, security.md, evaluation.md
 docker/              Configuración de nginx para la imagen de Docker
+web/                 Metadatos y assets de la build web (favicon, iconos, manifest)
+android/             Proyecto nativo de Android (Gradle, manifiesto, recursos de iconos)
 .github/workflows/   Integración continua (ci.yml)
 firestore.rules       Reglas de seguridad de Firestore
 firebase.json          Configuración de Firebase (Firestore, Hosting)
 Dockerfile, docker-compose.yml   Imagen para servir la web sin IA
+LICENSE                Licencia MIT
+CLAUDE.md              Instrucciones del proyecto para el asistente de IA usado en el desarrollo
 ```
 
 ## Credenciales de prueba
 
-Cuenta de prueba para la corrección, con datos ficticios (cargados con la opción de datos de ejemplo de la propia app):
-
-- Usuario: `[COMPLETAR: usuario]`
-- Contraseña: `[COMPLETAR: contraseña]`
+Las credenciales de la cuenta de prueba (con datos ficticios, cargados con la opción de datos de ejemplo de la propia app) se entregan en el formulario de entrega del TFM, no en el repositorio.
 
 ## Convención de commits y ramas
 
@@ -281,8 +285,7 @@ Cuenta de prueba para la corrección, con datos ficticios (cargados con la opci�
 
 ## Limitaciones conocidas y mejoras futuras
 
-- **Android funciona en modo debug, no en release.** Probado en un móvil físico el 11/10/2026: inicio de sesión con correo, movimientos, resumen mensual, entrada en lenguaje natural y chat, todo con el token de depuración de App Check registrado por el administrador del proyecto. En una build de **release** no hay ningún proveedor de App Check de producción configurado (Play Integrity exige vincular la app en Play Console), así que el APK de release se entrega sin IA: queda oculta automáticamente (`chooseAppCheckConfig` en `lib/app_check_config.dart`), igual que si `ENABLE_AI` fuera `false`, en vez de mostrarla y dejarla fallar. El nombre de paquete sigue siendo el que pone Flutter por defecto (`com.example.accounting_saver`), pendiente de renombrar antes de publicar. Detalle completo en `docs/security.md` → "Android" y `docs/design.md` → "Android".
-- **Inicio de sesión con Google en Android: SDK nativo, no `signInWithProvider`.** Ese flujo (pestaña de Chrome) recibía un 403 de `identitytoolkit.googleapis.com` ("Requests from this Android client application <empty> are blocked"), con la configuración (SHA-1, paquete, APIs, `google-services.json`) comprobada y correcta. Sustituido por el SDK nativo de `google_sign_in` (`NativeGoogleCredential`), solo en Android/plataformas nativas — la web sigue con `signInWithPopup`, sin cambios. Detalle completo en `docs/design.md`/`docs/security.md` → "Inicio de sesión con Google en Android".
+- **En Android, el release funciona, sin IA.** Probado en un móvil físico el 11/10/2026: inicio de sesión con correo, movimientos, resumen mensual, entrada en lenguaje natural y chat, todo con el token de depuración de App Check registrado por el administrador del proyecto. En una build de **release** no hay ningún proveedor de App Check de producción configurado (Play Integrity exige vincular la app en Play Console), así que el APK de release se entrega sin IA: queda oculta automáticamente (`chooseAppCheckConfig` en `lib/app_check_config.dart`), igual que si `ENABLE_AI` fuera `false`, en vez de mostrarla y dejarla fallar; el resto de la app (movimientos, resumen mensual, perfil, datos de ejemplo) funciona igual que en debug. El nombre de paquete sigue siendo el que pone Flutter por defecto (`com.example.accounting_saver`), pendiente de renombrar antes de publicar. Detalle completo en `docs/security.md` → "Android" y `docs/design.md` → "Android".
 
   El APK de depuración con la IA activada se genera con:
 
@@ -291,6 +294,7 @@ Cuenta de prueba para la corrección, con datos ficticios (cargados con la opci�
   ```
 
   La IA solo funciona en el móvil donde está registrado el token de depuración de App Check de esa instalación (ver "Seguridad" más arriba); este APK no se distribuye.
+- **Inicio de sesión con Google en Android: SDK nativo, no `signInWithProvider`.** Ese flujo (pestaña de Chrome) recibía un 403 de `identitytoolkit.googleapis.com` ("Requests from this Android client application <empty> are blocked"), con la configuración (SHA-1, paquete, APIs, `google-services.json`) comprobada y correcta. Sustituido por el SDK nativo de `google_sign_in` (`NativeGoogleCredential`), solo en Android/plataformas nativas — la web sigue con `signInWithPopup`, sin cambios. Detalle completo en `docs/design.md`/`docs/security.md` → "Inicio de sesión con Google en Android".
 - **Detección de errores de Gemini y de App Check por texto, no por código de estado.** El paquete `firebase_ai` no expone el código HTTP ni el `status` del error como un campo propio para un modelo no encontrado, un 503 transitorio o un 403 de App Check; se reconocen buscando frases concretas en el mensaje de la excepción. Si Google cambia ese texto, la detección deja de funcionar silenciosamente (el fallo pasaría a tratarse como un error genérico, sin reintento, pero sin romper nada más ni filtrar información interna).
 - **Registro abierto, por decisión.** La aplicación permite crear cuentas por correo y contraseña sin ninguna restricción adicional (expuesto en `LoginScreen`, modo "Crear cuenta"); se deja así y se documenta como límite conocido, mitigado por la exigencia de correo verificado en las reglas de Firestore. El riesgo que queda es agotar la cuota gratuita, no un cargo económico (plan Spark, sin facturación). Detalle en `docs/security.md`.
 - **`thinkingConfig` de Gemini sin confirmar** para los modelos de respaldo del fallback: existe en el paquete, pero no se ha podido probar contra el backend real en este entorno.
