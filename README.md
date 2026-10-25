@@ -249,6 +249,8 @@ Dos baterías independientes, ninguna parte de la app (no se publican, no se inc
 
 Metodología, criterio de acierto de cada una y resultados en `docs/evaluation.md`.
 
+Desarrollado con Claude Code como asistente de programación. Las decisiones de diseño, la revisión de cada cambio y las pruebas son mías; las instrucciones que usé están en `CLAUDE.md`.
+
 ## Estructura del repositorio
 
 ```
